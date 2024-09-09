@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-3">
+  <form method="post" class="post-form">
+    {{ form.csrf_token }}
+    {% include "form_errors.html" %}
+    <div class="form-group my-3">
+      <label for="comment">평가내용</label>
+      <textarea class="form-control" name="comment" id="comment" rows="10">{{ form.comment.data or '' }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">저장하기</button>
+  </form>
+</div>
+{% endblock %}
+{% block script %}
+<script>
+  // window.onload = () => {
+  //   var simplemde = new SimpleMDE({ element: document.getElementById("comment") });
+  // }
+</script>
+{% endblock %}

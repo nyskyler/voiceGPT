@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  {% for message in get_flashed_messages() %}
+  <div class="alert alert-danger" id="myflash" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
+  <form action="{{ url_for('userImage.upload_image') }}" method="post" id="uploadForm" enctype="multipart/form-data" novalidate="novalidate">
+    {{ form.csrf_token }}
+    <div class="input-group form-floating mb-3">
+      <input type="text" class="form-control" name="subject" id="subject" value="{{ form.subject.data or '' }}" autocomplete="off">
+      <label for="subject">사진의 주제</label>
+    </div>
+    <div class="input-group mb-3">
+      <input type="file" class="form-control" id="inputGroupFile" name="image" aria-describedby="inputGroupFileAddon" aria-label="Upload">
+      <button class="btn btn-outline-secondary" type="button" id="myspinner" style="display:none;" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">업로딩...</span>
+      </button>
+      <button class="btn btn-outline-secondary" type="submit" id="inputGroupFileAddon">업로드</button>
+    </div>
+  </form>
+
+  {% if imagesPending %}
+  <div id="carouselExampleCaptions" class="carousel slide" data-bs-ride="carousel" data-bs-theme="dark">
+    <div class="carousel-indicators">
+      {% for image in imagesPending %}
+      <button type="button" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="{{ loop.index0 }}" class="{% if loop.first %}active{% endif %}" aria-current="true" aria-label="Slide {{ loop.index }}"></button>
+      {% endfor %}
+    </div>
+    <div class="carousel-inner">
+      {% for image in imagesPending %}
+      <div class="carousel-item {% if loop.first %}active{% endif %}" data-bs-interval="3000">
+        <div class="d-flex justify-content-center align-items-center carousel-image-wrapper">
+          <img src="{{ url_for('static', filename=image.imagePath) }}" class="d-block w-100 carousel-image" style="object-fit:contain;" alt="{{ image.subject }}">
+        </div>
+        <div class="carousel-caption d-block">
+          <button type="button" class="btn btn-primary position-relative mb-2">
+            {{ image.user.username }}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger myDate" data-date="{{ image.create_date }}">
+                <span class="visually-hidden">unread messages</span>
+            </span>
+          </button>
+          {% if g.user.id == 1 or g.user.id == image.user_id %}
+          <div>
+            <a href="#" class="delete btn btn-light" data-uri="{{ url_for('userImage.delete_image', user_id=image.user_id) }}">삭제</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleCaptions" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleCaptions" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block script %}
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', () => {
+    const $flash = document.getElementById('myflash');
+    const $myDates = document.querySelectorAll('.myDate');
+
+    if ($flash) {
+      setTimeout(() => {
+        $flash.style.display = 'none';
+      }, 3000);
+    }
+
+    const $elems = document.querySelectorAll('.delete');
+    $elems.forEach((element) => {
+      element.addEventListener('click', function(event) {
+        event.preventDefault();
+        if(confirm("정말로 삭제하시겠습니까?")) {
+          location.href = this.getAttribute('data-uri');
+        }
+      });
+    });
+
+    function getTimeDifferenceInSeconds(date1, date2) {
+      const diffInMilliseconds = Math.abs(date2 - date1);
+      return Math.floor(diffInMilliseconds / 1000);
+    }
+
+    function convertStoMs(seconds, tag) {
+      const hours = Math.floor(seconds / 3600);
+      let extraSeconds = seconds % 3600;
+      const minutes = Math.floor(extraSeconds / 60);
+      extraSeconds = extraSeconds % 60;
+
+      const formattedTime = `${hours} : ${minutes < 10 ? '0' + minutes : minutes} : ${extraSeconds < 10 ? '0' + extraSeconds : extraSeconds}`;
+      tag.innerHTML = `${formattedTime}`;
+    }
+
+    $myDates.forEach((element) => {
+      const dateValue = new Date(element.dataset.date);
+      const timerId = setInterval(() => {
+        const diffInSeconds = getTimeDifferenceInSeconds(dateValue, new Date());
+        const timeLeft = 7200 - diffInSeconds;
+        if (timeLeft <= 0) {
+          element.closest('.carousel-item').style.display = "none";
+          clearInterval(timerId);
+        }
+        convertStoMs(timeLeft, element);
+      }, 1000);
+    });
+
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadButton = document.getElementById('inputGroupFileAddon');
+    const spinnerButton = document.getElementById('myspinner');
+
+    uploadForm.addEventListener('submit', function(event) {
+      uploadButton.style.display = 'none';
+      spinnerButton.style.display = 'inline-block';
+    });
+  });
+</script>
+{% endblock %}
+{% block styles %}
+<style>
+  .carousel-inner {
+    height: 512px; /* 원하는 높이로 설정 */
+  }
+  .carousel-image-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .carousel-image {
+    height: 512px;
+    width: auto;
+    object-fit: cover; /* 비율을 유지하면서 잘라내기 */
+  }
+  @media (max-width: 768px) {
+    .carousel-inner {
+      height: 400px; /* 모바일 화면에서 높이 */
+    }
+    .carousel-image {
+      height: 400px;
+    }
+  }
+</style>
+{% endblock %}

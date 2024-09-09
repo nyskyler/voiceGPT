@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+	{% for message in get_flashed_messages() %}
+  <div class="alert alert-danger" id="myflash" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
+  <form action="{{ url_for('userImage.upload_image') }}" method="post" id="uploadForm" enctype="multipart/form-data" novalidate="novalidate">
+    {{ form.csrf_token }}
+    <div class="input-group form-floating mb-3">
+      <input type="text" class="form-control" name="subject" id="subject" value="{{ form.subject.data or '' }}">
+      <label for="subject">사진의 주제</label>
+    </div>
+    <div class="input-group mb-3">
+        <input type="file" class="form-control" id="inputGroupFile" name="image" aria-describedby="inputGroupFileAddon" aria-label="Upload">
+        <button class="btn btn-primary" type="submit" id="inputGroupFileAddon">업로드</button>
+    </div>
+  </form>
+  {% for image in imagesPending %}
+  <div class="card mt-3 pending">
+    <div class="row g-0 d-flex flex-column flex-lg-row">
+      <div class="col-lg-4">
+        <img src="{{ url_for('static', filename=image.imagePath) }}" class="card-img-top" alt="{{ image.subject }}">
+      </div>
+      <div class="col-lg-8">
+        <div class="card-header">
+          <div class="d-flex justify-content-between">
+            <div class="myDate" data-date="{{ image.create_date }}">
+            </div>
+            {% if g.user.id == 1 or g.user.id == image.user_id%}
+            <div class="ms-2">
+              <a href="#" class="delete btn btn-outline-success"
+              data-uri="{{ url_for('userImage.delete_image', user_id=g.user.id) }}"">삭제</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="card-text"><span class="badge text-bg-secondary">{{ image.user.username }}</span> 님, 스피커가 사진과 관련한 질문을 기다리고 있습니다. 제한 시간이 지나면 사진은 자동으로 삭제됩니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block script %}
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', () => {
+    const $flash = document.getElementById('myflash');
+    const $myDates = document.querySelectorAll('.myDate');
+   
+    if ($flash) {
+      setTimeout(() => {
+        $flash.style.display = 'none';
+      }, 3000);
+    }
+
+    const $elems = document.querySelectorAll('.delete')
+    $elems.forEach((element, idx) => {
+      element.addEventListener('click', function() {
+        event.preventDefault();
+        if(confirm("정말로 삭제하시겠습니까?")) {
+          location.href = this.getAttribute('data-uri');
+        }
+      });
+    });
+
+    function getTimeDifferenceInSeconds (date1, date2) {
+      const diffInMilliseconds = Math.abs(date2.getTime() - date1.getTime());
+      const diffInSeconds = diffInMilliseconds / 1000;
+      return Math.floor(diffInSeconds);
+    }
+
+    function convertStoMs(seconds, tag) {
+      let hours = Math.floor(seconds / 3600);
+      let extraSeconds = seconds % 3600;
+      let minutes = Math.floor(extraSeconds / 60);
+      extraSeconds = extraSeconds % 60;
+      // hours  = hours < 10 ? "0" + hours : hours;
+      minutes = minutes < 10 ? "0" + minutes : minutes;
+      extraSeconds = extraSeconds < 10 ? "0" + extraSeconds : extraSeconds;
+      tag.innerHTML = `<h1>${hours} : ${minutes} : ${extraSeconds}</h1>`;
+    }
+
+    $myDates.forEach((element, idx) => {
+      const dateValue = new Date(element.dataset.date);
+      let timerId = setInterval(() => {
+      const diffInSeconds = getTimeDifferenceInSeconds(dateValue, new Date());
+      const timeLeft = 7200 - diffInSeconds;
+      if (timeLeft <= 0) {
+        element.closest('.pending').style.display = "none";
+        clearInterval(timerId);
+      } 
+      convertStoMs(timeLeft, element);
+      }, 1000);
+    });
+  }
+);
+</script>
+{% endblock %}

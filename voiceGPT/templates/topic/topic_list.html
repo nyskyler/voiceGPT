@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-3">
+  {% for message in get_flashed_messages() %}
+  <div class="alert alert-danger" id="myflash" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
+	<table class="table">
+		<thead>
+			<tr class="table-light">
+				<th scope="col">번호</th>
+        <th scope="col">추천</th>
+				<th scope="col">주제</th>
+				<th scope="col" class="d-none d-md-table-cell">카테고리</th>
+				<th scope="col" class="d-none d-md-table-cell">등록일시</th>
+			</tr>
+		</thead>
+		<tbody class="table-group-divider align-middle">
+			{% if topic_list %}
+			{% for topic in topic_list %}
+			<tr>
+				<th scope="row">{{ topic_list.total - ((topic_list.page-1) * topic_list.per_page) - loop.index0 }}</th>
+        <td>
+          {% if updated_topic_list[updated_topic_list|length - loop.index0 - 1].voter_count > 0 %}
+          <span class="badge text-bg-secondary px-2 py-1">{{ updated_topic_list[updated_topic_list|length - loop.index0 - 1].voter_count }}</span>
+          {% endif %}
+        </td>
+				<td>
+					<a class="btn btn-default text-start" style="white-space: pre-line;" href="{{ url_for('topic.detail', topic_id=topic.id) }}">{{ topic.title|shorten }}</a>
+          {% if topic.content_set|length > 0 %}
+          <span class="text-danger small ml-2">{{ topic.content_set|length }}</span>
+          {% endif %}
+				</td>
+				<td class="d-none d-md-table-cell">{{ topic.category }}</td>
+				<td class="d-none d-md-table-cell">{{ topic.create_date|datetime }}</td>
+			</tr>
+			{% endfor %}
+			{% else %}
+			<tr>
+				<td colspan="4">수집된 자료가 없습니다.</td>
+			</tr>
+			{% endif %}
+		</tbody>
+	</table>
+	<nav aria-label="...">
+		<ul class="pagination justify-content-center">
+      {% if topic_list.has_prev %}
+      <li class="page-item">
+        <!-- <a class="page-link" href="?page={{ topic_list.prev_num }}">이전</a> -->
+        <a class="page-link" data-page="{{ topic_list.prev_num }}" href="#">이전</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">이전</span>
+      </li>
+      {% endif %}
+      {% for page_num in topic_list.iter_pages() %}
+        {% if page_num %}
+          {% if page_num != topic_list.page %}
+          <li class="page-item">
+            <!-- <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a> -->
+            <a class="page-link" data-page="{{ page_num }}" href="#">{{ page_num }}</a>
+          </li>
+          {% else %}
+          <li class="page-item active" aria-current="page">
+            <a class="page-link" href="#">{{ page_num }}</a>
+          </li>
+          {% endif %}
+        {% else %}
+          <li class="disabled">
+            <a class="page-link" href="#">...</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      {% if topic_list.has_next %}
+      <li class="page-item">
+        <!-- <a class="page-link" href="?page={{ topic_list.next_num }}">다음</a> -->
+        <a class="page-link" data-page="{{ topic_list.next_num }}" href="#">다음</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">다음</span>
+      </li>
+      {% endif %}
+    </ul>
+	</nav>
+</div>
+<form id="searchForm" method="get" action="{{ url_for('topic._list') }}">
+  <input type="hidden" id="kw" name="kw" value="{{ kw or '' }}">
+  <input type="hidden" id="page" name="page" value="{{ page }}">
+  <input type="hidden" id="so" name="so" value="{{ so }}">
+</form>
+{% endblock %}
+{% block script %}
+<script type="text/javascript">
+  window.onload = () => {
+    $searchForm = document.getElementById('searchForm');
+    $pageLinks = document.querySelectorAll('.page-link');
+    $btn_search = document.getElementById('btn_search');
+    $flash = document.getElementById('myflash');
+
+    $pageLinks.forEach((el, idx) => {
+      el.addEventListener('click', function(event) {
+        const dataPage = event.target.getAttribute('data-page');
+        const $page = document.getElementById('page');
+        $page.value = dataPage;
+        $searchForm.submit();
+      });
+    });
+
+    if($flash) {
+      setTimeout(() => {
+        $flash.style.display = 'none';
+      }, 3000);
+    }
+  }
+</script>
+{% endblock %}
