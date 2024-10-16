@@ -60,5 +60,3 @@ class UploadImageForm(FlaskForm):
       FileAllowed(["png", "jpg", "jpeg", "heic", "webp"], "지원되지 않는 이미지 형식입니다."),
     ]
   )
-  
-

@@ -1,0 +1,699 @@
+{% extends "base2.html" %}
+{% block content %}
+<style>
+  .sidebar {
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    height: 94vh;
+    overflow-y: auto;
+  }
+  .chat-window {
+    display: flex;
+    flex-direction: column;
+    height: 94vh;
+    background-color: #e9ecef;
+    border-left: 1px solid #dee2e6;
+  }
+  .banner {
+    flex: 0 0 auto;
+    padding: 0.9rem;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 10px;
+  }
+  .messages {
+    flex: auto;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  .input-area {
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+  }
+  #myInput {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  p {
+    margin-bottom: 0;
+  }
+  .card-body {
+    position: relative;
+  }
+  .delete_message {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: none; /* 기본적으로 보이지 않게 설정 */
+    width: 5px; /* 버튼 크기 조정 */
+    height: 5px; /* 버튼 크기 조정 */
+  }
+  .card-body:hover .delete_message {
+    display: block; /* hover 시에만 버튼 보이기 */
+  }
+  @media (max-width: 767.98px) {
+  .chat-window {
+    height: 80vh; /* 모바일에서는 전체 화면 높이로 설정 */
+  }
+}
+</style>
+<!-- 오프캔버스 사이드바 -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasSidebar" aria-labelledby="offcanvasSidebarLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasSidebarLabel">대화 목록</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <ul class="list-group list-group-flush toc">
+    </ul>
+  </div>
+</div>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12 col-md-3 col-xl-2 sidebar d-none d-md-block">
+      <ul class="list-group list-group-flush toc">
+      </ul>
+    </div>
+    <div class="col-12 col-md-9 col-xl-10 chat-window p-0">
+      <div class="banner">
+        <!-- 모바일에서 오프캔버스를 여는 버튼 -->
+        <div class="d-md-none p-1 border-bottom" style="display: inline;">
+          <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
+            <i class="fa-brands fa-stack-exchange"></i>
+          </button>
+        </div>
+        <div class="header">
+          <span id="currentModel" class="fs-4">GPT-4o mini</span>
+          <span>
+            <button id="settingBtn" class="btn btn-light"><i class="fa-solid fa-gear"></i></button>
+            <button id="deleteBtn" class="btn btn-light"><i class="fa-regular fa-trash-can"></i></button>
+          </span>
+        </div>
+      </div>
+      <div class="messages">
+        <div id="article"></div>
+        <div id="mySpinner" class="spinner-grow text-dark" role="status" style="display:none;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+      <!-- 새로 채팅창을 시작할 때 주제를 입력받는 모달창 -->
+      <button type="button" id="modalBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal" data-bs-whatever="{{ g.user.username }}"></button>
+      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal0-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel"></h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="modalForm">
+                <div class="mb-3">
+                  <label for="chatTopic" class="col-form-label">채팅 주제</label>
+                  <input type="text" class="form-control" id="chatTopic" minlength="2" maxlength="30" placeholder="주제를 30자 이내로 입력" autocomplete="off">
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+              <button type="submit" class="btn btn-primary" form="modalForm">정하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 특정 주제에 대한 GPT 역할을 지정할 때 사용하는 모달창 -->
+      <button type="button" id="systemBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#systemModal" data-bs-whatever="{{ g.user.username }}"></button>
+      <div class="modal fade" id="systemModal" tabindex="-1" aria-labelledby="systemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="systemModalLabel"></h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="systemForm">
+                <p class="fs-6"><i class="fa-regular fa-square-check"></i>&nbsp;&nbsp;GPT 모델</p>
+                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
+                  <input type="radio" class="btn-check" name="models" id="model1" autocomplete="off">
+                  <label class="btn" for="model1">GPT-4o</label>
+                  <input type="radio" class="btn-check" name="models" id="model2" autocomplete="off">
+                  <label class="btn" for="model2">GPT-4o-mini</label>
+                </div>
+                <label for="memoryRange" class="form-label"><i class="fa-regular fa-comment-dots"></i>&nbsp;&nbsp;기억하는 최근 문답의 수(0~5)</label>
+                <input type="range" class="form-range" min="0" max="5" step="1" id="memoryRange" value="1">
+                <div class="mb-3">
+                  <label for="topicInput" class="col-form-label"><i class="fa-solid fa-t"></i>&nbsp;&nbsp;대화 주제</label>
+                  <input maxlength="100" id="topicInput" name="topic" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off""></input> 
+                </div>
+                <div class="mb-3">
+                  <label for="systemInput" class="col-form-label"><i class="fa-regular fa-keyboard"></i>&nbsp;&nbsp;GPT 역할</label>
+                  <textarea maxlength="500" id="systemInput" name="message" class="form-control" placeholder="500자 이내로 입력" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="5" style="resize: none; overflow-y: auto;"></textarea> 
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+              <button type="submit" class="btn btn-primary" form="systemForm">정하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="input-area">
+        <form id="messageForm">
+          <div class="input-group">
+            <textarea required minlength="3" maxlength="3000" id="myInput" name="message" class="form-control" placeholder="메시지를 입력하세요..." aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
+            <button id="myBtn" class="btn btn-primary" type="submit" id="send-button"><i class="fa-solid fa-circle-arrow-up"></i></button>
+          </div>          
+        </form>
+      </div>  
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+  document.querySelector('body').classList.replace('mt-4', 'mt-2');
+  import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
+
+  function Initialize_textareaTag(){
+    const $myInput = document.getElementById('myInput')
+    $myInput.value = '';
+    $myInput.focus();
+  }
+
+  function TOC(){
+    const state = store.getState();
+    let liTags = state.list_items.map(({ id, title }) => `
+      <a href='#' data-id=${id} class="subjectItem list-group-item list-group-item-action list-group-item-secondary ${state.subject === title ? 'active' : ''}">${title}</a>
+    `).join('');
+    liTags = '<button class="btn btn-light chatBtn" style="padding: 0.5rem; margin-top: 0.5rem;"><i class="fa-regular fa-pen-to-square"></i></button>' + liTags;    
+    document.querySelectorAll('.toc').forEach(el => { el.innerHTML = `${liTags}`; });
+    // chatBtn 클릭 시 state의 subject를 null로, content를 빈 배열로, list_items는 그대로 두는 dispatch 요청이 들어가야 할 것. 그리고 자동으로 메시지 입력창이 활성화되면서 사용자 입력을 기다리게 할 것.
+    document.querySelectorAll('.chatBtn').forEach(el => {
+      el.addEventListener('click', () => {
+        store.dispatch({ type: 'UPDATE', content: 'newChat' });
+        Initialize_textareaTag(); 
+      });
+    });
+    // 이벤트 위임을 위한 단일 이벤트 리스너 등록 (리스너 중복 등록 방지)
+    document.querySelectorAll('ul.toc').forEach(toc => {
+      if (!toc.dataset.listenerAdded) {
+        toc.addEventListener('click', async function(e) {
+          const subjectItem = e.target.closest('.subjectItem');
+          if (!subjectItem) {
+            return;
+          }
+          e.preventDefault();
+          const itemId = subjectItem.getAttribute('data-id');
+          // data-id가 null이 아닐 경우, 즉 해당 목록이 이미 서버측 데이터베이스에 반영돼 있는 항목이라면 fetch 요청 시 id값을 인자로 전달해 대화 내용을 받아와 dispatch 요청
+          // id, subject_id, create_date, role, content
+          if (itemId != 'null') {
+            try {
+              const response = await fetch(_URL + `/textgpt/content/${itemId}`);
+              if (!response.ok) {
+                throw new Error(response.status);
+              }
+              const answer = await response.json();
+              // console.log(answer.data);
+              store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
+              Initialize_textareaTag();
+            } catch (error) {
+              console.error('Error:', error);
+            }
+          } else {
+            subjectItem.remove();
+            getChatList();
+          }
+        }); 
+      }
+      toc.dataset.listenerAdded = 'true';
+    }); 
+  }
+
+  function article(){
+    const state = store.getState();
+    const content = state.contents.map(el => `
+      <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
+        <div class="col-md-${el.author === 'user' ? 5 : 8} col-10">
+          <div class="card mb-2">
+            <div class="card-body bg-success text-dark bg-opacity-10">
+              <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${el.desc}</div>
+              <button type="button" class="btn-close delete_message" aria-label="Close"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('article').innerHTML = `${content}`;
+    if (window.MathJax) {
+      MathJax.typesetPromise(); // MathJax를 다시 실행하여 수식을 렌더링
+    }
+    const marks = document.querySelectorAll('.markDown');
+    marks.forEach(mark => {
+      mark.innerHTML = marked.parse(mark.innerHTML);
+      const replacements = [
+        { search: />\n/g, replace: '>'},
+        { search: /<\/p>/g, replace: '</p>\n' },
+        { search: /<\/h([1-6])>/g, replace: '</h$1>\n' }
+      ];
+      replacements.forEach(({ search, replace }) => {
+        mark.innerHTML = mark.innerHTML.replace(search, replace);
+      });
+      mark.innerHTML = mark.innerHTML.trim();
+    });
+    const chatWindow = document.getElementById('article');
+    if (chatWindow.lastElementChild) {
+      chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
+    }
+    const $model = document.getElementById('currentModel');
+    switch(state.model) {
+      case 'gpt-4o-mini':
+        $model.textContent = 'GPT-4o mini';
+        break;
+      case 'gpt-4o':
+        $model.textContent = 'GPT-4o';
+        break;
+      default:
+        $model.textContent = 'GPT-4o mini';
+    }
+  }
+
+  function button(){
+    const state = store.getState();
+    const btnState = state.disabled;
+    const $myInput = document.getElementById('myInput');
+    const $mySpinner = document.getElementById('mySpinner');
+    document.getElementById('myBtn').disabled = btnState;
+    if(btnState){
+      $myInput.value = '';
+      $myInput.style.height = 'auto';
+      $myInput.style.height = ($myInput.scrollHeight) + 'px';
+      $mySpinner.style.display = 'block';
+      $mySpinner.scrollIntoView({ behavior : 'smooth' });
+    } else {
+      $mySpinner.style.display = 'none';
+    }
+  }
+
+  function reducer(state, action){
+    if(state === undefined){
+      return {
+        disabled: false,
+        list_items:[],
+        subject: null,
+        system: '',
+        model: 'gpt-4o-mini',
+        range: 1,
+        contents:[],
+      }
+    }
+    let newState;
+    if(action.type === 'CREATE'){
+      // 사용자 질문 또는 ChatGPT 응답으로 인한 CREATE 발생 시 contents에 내용을 추가하여 렌더링함
+      const newContents = [...state.contents];
+      newContents.push({author:action.author, desc:action.desc});
+      if(action.author === 'user'){
+        // 사용자가 메시지를 생성하고 CREATE type 발생 시 ChatGPT에 응답 요청을 보내고, 그 응답을 받아 연쇄적으로 dispatch 호출
+        (async () => {
+          try {
+            const question = {
+              'model': state.model,
+              'system': state.system,
+              'content': action.desc,
+              'range': state.range,
+              'subject_id': $('.toc a.active')[0]?.getAttribute('data-id') || '',
+            };
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(question),
+            };
+            const response = await fetch(_URL + '/textgpt/question/', options);
+            if(!response.ok){
+              throw new Error(response.status);
+            }
+            const answer = await response.json();
+            store.dispatch({type:'CREATE', author:'assistant', desc:answer.response});
+          } catch(error) {
+            console.error('Error: ', error);
+          }
+        })();
+      } else if(action.author === 'assistant'){
+        // 가장 최근의 질문과 응답을 데이터베이스에 저장하기 위하여 서버측에 fetch 호출
+        // 전달되는 인자로는 state에 설정된 주제 및 최신의 질문과 응답
+        (async () => {
+          try {
+            const latestContents = newContents.slice(-2);
+            const _body = {
+              "subject": state.subject, // 여기서는 문자열을 기대하고 있음.
+              "model": state.model,
+              "range": state.range, 
+              "system": state.system,
+              "content": latestContents,
+            };
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(_body),
+            };
+            const response = await fetch(_URL + '/textgpt/upload/', options);
+            if(!response.ok){
+              throw new Error(response.status);
+            }
+            const answer = await response.json();
+            // console.log(answer);
+          } catch(error) {
+            console.error('Error: ', error);
+          }
+        })();
+      }
+      // CREATE 시 사용자가 ChatGPT에 응답을 요청 중인 경우에는 전송 비활성화하기
+      const btnFlag = action.author === 'user' ? true : false;
+      newState = Object.assign({}, state, {
+        contents: newContents,
+        disabled: btnFlag,
+      });
+    } else if(action.type === 'SUBJECT'){
+      if (action.target === 'subject') {
+        // 모달창에 주제를 입력하고 정하기를 클릭하면 SUBJECT 발생. 데이터베이스 반영 전이므로 id는 없음(null)으로 설정.   
+        const newListItems = state.list_items.slice();
+        newListItems.unshift({
+          'id': null,
+          'title': action.subject,
+        });
+        newState = Object.assign({}, state, {
+          list_items: newListItems,
+          subject: action.subject,
+          disabled: false,
+        });
+      } else if (action.target === 'system') {
+        // system 모달창에 주제에 관한 gpt 역할을 입력하면 정하기를 클릭 시
+        getChatList();
+        newState = Object.assign({}, state, {
+          system: action.content,
+          model: action.model,
+          range: action.range,
+          subject: action.title,
+        });
+      }
+    } else if(action.type === 'UPDATE'){
+      // 전달받은 주제 항목에서 subject.id와 subject.title만으로 구성된 객체 배열을 생성해 list_items에 전달하여 화면 갱신 
+      if (action.content === 'list') {
+        const _items = action.items.map(el => ({ 
+          'id': el.id, 
+          'title': el.title,
+          'system': el.system,
+          'model': el.model,
+          'range': el.range, 
+        }));
+        // console.log(_items);
+        newState = Object.assign({}, state, {
+          list_items: _items,
+        });
+      } else if (action.content === 'chat') {
+        // 데이터베이스의 Message 모델로부터 전달받은 배열 객체에서 content와 role만을 추출해 새로운 content 생성
+        const _contents = action.items.map(el => ({
+          'id': el.id,
+          'author': el.role,
+          'desc': el.content,
+        }));
+        // subject에는 id가 아닌 문자열이 들어가야 함. 목록을 클릭했을 때 클릭한 목록의 문자열을 넣으면 되지 않을까? 153줄 참조
+        const idx = state.list_items.findIndex(item => item.title === action.subject);
+        newState = Object.assign({}, state, {
+          subject: action.subject,
+          system: state.list_items[idx].system,
+          model: state.list_items[idx].model,
+          range: state.list_items[idx].range, 
+          contents: _contents,
+        });
+      } else if (action.content === 'newChat') {
+        // state의 subject를 null로, contents를 빈 배열로, list_items는 그대로
+        newState = Object.assign({}, state, {
+          subject: null,
+          system: '',
+          model: 'gpt-4o-mini',
+          range: 1,
+          contents: [],
+        });
+      } else if (action.content === 'reset') {
+        const newList_items = [...state.list_items.slice(0, action.idx), ...state.list_items.slice(action.idx+1)];
+        newState = Object.assign({}, state, {
+          subject: null,
+          list_items: newList_items,
+          system: '',
+          model: 'gpt-4o-mini',
+          range: 1,
+          contents: [],
+        });
+      }
+    }
+    return newState;
+  }
+  // 서버로부터 로그인한 사용자가 작성한 주제 항목들을 가나다 순으로 받아오고 dispatch 호출 시 이를 인자로 전달함. 
+  // id, user_id, title, system, create_date 등
+  const getChatList = async () => {
+    try {
+      const response = await fetch(_URL + '/textgpt/chatlist/');
+      if(!response.ok){
+        throw new Error(response.status);
+      } else if(response.status === 204){
+        console.log('No Content');
+        return
+      }
+      const answer = await response.json();
+      store.dispatch({type:'UPDATE', content:'list', items:answer.data});
+    } catch(error) {
+      console.error('Error: ', error);
+    }
+  }
+  
+  const productionURL = 'http://121.158.68.219:8080';
+  const testURL = 'http://127.0.0.1:8080';
+  let _URL = null;
+  if (window.location.href.split('/')[2] === '127.0.0.1:8080'){
+    _URL = testURL;
+  } else {
+    _URL = productionURL;
+  }
+
+  const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
+  window.store = store;
+  store.subscribe(TOC);
+  store.subscribe(article);
+  store.subscribe(button);
+  getChatList(); 
+
+  // 주제에 문자열에 추가할 사용자 지정 시간 포맷을 정의
+  Date.prototype.customFormat = function() {
+    const yyyy = this.getFullYear();
+    const MM = this.getMonth() < 9 ? `0${this.getMonth() + 1}` : this.getMonth() + 1;
+    const dd = this.getDate() < 10 ? `0${this.getDate()}` : this.getDate();
+    const HH = this.getHours() < 10 ? `0${this.getHours()}` : this.getHours();
+    const mm = this.getMinutes() < 10 ? `0${this.getMinutes()}` : this.getMinutes();
+    const ss = this.getSeconds() < 10 ? `0${this.getSeconds()}` : this.getSeconds(); 
+    return `${yyyy}${MM}${dd}_${HH}:${mm}:${ss}`;
+  }
+
+  window.onload = function(){
+    const $myInput = document.getElementById('myInput');
+    // 메시지 입력창에서 줄바꿈이 일어났을 때 스크롤 내 높이를 조정해 사용자가 입력하는 내용을 볼 수 있도록 함.
+    $myInput.addEventListener('input', () => {
+      $myInput.style.height = 'auto';
+      $myInput.style.height = ($myInput.scrollHeight) + 'px';
+    });
+    // '전송' 클릭 시 발생하는 이벤트 내용을 정의 state의 subject가 null로 비어있을 경우에는 메시지 전송이 아닌 모달창이 띄워지며, 이미 subject가 있을 시에는 입력창의 메시지를 chatGPT에 질의함.
+    document.getElementById('messageForm').addEventListener('submit', function(event){
+      event.preventDefault();
+      if (!!store.getState().subject) {
+        const _author = 'user';
+        const desc = event.target.message.value;
+        const _desc = desc
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        // console.log(_desc);
+        store.dispatch({type:'CREATE', author:_author, desc:_desc}); 
+      } else {
+        $('#modalBtn').click();
+      }
+    });
+    // 모달창의 세부 항목의 내용 지정하기
+    const exampleModal = document.getElementById('exampleModal')
+    if (exampleModal) {
+      exampleModal.addEventListener('show.bs.modal', event => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = exampleModal.querySelector('.modal-title')
+        const modalBodyInput = exampleModal.querySelector('.modal-body input')
+        modalTitle.textContent = `${recipient} 님, 채팅방의 주제를 정해주세요.`;
+      })
+    }
+    // system 모달창의 세부 항목의 내용 지정하기
+    const systemModal = document.getElementById('systemModal')
+    if (systemModal) {
+      systemModal.addEventListener('show.bs.modal', event => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = systemModal.querySelector('.modal-title')
+        const modalBodyInput = systemModal.querySelector('.modal-body input')
+        modalTitle.textContent = 'Preferences';
+      })
+    }
+    // 모달창에서 '정하기'를 클릭했을 시, 입력한 주제명에 사용자 지정 시간 포맷을 추가하고 이를 반영하기 위한 dispatch 호출. 질문 입력창에 값이 있을 시에만 '전송'을 자동으로 클릭.
+    document.getElementById('modalForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const date = new Date();
+      const _subject = document.getElementById('chatTopic').value + ' ' + date.customFormat();
+      store.dispatch({type:'SUBJECT', target:'subject', subject:_subject });
+      $('#exampleModal').modal('hide');
+      if(document.getElementById('myInput').value){
+        $('#myBtn').click();
+      }
+    });
+    // system 모달창에서 '정하기'를 클릭했을 시, 주제에 GPT 역할을 반영하기 위한 dispatch 호출.
+    document.getElementById('systemForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const selectedModelLabel = document.querySelector('input[name="models"]:checked').nextElementSibling.textContent;  // 체크된 라디오 버튼의 텍스트 값 가져오기
+      const range_val = document.getElementById('memoryRange').value;
+      const gpt_role = document.getElementById('systemInput').value;
+      const topic_val = document.getElementById('topicInput').value;
+      $('#systemModal').modal('hide');
+      (async () => {
+        const _id = $('.toc a.active')[0].getAttribute('data-id');
+        try {
+          const update = {
+            'id': _id,
+            'system': gpt_role,
+            'range': range_val,
+            'model': selectedModelLabel,
+            'topic': topic_val,
+          };
+          const options = {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(update),
+          };
+          const response = await fetch(_URL + '/textgpt/update/system/', options);
+          if(!response.ok){
+            throw new Error(response.status);
+          }
+          const answer = await response.json();
+          console.log(answer);
+          store.dispatch({type:'SUBJECT', target:'system', content: gpt_role, range: range_val, model: selectedModelLabel.toLowerCase(), title: topic_val});
+        } catch(error) {
+          console.error('Error: ', error);
+        }
+      })();
+    });
+    // 배너에 있는 '#deleteBtn' 클릭 시, state의 subject를 인자로 전달하며 해당 주제 및 대화글의 삭제를 위한 fetch 요청을 수행함
+    // 삭제 요청 전 사용자에게 선택에 대해 확인하는 절차를 거칠 것
+    // fetch 요청 후 삭제 완료 메시지 표시. 이후 초기화
+    document.getElementById('deleteBtn').addEventListener('click', async event => {
+      const activeItems = $('.toc a.active');
+      if (!activeItems.length) {
+        return;
+      }
+      const state = store.getState();
+      const itemId = activeItems[0].getAttribute('data-id');
+      if(confirm(`${state.subject} 주제의 및 모든 대화 내용을 삭제하시겠습니까?`)){
+        const _idx = state.list_items.findIndex(item => item.title === state.subject);
+        try {
+          const response = await fetch(_URL + `/textgpt/delete/${itemId}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          if (!response.ok){
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const result = await response.json();
+          console.log(result);
+          alert("정상적으로 삭제하였습니다.")
+          // 삭제 완료 후 초기화 작업
+          store.dispatch({ type: 'UPDATE', content: 'reset', idx:_idx });
+        } catch (error) {
+          console.error('Error: ', error);
+          alert("삭제 중 오류가 발생하였습니다.");
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+    document.getElementById('settingBtn').addEventListener('click', () => {
+      const state = store.getState();
+      const activeItems = $('.toc a.active');
+      if (!activeItems.length) {
+        return;
+      }
+      const $elem = (state.model === 'gpt-4o-mini' ? $('#model2') : $('#model1'));
+      $elem.prop('checked', true);
+      $('#systemInput').val(state.system);
+      $('#memoryRange').val(state.range);
+      $('#topicInput').val(state.subject);
+      $('#systemBtn').click();
+    });
+
+    document.getElementById('article').addEventListener('click', async function(e) {
+      if (!e.target.classList.contains('delete_message')) return; 
+
+      const $delete_message = e.target.previousElementSibling;
+      if (!$delete_message) {
+        console.log('.delete_message 버튼의 이전 요소가 존재하지 않습니다.');
+      }
+      e.target.setAttribute('disabled', 'true');
+      
+      const first_id = $delete_message.getAttribute('data-id');
+      let second_id = null;
+      const targetSection = $delete_message.closest('.row');
+
+      if (!targetSection) {
+        console.error('targetSection을 찾을 수 없습니다.');
+        return;
+      }
+
+      if (targetSection.classList.contains('justify-content-end')) {
+        second_id = targetSection.nextElementSibling.querySelector('.markDown')?.getAttribute('data-id');
+        targetSection.nextElementSibling.remove();
+      } else if (targetSection.classList.contains('justify-content-start')) {
+        second_id = targetSection.previousElementSibling.querySelector('.markDown')?.getAttribute('data-id');
+        targetSection.previousElementSibling.remove();
+      }
+      targetSection.remove();
+      try {
+        const id_list = {
+          'first_id': first_id,
+          'second_id': second_id,
+        };
+        const options = {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(id_list),
+        };
+        const response = await fetch(_URL + '/textgpt/delete/message/', options);
+        if(!response.ok){
+          throw new Error(response.status);
+        }
+        const answer = await response.json();
+        console.log('삭제 성공: ', answer);
+      } catch(error) {
+        console.error('Error: ', error);
+      }
+    });
+  }
+</script>
+{% endblock %}

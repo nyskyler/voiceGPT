@@ -1,4 +1,7 @@
 from voiceGPT import db
+from datetime import datetime
+from sqlalchemy.sql import func
+import enum
 
 content_voter = db.Table(
   'content_voter',
@@ -80,4 +83,26 @@ class UserImage(db.Model):
   imagePath = db.Column(db.String(300), nullable=False)
   create_date = db.Column(db.DateTime(), nullable=False)
 
+class RoleEnum(enum.Enum):
+  user = "user"
+  assistant = "assistant"
 
+class Subject(db.Model):
+  __tablename__ = 'subject'
+  id = db.Column(db.Integer, primary_key=True)
+  user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+  title = db.Column(db.String(150), nullable=False)
+  system = db.Column(db.Text(), nullable=True)
+  model = db.Column(db.String(100), nullable=False)
+  range = db.Column(db.Integer, nullable=False)
+  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=func.now())
+  user = db.relationship('User', backref=db.backref('subjects', cascade='all, delete-orphan', lazy=True))
+  messages = db.relationship('Message', backref='subject', cascade='all, delete-orphan', lazy=True)
+
+class Message(db.Model):
+  __tablename__ = 'message'
+  id = db.Column(db.Integer, primary_key=True)
+  subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False, index=True)
+  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=func.now())
+  role = db.Column(db.Enum(RoleEnum), nullable=False)
+  content = db.Column(db.Text(), nullable=False)
