@@ -14,6 +14,10 @@
     background-color: #e9ecef;
     border-left: 1px solid #dee2e6;
   }
+  .thumbnails {
+    display: flex;
+    flex-direction: row;
+  }
   .banner {
     flex: 0 0 auto;
     padding: 0.9rem;
@@ -35,9 +39,41 @@
     border-top: 1px solid #dee2e6;
     background-color: #f8f9fa;
   }
+  .input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+    width: 100%;
+  }
   #myInput {
+    flex-grow: 1;
+    border: none;
+    border-radius: 5px;
+    outline: none;
+    resize: none;
     max-height: 300px;
     overflow-y: auto;
+  }
+  .attach-icon {
+    margin-left: 3px;
+    margin-right: 10px;
+    cursor: pointer;
+  }
+  #myBtn {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  #myBtn i {
+    color: #007bff;
+    font-size: 1.5em;
+  }
+
+  #myBtn:hover i {
+    color: #0056b3;
   }
   p {
     margin-bottom: 0;
@@ -54,6 +90,14 @@
     height: 5px; /* 버튼 크기 조정 */
   }
   .card-body:hover .delete_message {
+    display: block; /* hover 시에만 버튼 보이기 */
+  }
+  .imgContainer, .imgCard {
+    margin: 5px;
+  }
+  .imgContainer:hover .delete_message {
+    top: 10px;
+    right: 10px;
     display: block; /* hover 시에만 버튼 보이기 */
   }
   @media (max-width: 767.98px) {
@@ -81,17 +125,17 @@
     </div>
     <div class="col-12 col-md-9 col-xl-10 chat-window p-0">
       <div class="banner">
-        <!-- 모바일에서 오프캔버스를 여는 버튼 -->
-        <div class="d-md-none p-1 border-bottom" style="display: inline;">
-          <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
-            <i class="fa-brands fa-stack-exchange"></i>
-          </button>
-        </div>
         <div class="header">
           <span id="currentModel" class="fs-4">GPT-4o mini</span>
           <span>
             <button id="settingBtn" class="btn btn-light"><i class="fa-solid fa-gear"></i></button>
             <button id="deleteBtn" class="btn btn-light"><i class="fa-regular fa-trash-can"></i></button>
+            <!-- 모바일에서 오프캔버스를 여는 버튼 -->
+            <div class="d-md-none p-1 border-bottom" style="display: inline;">
+              <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
+                <i class="fa-brands fa-stack-exchange"></i>
+              </button>
+            </div>
           </span>
         </div>
       </div>
@@ -105,7 +149,7 @@
       <button type="button" id="modalBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal" data-bs-whatever="{{ g.user.username }}"></button>
       <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
-          <div class="modal0-content">
+          <div class="modal-content">
             <div class="modal-header">
               <h1 class="modal-title fs-5" id="exampleModalLabel"></h1>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -145,6 +189,15 @@
                 </div>
                 <label for="memoryRange" class="form-label"><i class="fa-regular fa-comment-dots"></i>&nbsp;&nbsp;기억하는 최근 문답의 수(0~5)</label>
                 <input type="range" class="form-range" min="0" max="5" step="1" id="memoryRange" value="1">
+                <p class="mt-3 fs-6"><i class="fa-regular fa-image"></i>&nbsp;&nbsp;이미지 해상도</p>
+                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
+                  <input type="radio" class="btn-check" name="resolution" id="resolution1" autocomplete="off">
+                  <label class="btn" for="resolution1">512</label>
+                  <input type="radio" class="btn-check" name="resolution" id="resolution2" autocomplete="off">
+                  <label class="btn" for="resolution2">1024</label>
+                  <input type="radio" class="btn-check" name="resolution" id="resolution3" autocomplete="off">
+                  <label class="btn" for="resolution3">2048</label>
+                </div>
                 <div class="mb-3">
                   <label for="topicInput" class="col-form-label"><i class="fa-solid fa-t"></i>&nbsp;&nbsp;대화 주제</label>
                   <input maxlength="100" id="topicInput" name="topic" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off""></input> 
@@ -164,8 +217,15 @@
       </div>
       <div class="input-area">
         <form id="messageForm">
+          <div id="thumbnails">
+            <div id="imgSpinner" class="spinner-border" role="status" style="display:none;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
           <div class="input-group">
-            <textarea required minlength="3" maxlength="3000" id="myInput" name="message" class="form-control" placeholder="메시지를 입력하세요..." aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
+            <label id="img-label" for="img"><i class="fa-solid fa-paperclip attach-icon"></i></label>
+            <input id="img" type="file" accept="image/*" style="display:none" multiple>
+            <textarea required minlength="3" maxlength="5000" id="myInput" name="message" class="form-control" placeholder="메시지를 입력하세요..." aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
             <button id="myBtn" class="btn btn-primary" type="submit" id="send-button"><i class="fa-solid fa-circle-arrow-up"></i></button>
           </div>          
         </form>
@@ -179,6 +239,14 @@
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
 
   function Initialize_textareaTag(){
+    const $thumbnails = document.getElementById('thumbnails');
+    const children = $thumbnails.children;
+    while (children.length > 1) {
+      $thumbnails.removeChild(children[0]);
+    }
+    const $imgInput = document.getElementById('img');
+    $imgInput.value = '';
+
     const $myInput = document.getElementById('myInput')
     $myInput.value = '';
     $myInput.focus();
@@ -219,7 +287,7 @@
               const answer = await response.json();
               // console.log(answer.data);
               store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
-              Initialize_textareaTag();
+              // Initialize_textareaTag();
             } catch (error) {
               console.error('Error:', error);
             }
@@ -233,23 +301,54 @@
     }); 
   }
 
-  function article(){
+  async function article(){
     const state = store.getState();
+    async function fetchThumbnail(url) {
+      try {
+        const response = await fetch(url.replace('_image', '_thumbnail'));
+        if (!response.ok) {
+          throw new Error('Network response was not ok.');
+        }
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      } catch (error) {
+        console.error(error);
+        return null;  
+      }
+    }
+
+    async function fetchOriginalImage(url) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Network response was not ok.');
+        }
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
     const content = state.contents.map(el => `
       <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
         <div class="col-md-${el.author === 'user' ? 5 : 8} col-10">
           <div class="card mb-2">
             <div class="card-body bg-success text-dark bg-opacity-10">
+              <div class="thumbnails" data-url="${el.imgUrl}"}></div>
               <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${el.desc}</div>
               <button type="button" class="btn-close delete_message" aria-label="Close"></button>
             </div>
           </div>
         </div>
       </div>
-    `).join('');
-    document.getElementById('article').innerHTML = `${content}`;
+      `).join('');
+
+    document.getElementById('article').innerHTML = content;
+    // MathJax 처리
     if (window.MathJax) {
-      MathJax.typesetPromise(); // MathJax를 다시 실행하여 수식을 렌더링
+      MathJax.typesetPromise(); 
     }
     const marks = document.querySelectorAll('.markDown');
     marks.forEach(mark => {
@@ -264,23 +363,65 @@
       });
       mark.innerHTML = mark.innerHTML.trim();
     });
+
+    // const chatWindow = document.getElementById('article');
+    // if (chatWindow.lastElementChild) {
+    //   chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
+    // }
+    const $model = document.getElementById('currentModel');
+    $model.textContent = state.model === 'gpt-4o' ? 'GPT-4o' : 'GPT-4o mini';
+
+    const thumbnailPromises = state.contents.map(async (el) => {
+      const $target = document.querySelector(`div.thumbnails[data-url="${el.imgUrl}"]`);
+      if (!($target && Array.isArray(el.imgUrl) && el.imgUrl.length > 0)) {
+        return null;
+      }
+      for (let url of el.imgUrl) {
+        // '/' 문자열이 포함돼 있지 않다면 _URL을 추가할 것
+        if (!(url.includes('/'))) {
+          url = _URL + '/textgpt/get_thumbnail/' + url;
+        }
+        const imgSrc = await fetchThumbnail(url);
+        if (imgSrc && el.author == 'user') {
+          const $container = document.createElement('div');
+          $container.style.position = 'relative';
+          $container.style.display = 'inline-block';
+          $container.className = 'imgCard';
+          $container.setAttribute('data-id', el.id);
+
+          const $imgElement = document.createElement('img');
+          $imgElement.src = imgSrc;
+          $imgElement.style.width = '100%;'
+          $imgElement.style.paddingBottom = '0.8rem';
+          $container.appendChild($imgElement);
+
+          $container.addEventListener('click', async function() {
+            url = url.replace("/get_thumbnail/", "/get_image/");
+            const originalImageUrl = await fetchOriginalImage(url);
+            const img = new Image();
+            img.onload = function() {
+              const width = this.naturalWidth;
+              const height = this.naturalHeight;
+
+              // Open a new window with the size of the original image
+              const newWindow = window.open('', '_blank', `width=${width}, height=${height}`);
+              newWindow.document.write(`<title>Original Image</title><img src="${originalImageUrl}" style="width:100%;height:100%;object-fit:contain;">`);
+              newWindow.document.close();
+            };
+            img.src = originalImageUrl;
+          });
+
+          $target.appendChild($container);
+        } 
+      }
+    });
+    await Promise.all(thumbnailPromises);
     const chatWindow = document.getElementById('article');
     if (chatWindow.lastElementChild) {
       chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
     }
-    const $model = document.getElementById('currentModel');
-    switch(state.model) {
-      case 'gpt-4o-mini':
-        $model.textContent = 'GPT-4o mini';
-        break;
-      case 'gpt-4o':
-        $model.textContent = 'GPT-4o';
-        break;
-      default:
-        $model.textContent = 'GPT-4o mini';
-    }
   }
-
+    
   function button(){
     const state = store.getState();
     const btnState = state.disabled;
@@ -308,15 +449,18 @@
         model: 'gpt-4o-mini',
         range: 1,
         contents:[],
+        images:[],
+        resolution: 512,
       }
     }
     let newState;
     if(action.type === 'CREATE'){
       // 사용자 질문 또는 ChatGPT 응답으로 인한 CREATE 발생 시 contents에 내용을 추가하여 렌더링함
       const newContents = [...state.contents];
-      newContents.push({author:action.author, desc:action.desc});
+      const latestImages = [...state.images]; // images 상태를 클로저로 캡처
       if(action.author === 'user'){
         // 사용자가 메시지를 생성하고 CREATE type 발생 시 ChatGPT에 응답 요청을 보내고, 그 응답을 받아 연쇄적으로 dispatch 호출
+        newContents.push({author:action.author, desc:action.desc, imgUrl:state.images});
         (async () => {
           try {
             const question = {
@@ -324,6 +468,7 @@
               'system': state.system,
               'content': action.desc,
               'range': state.range,
+              'images': latestImages, // 캡처된 images 배열을 사용
               'subject_id': $('.toc a.active')[0]?.getAttribute('data-id') || '',
             };
             const options = {
@@ -343,7 +488,13 @@
             console.error('Error: ', error);
           }
         })();
+        const btnFlag = action.author === 'user' ? true : false;
+        newState = Object.assign({}, state, {
+          contents: newContents,
+          disabled: btnFlag, 
+        });
       } else if(action.author === 'assistant'){
+        newContents.push({author:action.author, desc:action.desc, imgUrl:[]});
         // 가장 최근의 질문과 응답을 데이터베이스에 저장하기 위하여 서버측에 fetch 호출
         // 전달되는 인자로는 state에 설정된 주제 및 최신의 질문과 응답
         (async () => {
@@ -354,6 +505,7 @@
               "model": state.model,
               "range": state.range, 
               "system": state.system,
+              "images": latestImages, 
               "content": latestContents,
             };
             const options = {
@@ -367,19 +519,22 @@
             if(!response.ok){
               throw new Error(response.status);
             }
-            const answer = await response.json();
-            // console.log(answer);
+            const res = await response.json();
+            console.log(res.msgIds);
+            store.dispatch({type:'CREATE', author:'initializer'});      
           } catch(error) {
             console.error('Error: ', error);
           }
         })();
+        newState = Object.assign({}, state, {
+          contents: newContents,
+          images: [],
+        });
+      } else if (action.author === 'initializer'){
+        newState = Object.assign({}, state, {
+          disabled: false, 
+        });
       }
-      // CREATE 시 사용자가 ChatGPT에 응답을 요청 중인 경우에는 전송 비활성화하기
-      const btnFlag = action.author === 'user' ? true : false;
-      newState = Object.assign({}, state, {
-        contents: newContents,
-        disabled: btnFlag,
-      });
     } else if(action.type === 'SUBJECT'){
       if (action.target === 'subject') {
         // 모달창에 주제를 입력하고 정하기를 클릭하면 SUBJECT 발생. 데이터베이스 반영 전이므로 id는 없음(null)으로 설정.   
@@ -400,6 +555,7 @@
           system: action.content,
           model: action.model,
           range: action.range,
+          resolution: action.resolution,
           subject: action.title,
         });
       }
@@ -411,7 +567,8 @@
           'title': el.title,
           'system': el.system,
           'model': el.model,
-          'range': el.range, 
+          'range': el.range,
+          'resolution': el.resolution, 
         }));
         // console.log(_items);
         newState = Object.assign({}, state, {
@@ -423,6 +580,7 @@
           'id': el.id,
           'author': el.role,
           'desc': el.content,
+          'imgUrl': el.msg_images,
         }));
         // subject에는 id가 아닌 문자열이 들어가야 함. 목록을 클릭했을 때 클릭한 목록의 문자열을 넣으면 되지 않을까? 153줄 참조
         const idx = state.list_items.findIndex(item => item.title === action.subject);
@@ -430,7 +588,9 @@
           subject: action.subject,
           system: state.list_items[idx].system,
           model: state.list_items[idx].model,
-          range: state.list_items[idx].range, 
+          range: state.list_items[idx].range,
+          resolution: state.list_items[idx].resolution, 
+          images: [],
           contents: _contents,
         });
       } else if (action.content === 'newChat') {
@@ -441,6 +601,8 @@
           model: 'gpt-4o-mini',
           range: 1,
           contents: [],
+          images: [],
+          resolution: 512,
         });
       } else if (action.content === 'reset') {
         const newList_items = [...state.list_items.slice(0, action.idx), ...state.list_items.slice(action.idx+1)];
@@ -451,7 +613,20 @@
           model: 'gpt-4o-mini',
           range: 1,
           contents: [],
+          images: [],
+          resolution: 512,
         });
+      } else if (action.content === 'add_images') {
+        newState = Object.assign({}, state, {
+          images: [...state.images, ...action.images],
+        });
+      } else if (action.content === 'delete_image') {
+        const _idx = state.images.findIndex(item => item === action.imageStr);
+        if (_idx != -1) {
+          newState = Object.assign({}, state, {
+            images: [...state.images.slice(0, _idx), ...state.images.slice(_idx + 1)],
+          });
+        } 
       }
     }
     return newState;
@@ -474,7 +649,7 @@
     }
   }
   
-  const productionURL = 'http://121.158.68.219:8080';
+  const productionURL = 'http://121.189.157.152:8080';
   const testURL = 'http://127.0.0.1:8080';
   let _URL = null;
   if (window.location.href.split('/')[2] === '127.0.0.1:8080'){
@@ -518,7 +693,8 @@
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
         // console.log(_desc);
-        store.dispatch({type:'CREATE', author:_author, desc:_desc}); 
+        store.dispatch({type:'CREATE', author:_author, desc:_desc});
+        Initialize_textareaTag(); 
       } else {
         $('#modalBtn').click();
       }
@@ -565,6 +741,7 @@
       event.preventDefault();
       const selectedModelLabel = document.querySelector('input[name="models"]:checked').nextElementSibling.textContent;  // 체크된 라디오 버튼의 텍스트 값 가져오기
       const range_val = document.getElementById('memoryRange').value;
+      const selectedResolutionLabel = document.querySelector('input[name="resolution"]:checked').nextElementSibling.textContent;
       const gpt_role = document.getElementById('systemInput').value;
       const topic_val = document.getElementById('topicInput').value;
       $('#systemModal').modal('hide');
@@ -575,6 +752,7 @@
             'id': _id,
             'system': gpt_role,
             'range': range_val,
+            'resolution': selectedResolutionLabel,
             'model': selectedModelLabel,
             'topic': topic_val,
           };
@@ -590,8 +768,8 @@
             throw new Error(response.status);
           }
           const answer = await response.json();
-          console.log(answer);
-          store.dispatch({type:'SUBJECT', target:'system', content: gpt_role, range: range_val, model: selectedModelLabel.toLowerCase(), title: topic_val});
+          // console.log(answer);
+          store.dispatch({type:'SUBJECT', target:'system', content: gpt_role, range: range_val, model: selectedModelLabel.toLowerCase(), title: topic_val, resolution: selectedResolutionLabel});
         } catch(error) {
           console.error('Error: ', error);
         }
@@ -640,6 +818,19 @@
       }
       const $elem = (state.model === 'gpt-4o-mini' ? $('#model2') : $('#model1'));
       $elem.prop('checked', true);
+      
+      const resolutions = {
+        '512': '#resolution1',
+        '1024': '#resolution2',
+        '2048': '#resolution3'
+      };
+
+      let $resElem = resolutions[state.resolution.toString()];
+      
+      if($resElem) {
+        $($resElem).prop('checked', true);
+      }
+      
       $('#systemInput').val(state.system);
       $('#memoryRange').val(state.range);
       $('#topicInput').val(state.subject);
@@ -692,6 +883,144 @@
         console.log('삭제 성공: ', answer);
       } catch(error) {
         console.error('Error: ', error);
+      }
+    });
+
+    document.getElementById('img').addEventListener('change', function(e) {
+      const state = store.getState();
+      const maxFiles = 3;
+      const files = this.files;
+      const $imgContainers = document.getElementsByClassName('.imgContainer');
+      const imgUrlArray = [];
+
+      if (files.length > maxFiles || $imgContainers.length > maxFiles) {
+        alert(`최대 ${maxFiles}개의 파일만 선택할 수 있습니다.`);
+        this.value = "";
+      } else {
+        const $imgSpinner = document.getElementById('imgSpinner');
+        $imgSpinner.style.display = 'inline-block';
+        const formData = new FormData();
+        // console.log(this, files);
+
+        for (const file of this.files) {
+          formData.append('images[]', file);
+        }
+        formData.append('resolution', state.resolution);
+
+        fetch(_URL + '/textgpt/upload_image/', {
+          method: 'POST',
+          body: formData,
+        })
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return res.json();
+        })
+        .then(data => {
+          console.log('Success: ', data);
+          Promise.all(data.msgIds.map(msgId => {
+            return fetch(_URL + `/textgpt/get_thumbnail/${msgId}`)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('Network response was not ok');
+                }
+                imgUrlArray.push(_URL + `/textgpt/get_image/${msgId}`);
+                return response.blob();
+              })
+              .then(blob => {
+                const imgUrl = URL.createObjectURL(blob);
+
+                // Create container div with relative positioning
+                const $container = document.createElement('div');
+                $container.style.position = 'relative';
+                $container.style.display = 'inline-block';
+                $container.className = 'imgCard';
+                $container.setAttribute('data-id', msgId);
+
+                // Create img element
+                const $imgElement = document.createElement('img');
+                $imgElement.src = imgUrl;
+                $imgElement.style.width = '100%'; // Adjust based on container
+                $imgElement.style.paddingBottom = '0.8rem';
+
+                // Create delete button
+                const $deleteButton = document.createElement('button');
+                $deleteButton.type = 'button';
+                $deleteButton.className = 'btn-close delete_message';
+                $deleteButton.setAttribute('aria-label', 'Close')
+                $deleteButton.setAttribute('data-id', msgId);
+
+                // Append img and button to the container
+                $container.appendChild($imgElement);
+                $container.appendChild($deleteButton);
+
+                // Add event listner to open original image in a new window
+                $container.addEventListener('click', async function() {
+                  const originalImageUrl = await fetchOriginalImageUrl(msgId);
+
+                  const img = new Image();
+                  img.onload = function() {
+                    const width = this.naturalWidth;
+                    const height = this.naturalHeight;
+
+                    // Open a new window with the size of the original image
+                    const newWindow = window.open('', '_blank', `width=${width}, height=${height}`);
+                    newWindow.document.write(`<title>Original Image</title><img src="${originalImageUrl}" style="width:100%;height:100%;object-fit:contain;">`);
+                    newWindow.document.close();
+                  };
+                  img.src = originalImageUrl;
+                })
+
+                async function fetchOriginalImageUrl(msgId) {
+                  const response = await fetch(_URL + `/textgpt/get_image/${msgId}`);
+                  const blob = await response.blob();
+                  return URL.createObjectURL(blob);
+                }
+
+                // Add event Listener to the delete button
+                $deleteButton.addEventListener('click', (event) => {
+                  event.stopPropagation();
+                  // console.log(`Delete item with ID: ${msgId}`);
+                  fetch(_URL + `/textgpt/deleteImage/${msgId}`, { method: 'DELETE' })
+                    .then(res => {
+                      if (!res.ok) {
+                        throw Error(`HTTP error! status: ${res.status}`);
+                      }
+                      return res.json()
+                    })
+                    .then(msg => {
+                      // 화면상에서 해당 이미지가 담긴 태그를 삭제하는 처리를 수행
+                      // Find the div with the matching data-id attribute and remove it
+                      const $target = document.querySelector(`div.imgContainer[data-id="${msgId}"]`);
+                      if ($target) {
+                        $target.remove();
+                        e.target.value = '';
+                        // console.log(`Item with ID: ${msgId} removed from the DOM`);
+                        store.dispatch({ type:'UPDATE', content:'delete_image', imageStr: _URL + `/textgpt/get_image/${msgId}` });
+                      } else {
+                        console.error("Element not found in the DOM");
+                      }
+                    });
+                });
+
+                // Append container to the thumbnails div
+                const $thumbnails = document.getElementById('thumbnails');
+                // $thumbnails.appendChild($container);
+                $thumbnails.insertBefore($container, $imgSpinner);
+              });
+          })).then(() => {
+            // console.log(imgUrlArray);
+            store.dispatch({ type:'UPDATE', content:'add_images', images: imgUrlArray });
+          });
+        })
+        .then(() => {
+          $imgSpinner.style.display = 'none';  
+        })
+        .catch(error => {
+          console.error('Error: ', error);
+          $imgSpinner.style.display = 'none';
+        });
       }
     });
   }

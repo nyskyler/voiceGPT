@@ -1,14 +1,19 @@
-from flask import Blueprint, jsonify, url_for, render_template, flash, request, g
+from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from openai import OpenAI
 import os
 import json
 import configparser
+import copy
+import uuid
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
-from ..models import User, Subject, Message, RoleEnum
+from ..models import User, Subject, Message, RoleEnum, MsgImage
+from pathlib import Path
+from PIL import Image, ExifTags
+from datetime import datetime, timedelta
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("chatgpt_api_key")
@@ -20,6 +25,7 @@ user_list = [user.strip() for user in authorized_users.split(',') if user.strip(
 
 client = OpenAI()
 bp = Blueprint('textgpt', __name__, url_prefix='/textgpt')
+timeLeft = 10
 
 def subject_to_dict(subject):
   return {
@@ -29,6 +35,7 @@ def subject_to_dict(subject):
     'system': subject.system,
     'model': subject.model,
     'range': subject.range,
+    'resolution': subject.resolution,
     'create_date': subject.create_date.isoformat()
   }
 
@@ -39,6 +46,7 @@ def message_to_dict(message):
     'create_date': message.create_date.isoformat(),
     'role': message.role.value,
     'content': message.content,
+    'msg_images': [img.thumbnailPath for img in message.msg_images] # thumbnailPath만 추출
   }
 
 @bp.route("/main/")
@@ -53,7 +61,7 @@ def test():
 @login_required
 def question():
   data = request.get_json()
-  if not data or not all(key in data for key in ('model', 'content', 'system', 'range', 'subject_id')):
+  if not data or not all(key in data for key in ('model', 'content', 'system', 'range', 'subject_id', 'images')):
     return jsonify({'error': 'Invalid input'}), 400
   
   _messages = []
@@ -62,36 +70,49 @@ def question():
   _system = data['system']
   _range = int(data['range'])
   _subject_id = data['subject_id']
-  # print(_subject_id)
+  _images = data['images']
   
-  # data['system']이 빈 문자열이 아니라면 _messages 배열에 객체로 맨 앞에 추가해야 함.
-  if _system :
-    _messages.insert(0, { "role": "system", "content": _system })
+  if not _images:
+    # data['system']이 빈 문자열이 아니라면 _messages 배열에 객체로 맨 앞에 추가해야 함.
+    if _system :
+      _messages.insert(0, { "role": "system", "content": _system })
 
-  # _range의 숫자의 2배수에 해당하는 아래의 형식과 같은 객체를 전달해야 함.
-  if _subject_id != 'null':
-    previous_records = [None] * (_range * 2)  # 초기화 시 None 사용
-    sub_contents = Message.query.filter_by(subject_id=_subject_id).order_by(Message.create_date.desc()).limit(_range*2).all() 
-    # message_to_dict 함수로 변환 후 리스트를 reverse로 역순 처리
-    sub_content_dicts = [message_to_dict(item) for item in sub_contents]
-    sub_content_dicts.reverse()  # 역순으로 리스트를 뒤집음
-    for idx, obj in enumerate(sub_content_dicts, start=1):
-      if idx%2 == 1:
-        previous_records[idx] = obj
-      else:
-        previous_records[idx-2] = obj
-    result = []
-    cleaned_list = [item for item in previous_records if item is not None]
-    for record in cleaned_list:
-      result.append(dict([('role', record['role']), ('content', record['content'])]))
-    _messages.extend(result)
+    # _range의 숫자의 2배수에 해당하는 아래의 형식과 같은 객체를 전달해야 함.
+    if _subject_id != 'null':
+      previous_records = [None] * (_range * 2)  # 초기화 시 None 사용
+      sub_contents = Message.query.filter_by(subject_id=_subject_id).order_by(Message.create_date.desc()).limit(_range*2).all() 
+      # message_to_dict 함수로 변환 후 리스트를 reverse로 역순 처리
+      sub_content_dicts = [message_to_dict(item) for item in sub_contents]
+      sub_content_dicts.reverse()  # 역순으로 리스트를 뒤집음
+      for idx, obj in enumerate(sub_content_dicts, start=1):
+        if idx%2 == 1:
+          previous_records[idx] = obj
+        else:
+          previous_records[idx-2] = obj
+      result = []
+      cleaned_list = [item for item in previous_records if item is not None]
+      for record in cleaned_list:
+        result.append(dict([('role', record['role']), ('content', record['content'])]))
+      _messages.extend(result)
+    
+    _messages.append({ "role": "user", "content": _content})
+  else:
+    content = []
+    content.append({"type": "text", "text": _content})
+    for _image in _images:
+      # url에 '127.0.0.1'이 포함돼 있다면 '121.189.157.152' 수정할 것
+      _image = _image.replace("127.0.0.1", "121.189.157.152")
+      content.append({"type": "image_url", "image_url": {"url": _image},})
+    _messages.append({"role": "user", "content": content})
+    
+  try:
+    completion = client.chat.completions.create(
+      model=_model,
+      messages=_messages,
+    )
+  except Exception as e:
+    return jsonify({"error": str(e)}), 500
   
-  _messages.append({ "role": "user", "content": _content})
-
-  completion = client.chat.completions.create(
-    model=_model,
-    messages=_messages,
-  )
   response = completion.choices[0].message.content
   return json.dumps({"response": response}, ensure_ascii=False), 200
 
@@ -99,7 +120,7 @@ def question():
 @login_required
 def upload():
   data = request.get_json()
-  if not data or not all(key in data for key in ('subject', 'model', 'range', 'content')):
+  if not data or not all(key in data for key in ('subject', 'model', 'range', 'content', 'images')):
     return jsonify({'error': 'Invalid input'}), 400
   
   subject = data['subject']
@@ -107,6 +128,8 @@ def upload():
   _range = data['range']
   contents = data['content']
   _system = data['system']
+  _images = data['images']
+  print(f'_images: {_images}')
 
   if not isinstance(contents, list):
     return jsonify({'erorr': 'Content must be a list'}), 400
@@ -116,6 +139,7 @@ def upload():
       return jsonify({'error': 'Each content must have author and desc'}), 400
 
   subjectFlag = Subject.query.filter_by(user_id=g.user.id, title=subject).first()
+  
   try:
     if subjectFlag is None:
       _subject = Subject(
@@ -123,7 +147,8 @@ def upload():
         title=subject,
         model=model,
         range=_range,
-        system=_system
+        system=_system,
+        resolution=512,
       )
       db.session.add(_subject)
       db.session.commit()
@@ -131,6 +156,7 @@ def upload():
     else:
       mySubject = subjectFlag
     
+    msgIds = []
     for _content in contents:
       try:
         role = RoleEnum(_content['author'])
@@ -143,16 +169,26 @@ def upload():
         content=_content['desc'],
       )
       db.session.add(_message)
+      db.session.flush()
+      print(f'Message ID: {_message.id}')
+      msgIds.append(_message.id)
 
+    for _image in _images:
+      parts = _image.split('/')
+      filename = parts[-1]
+      print(f'filename: {filename}')
+      targetImage = MsgImage.query.filter_by(thumbnailPath=filename).first_or_404()
+      print(f'targetImage: {targetImage}')
+      targetImage.message_id = int(msgIds[0])
+      
     db.session.commit()
-    return jsonify({'message': 'created!', 'subject_id': mySubject.id}), 201
+    return jsonify({'message': 'created!', 'msgIds': msgIds}), 201
   except SQLAlchemyError as e:
     db.session.rollback()
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     db.session.rollback()
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
-
 
 @bp.route("/chatlist/", methods=['GET'])
 @login_required
@@ -200,21 +236,41 @@ def delete_messages():
     if second_id:
       itemIds.append(second_id)
 
-    # 트랜잭션 시작
-    with db.session.begin_nested():
-      for itemId in itemIds:
-        if itemId:  # itemId가 None이 아닌지 확인
-          message_to_delete = Message.query.filter_by(id=int(itemId)).first()
-          if not message_to_delete:
-              return jsonify({'error': f'Message with id {itemId} not found'}), 404
-          db.session.delete(message_to_delete)
+    # print(itemIds)
+    for itemId in itemIds:
+      if itemId:  # itemId가 None이 아닌지 확인
+        message_to_delete = Message.query.filter_by(id=int(itemId)).first()
+        if not message_to_delete:
+            return jsonify({'error': f'Message with id {itemId} not found'}), 404
+        
+        if message_to_delete.msg_images: 
+          msg_images = [(msg_image.imagePath, msg_image.thumbnailPath) for msg_image in message_to_delete.msg_images]
+          for msg_image in msg_images:
+            image_path = Path(current_app.config["UPLOAD_FOLDER"]) / Path(msg_image[0]).name
+            thumbnail_path = Path(current_app.config["UPLOAD_FOLDER"]) / Path(msg_image[1]).name
+            
+            try:
+              if image_path.exists():
+                os.remove(image_path)  # 폴더에서 이미지 파일 삭제
+            except OSError as e:
+              print(f"Error deleting file {image_path}: {e}")
+            try:
+              if thumbnail_path.exists():
+                os.remove(thumbnail_path)  # 폴더에서 이미지 파일 삭제
+            except OSError as e:
+                print(f"Error deleting file {thumbnail_path}: {e}")
+        
+        db.session.delete(message_to_delete)
+    
     db.session.commit()
     return jsonify({'success': True, 'deleted_ids': itemIds}), 200
+  
   except SQLAlchemyError as e:
     db.session.rollback()
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     db.session.rollback()
+    print(f"Unexpected error: {e}")
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
 
 @bp.route("/delete/<string:itemId>", methods=['DELETE'])
@@ -237,7 +293,7 @@ def update():
   try:
     data = request.get_json()
     # 입력 데이터 검증
-    if not data or not all(key in data for key in ('id', 'system', 'model', 'range', 'topic')):
+    if not data or not all(key in data for key in ('id', 'system', 'model', 'range', 'topic', 'resolution')):
       return jsonify({'error': 'Invalid input'}), 400
     _id = data['id']
     _system = data['system']
@@ -245,6 +301,7 @@ def update():
     _model = 'gpt-4o' if _model == 'GPT-4o' else 'gpt-4o-mini'
     _range = int(data['range'])
     _topic = data['topic']
+    _resolution = data['resolution']
     # 해당 subject 찾기
     targetSubject = Subject.query.filter_by(user_id=g.user.id, id=_id).first_or_404()
     # system 필드 업데이트
@@ -252,6 +309,7 @@ def update():
     targetSubject.model = _model
     targetSubject.range = _range
     targetSubject.title = _topic
+    targetSubject.resolution = _resolution
     # 데이터베이스 커밋
     db.session.commit()
     return jsonify({'message': 'system_updated!', 'subject_id': _id}), 200
@@ -259,3 +317,156 @@ def update():
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+  
+def deleteImagesOutdated():
+  now = datetime.now()
+  ago = now - timedelta(minutes=timeLeft)
+  items_to_delete = MsgImage.query.filter(MsgImage.message_id == None, MsgImage.create_date < ago).all() # 업로드만 하고 처리하지 않은 이미지가 많을 수 있으므로 first()가 아닌 all()
+  
+  if items_to_delete:
+    for item in items_to_delete:
+      image_path = Path(current_app.config["UPLOAD_FOLDER"]) / Path(item.imagePath).name
+      thumbnail_path = Path(current_app.config["UPLOAD_FOLDER"]) / Path(item.thumbnailPath).name
+      
+      try:
+        if image_path.exists():
+          os.remove(image_path)  # 폴더에서 이미지 파일 삭제
+      except OSError as e:
+        print(f"Error deleting file {image_path}: {e}")
+
+      try:
+        if thumbnail_path.exists():
+          os.remove(thumbnail_path)  # 폴더에서 이미지 파일 삭제
+      except OSError as e:
+          print(f"Error deleting file {thumbnail_path}: {e}")
+
+      db.session.delete(item)
+    db.session.commit()
+
+@bp.route("/upload_image/", methods=["POST"])
+@login_required
+def upload_image():
+  deleteImagesOutdated()
+  max_files = 3
+  
+  # request.files에서 'images[]' 키를 통해 파일 리스트를 가져옴
+  files = request.files.getlist('images[]')
+  resolution = request.form.get('resolution', type=int, default=512)
+
+  # 파일 수 체크
+  if len(files) > max_files:
+    return jsonify({'error': f'최대 {max_files}개의 파일만 업로드할 수 있습니다.'}), 400
+
+  msgIds = []
+
+  for file in files:
+    if file and file.filename:
+      # 이미지 열기
+      img = Image.open(file)
+
+      #EXIF 데이터를 사용하여 이미지 회전
+      try:
+        for orientation in ExifTags.TAGS.keys():
+          if ExifTags.TAGS[orientation] == 'Orientation':
+              break
+        exif = img._getexif()
+        if exif:
+          orientation = exif.get(orientation, None)
+          if orientation == 3:
+              img = img.rotate(180, expand=True)
+          elif orientation == 6:
+              img = img.rotate(270, expand=True)
+          elif orientation == 8:
+              img = img.rotate(90, expand=True)
+      except (AttributeError, KeyError, IndexError):
+        # EXIF 데이터가 없는 경우 처리
+        pass
+
+      img_copied = copy.deepcopy(img)
+      # 이미지 크기 조정
+      max_size = (resolution, resolution)
+      img.thumbnail(max_size, Image.LANCZOS)
+      
+      # 새로운 512x512 캔버스에 중앙 배치
+      img_out = Image.new('RGB', (resolution, resolution), (255, 255, 255))
+      img_out.paste(img, ((resolution - img.width) // 2, (resolution - img.height) // 2))
+
+      # 파일 확장자 처리
+      ext = Path(file.filename).suffix.lower()
+      if ext == '.heic':
+        ext = '.png'
+      formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+      file_name = f'{g.user.username}_{formatted_now}_{uuid.uuid4().hex}{ext}'
+
+      upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+      image_path = upload_folder / file_name
+
+      # 이미지 저장
+      img_out.save(image_path)
+
+      # 썸네일 생성
+      img_copied.thumbnail((100, 100))
+      thumbnail_path = upload_folder / f't_{file_name}'
+      img_copied.save(thumbnail_path)
+
+      message_image = MsgImage(
+        imagePath=file_name,
+        thumbnailPath=f't_{file_name}',
+      )
+
+      db.session.add(message_image)
+      #db.session.flush()  # 바로 commit하지 않고 현재 세션 내에서 ID를 불러옴
+      msgIds.append(f't_{file_name}')
+
+  db.session.commit()
+  return jsonify({'msgIds': msgIds}), 200
+  # return jsonify({'status': 'success'}), 200
+
+@bp.route("/get_thumbnail/<string:filename>", methods=["GET"])
+@login_required
+def get_thumbnail(filename):
+  try:
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
+  except FileNotFoundError:
+    abort(404)
+
+@bp.route("/get_image/<string:filename>", methods=["GET"])
+def get_image(filename):
+  originalFile = filename.split('t_')[1]
+  # print(originalFile)
+  try:
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], originalFile)
+  except FileNotFoundError:
+    abort(404)
+
+@bp.route("/deleteImage/<string:filename>", methods=["DELETE"])
+@login_required
+def delete_image(filename):
+  item_to_delete = MsgImage.query.filter_by(thumbnailPath=filename).first()
+
+  if item_to_delete:
+    image_path = Path(current_app.config["UPLOAD_FOLDER"]) / item_to_delete.imagePath
+    thumbnail_path = Path(current_app.config["UPLOAD_FOLDER"]) / item_to_delete.thumbnailPath
+
+    try:
+      if image_path.exists():
+        os.remove(image_path)  # 폴더에서 이미지 파일 삭제
+
+      if thumbnail_path.exists():
+        os.remove(thumbnail_path)  # 폴더에서 썸네일 이미지 파일 삭제
+
+      db.session.delete(item_to_delete)
+      db.session.commit()
+      return jsonify({'message': 'deleted!', 'msgImage': filename}), 200
+    except OSError as e:
+      db.session.rollback()
+      print(f"Error deleting file: {e}")
+      return jsonify({'error': 'File deletion error', 'message': str(e)}), 500
+    except SQLAlchemyError as e:
+      db.session.rollback()
+      return jsonify({'error': 'Database error', 'message': str(e)}), 500
+    except Exception as e:
+      db.session.rollback()
+      return jsonify({'error': 'Server error', 'message': str(e)}), 500
+    
+  return jsonify({'error': 'Image not found'}), 404 # 이미지가 존재하지 않을 경우 처리

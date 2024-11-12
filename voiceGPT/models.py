@@ -2,6 +2,7 @@ from voiceGPT import db
 from datetime import datetime
 from sqlalchemy.sql import func
 import enum
+from pytz import timezone
 
 content_voter = db.Table(
   'content_voter',
@@ -95,7 +96,8 @@ class Subject(db.Model):
   system = db.Column(db.Text(), nullable=True)
   model = db.Column(db.String(100), nullable=False)
   range = db.Column(db.Integer, nullable=False)
-  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=func.now())
+  resolution = db.Column(db.Integer, nullable=False)
+  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone('Asia/Seoul')))
   user = db.relationship('User', backref=db.backref('subjects', cascade='all, delete-orphan', lazy=True))
   messages = db.relationship('Message', backref='subject', cascade='all, delete-orphan', lazy=True)
 
@@ -103,6 +105,15 @@ class Message(db.Model):
   __tablename__ = 'message'
   id = db.Column(db.Integer, primary_key=True)
   subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False, index=True)
-  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=func.now())
+  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone('Asia/Seoul')))
   role = db.Column(db.Enum(RoleEnum), nullable=False)
   content = db.Column(db.Text(), nullable=False)
+  msg_images = db.relationship('MsgImage', backref='message', cascade='all, delete-orphan', lazy=True)
+
+class MsgImage(db.Model):
+  __tablename__ = 'msg_image'
+  id = db.Column(db.Integer, primary_key=True)
+  message_id = db.Column(db.Integer, db.ForeignKey('message.id', ondelete='CASCADE'), nullable=True, index=True)
+  imagePath = db.Column(db.String(300), nullable=False)
+  thumbnailPath = db.Column(db.String(300), nullable=False)
+  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone('Asia/Seoul')))

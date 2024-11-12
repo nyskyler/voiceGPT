@@ -200,7 +200,7 @@ def upload_image():
 @login_required
 def delete_image(user_id):
 	item_to_delete = UserImage.query.filter(UserImage.content_id == None, UserImage.user_id == user_id).first()
-	item_path = Path(current_app.config["UPLOAD_FOLDER"], Path(item_to_delete.imagePath).name)
+	item_path = Path(current_app.config["UPLOAD_FOLDER"]) / Path(item_to_delete.imagePath).name
 	if item_path.exists():
 		os.remove(item_path)  # 폴더에서 이미지 파일 삭제  
 	db.session.delete(item_to_delete)
