@@ -1,18 +1,47 @@
 {% extends "base2.html" %}
 {% block content %}
 <style>
+  #myRow {
+    display: flex;
+    flex-direction: row;
+  }
   .sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 94vh;
     background-color: #f8f9fa;
     border-right: 1px solid #dee2e6;
-    height: 94vh;
+    transform: translateX(0); /* 기본 위치 */
+    transition: transform 0.5s ease, width 0.5s ease; /* 슬라이드 애니메이션 */
+  }
+  .sideItem {
+    height: 85vh;
+    /* flex: 1; */
+    /* padding: 0.1rem; */
     overflow-y: auto;
   }
   .chat-window {
     display: flex;
     flex-direction: column;
+    flex: auto;
     height: 94vh;
     background-color: #e9ecef;
     border-left: 1px solid #dee2e6;
+    transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
+  }
+  .sidebar-hidden {
+    transform: translateX(-100%);
+    transition: transform 0.5s ease, width 0.5s ease;
+    width: 0%;
+    padding: 0px;
+  }
+  .chat-expanded {
+    flex-grow: 1; /* 부모 너비를 기준으로 남은 공간 채우기 */
+    transition: flex-grow 0.5s ease;
+  }
+  .invisible {
+    width: 0%;
+    display: none;
   }
   .thumbnails {
     display: flex;
@@ -20,7 +49,12 @@
   }
   .banner {
     flex: 0 0 auto;
-    padding: 0.9rem;
+    padding-top: 0.9rem;
+  }
+  .sideBanner {
+    flex: 0 0 auto;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
   }
   .header {
     display: flex;
@@ -100,17 +134,62 @@
     right: 10px;
     display: block; /* hover 시에만 버튼 보이기 */
   }
-  @media (max-width: 767.98px) {
-  .chat-window {
-    height: 80vh; /* 모바일에서는 전체 화면 높이로 설정 */
+
+  /* Toggle Button */
+  .toggle-btn {
+    border: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    outline: none;
+    margin-right: 0.3rem;
   }
-}
+  .toggle-btn i {
+    font-size: 1.2rem;
+  }
+  .btn-margin {
+    margin-left: 0.8rem;
+  }
+
+  @media (min-width: 1024px) and (max-width: 1366px) {
+  /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
+    .sidebar {
+      height: 87vh;
+    }
+    .sideItem {
+      height: 80vh;
+    }
+    .chat-window {
+      height: 87vh;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .chat-window {
+      height: 80vh; /* 모바일에서는 전체 화면 높이로 설정 */
+    }
+    .toggle-btn {
+      display: none;
+    }
+    #fontIncrease, #fontDecrease {
+      display: none;
+    }
+  }
 </style>
 <!-- 오프캔버스 사이드바 -->
 <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasSidebar" aria-labelledby="offcanvasSidebarLabel">
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="offcanvasSidebarLabel">대화 목록</h5>
-    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <h5 class="offcanvas-title" id="offcanvasSidebarLabel"></h5>
+    <button type="button" style="margin-right: 1rem;" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <button id="chatBtn2" class="btn btn-light chatBtn" style="padding: 0.5rem; margin-right: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button>
+    <form id="searchForm2" style="display: flex; align-items: center;">
+      <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
+        <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px;" maxlength="12" id="searchInput2" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1">
+        <button id="searchBtn2" class="btn btn-light" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0;" type="submit">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </div>
+    </form>
   </div>
   <div class="offcanvas-body p-0">
     <ul class="list-group list-group-flush toc">
@@ -118,16 +197,34 @@
   </div>
 </div>
 <div class="container-fluid">
-  <div class="row">
-    <div class="col-12 col-md-3 col-xl-2 sidebar d-none d-md-block">
+  <div id="myRow" class="row">
+    <div id="sidebar" class="col-12 col-md-3 col-xl-2 sidebar d-none d-md-block">
+      <div class="sideBanner" style="display: flex; align-items: center;">
+        <button id="chatBtn" class="btn btn-light chatBtn" style="padding: 0.5rem; margin-right: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button>
+        <form id="searchForm" style="display: flex; align-items: center;">
+          <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
+            <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px;" maxlength="12" id="searchInput" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1">
+            <button id="searchBtn" class="btn btn-light" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0;" type="submit">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+          </div>
+        </form>
+      </div>
       <ul class="list-group list-group-flush toc">
       </ul>
     </div>
-    <div class="col-12 col-md-9 col-xl-10 chat-window p-0">
+    <div id="chatWindow" class="col-12 col-md-9 col-xl-10 chat-window p-0">
       <div class="banner">
         <div class="header">
-          <span id="currentModel" class="fs-4">GPT-4o mini</span>
           <span>
+            <button id="toggleButton" class="toggle-btn">
+              <i class="fa-regular fa-square-caret-left"></i><!-- FontAwesome icon -->
+            </button>
+            <span id="currentModel" class="fs-5">GPT-4o mini</span>
+          </span>
+          <span>
+            <button id="fontIncrease" class="btn btn-light"><i class="fa-regular fa-square-plus"></i></button>
+            <button id="fontDecrease" class="btn btn-light"><i class="fa-regular fa-square-minus"></i></button>
             <button id="settingBtn" class="btn btn-light"><i class="fa-solid fa-gear"></i></button>
             <button id="deleteBtn" class="btn btn-light"><i class="fa-regular fa-trash-can"></i></button>
             <!-- 모바일에서 오프캔버스를 여는 버튼 -->
@@ -204,7 +301,7 @@
                 </div>
                 <div class="mb-3">
                   <label for="systemInput" class="col-form-label"><i class="fa-regular fa-keyboard"></i>&nbsp;&nbsp;GPT 역할</label>
-                  <textarea maxlength="500" id="systemInput" name="message" class="form-control" placeholder="500자 이내로 입력" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="5" style="resize: none; overflow-y: auto;"></textarea> 
+                  <textarea maxlength="1500" id="systemInput" name="message" class="form-control" placeholder="1500자 이내로 입력" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="5" style="resize: none; overflow-y: auto;"></textarea> 
                 </div>
               </form>
             </div>
@@ -230,6 +327,7 @@
           </div>          
         </form>
       </div>  
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -237,8 +335,18 @@
 <script type="module">
   document.querySelector('body').classList.replace('mt-4', 'mt-2');
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
+  
+  let fontSize = 16; // 기본 크기 (px)
+  const articles = document.getElementById("article");
 
-  function Initialize_textareaTag(){
+  const updateFontSize = () => {
+    const textElements = articles.querySelectorAll("*");
+    textElements.forEach(el => {
+      el.style.fontSize = fontSize + "px";
+    });
+  };
+
+  function Initialize_textareaTag(sizeDefault = 16){
     const $thumbnails = document.getElementById('thumbnails');
     const children = $thumbnails.children;
     while (children.length > 1) {
@@ -250,6 +358,10 @@
     const $myInput = document.getElementById('myInput')
     $myInput.value = '';
     $myInput.focus();
+    if (sizeDefault != null) {
+      fontSize = sizeDefault;
+      updateFontSize();
+    } 
   }
 
   function TOC(){
@@ -257,7 +369,8 @@
     let liTags = state.list_items.map(({ id, title }) => `
       <a href='#' data-id=${id} class="subjectItem list-group-item list-group-item-action list-group-item-secondary ${state.subject === title ? 'active' : ''}">${title}</a>
     `).join('');
-    liTags = '<button class="btn btn-light chatBtn" style="padding: 0.5rem; margin-top: 0.5rem;"><i class="fa-regular fa-pen-to-square"></i></button>' + liTags;    
+    // liTags = '<div class="sideBanner"><button class="btn btn-light chatBtn" style="padding: 0.5rem; margin-top: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button></div>' + '<div class="sideItem">' + liTags + '</div>';
+    liTags = '<div class="sideItem">' + liTags + '</div>';     
     document.querySelectorAll('.toc').forEach(el => { el.innerHTML = `${liTags}`; });
     // chatBtn 클릭 시 state의 subject를 null로, content를 빈 배열로, list_items는 그대로 두는 dispatch 요청이 들어가야 할 것. 그리고 자동으로 메시지 입력창이 활성화되면서 사용자 입력을 기다리게 할 것.
     document.querySelectorAll('.chatBtn').forEach(el => {
@@ -287,7 +400,7 @@
               const answer = await response.json();
               // console.log(answer.data);
               store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
-              // Initialize_textareaTag();
+              Initialize_textareaTag();
             } catch (error) {
               console.error('Error:', error);
             }
@@ -333,7 +446,7 @@
 
     const content = state.contents.map(el => `
       <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
-        <div class="col-md-${el.author === 'user' ? 5 : 8} col-10">
+        <div class="col-md-${el.author === 'user' ? 6 : 9} col-10">
           <div class="card mb-2">
             <div class="card-body bg-success text-dark bg-opacity-10">
               <div class="thumbnails" data-url="${el.imgUrl}"}></div>
@@ -364,6 +477,7 @@
       mark.innerHTML = mark.innerHTML.trim();
     });
 
+    updateFontSize();
     // const chatWindow = document.getElementById('article');
     // if (chatWindow.lastElementChild) {
     //   chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
@@ -416,6 +530,7 @@
       }
     });
     await Promise.all(thumbnailPromises);
+    // updateFontSize();
     const chatWindow = document.getElementById('article');
     if (chatWindow.lastElementChild) {
       chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
@@ -521,7 +636,7 @@
             }
             const res = await response.json();
             console.log(res.msgIds);
-            store.dispatch({type:'CREATE', author:'initializer'});      
+            store.dispatch({type:'CREATE', author:'initializer'});
           } catch(error) {
             console.error('Error: ', error);
           }
@@ -633,9 +748,16 @@
   }
   // 서버로부터 로그인한 사용자가 작성한 주제 항목들을 가나다 순으로 받아오고 dispatch 호출 시 이를 인자로 전달함. 
   // id, user_id, title, system, create_date 등
-  const getChatList = async () => {
+  const getChatList = async (searchWord) => {
+    let response;
     try {
-      const response = await fetch(_URL + '/textgpt/chatlist/');
+      if (searchWord) {
+        response = await fetch(_URL + `/textgpt/chatlist/${encodeURIComponent(searchWord)}`, {
+          method: 'GET',
+        });
+      } else {
+        response = await fetch(_URL + '/textgpt/chatlist/');
+      }
       if(!response.ok){
         throw new Error(response.status);
       } else if(response.status === 204){
@@ -651,9 +773,12 @@
   
   const productionURL = 'http://121.189.157.152:8080';
   const testURL = 'http://127.0.0.1:8080';
+  const localURL = 'http://172.30.1.25:8080';
   let _URL = null;
   if (window.location.href.split('/')[2] === '127.0.0.1:8080'){
     _URL = testURL;
+  } else if (window.location.href.split('/')[2] === '172.30.1.25:8080'){
+    _URL = localURL;
   } else {
     _URL = productionURL;
   }
@@ -694,11 +819,38 @@
           .replace(/>/g, "&gt;");
         // console.log(_desc);
         store.dispatch({type:'CREATE', author:_author, desc:_desc});
-        Initialize_textareaTag(); 
+        Initialize_textareaTag(null); 
       } else {
         $('#modalBtn').click();
       }
     });
+
+    document.getElementById('searchForm').addEventListener('submit', async function(event) {
+      event.preventDefault(); // 기본 폼 제출 동작 방지
+      const searchInput = event.target.searchInput.value.trim(); // 입력값 가져오기 및 공백 제거
+      try {
+        getChatList(searchInput);
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+      // 입력 필드 초기화
+      event.target.searchInput.value = '';
+      event.target.searchInput.placeholder = searchInput;
+    });
+
+    document.getElementById('searchForm2').addEventListener('submit', async function(event) {
+      event.preventDefault(); // 기본 폼 제출 동작 방지
+      const searchInput = event.target.searchInput2.value.trim(); // 입력값 가져오기 및 공백 제거
+      try {
+        getChatList(searchInput);
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+      // 입력 필드 초기화
+      event.target.searchInput2.value = '';
+      event.target.searchInput2.placeholder = searchInput;
+    });
+
     // 모달창의 세부 항목의 내용 지정하기
     const exampleModal = document.getElementById('exampleModal')
     if (exampleModal) {
@@ -1021,6 +1173,56 @@
           console.error('Error: ', error);
           $imgSpinner.style.display = 'none';
         });
+      }
+    });
+
+    const toggleButton = document.getElementById("toggleButton");
+    const sidebar = document.getElementById("sidebar");
+    const chatWindow = document.getElementById("chatWindow");
+    const $chatBtn = document.getElementById("chatBtn");
+    const $searchInput = document.getElementById("searchInput");
+    const $searchBtn = document.getElementById("searchBtn");
+    
+    toggleButton.addEventListener("click", function () {
+      sidebar.classList.toggle("sidebar-hidden");
+      chatWindow.classList.toggle("chat-expanded");
+      toggleButton.classList.toggle("btn-margin");
+
+      setTimeout(() => {
+        $chatBtn.classList.toggle("invisible");
+        $searchInput.classList.toggle("invisible");
+        $searchBtn.classList.toggle("invisible");
+      }, 100);
+
+      const icon = toggleButton.querySelector("i");
+      icon.classList.toggle("fa-square-caret-left");
+      icon.classList.toggle("fa-square-caret-right");
+    });
+
+    const fontIncrease = document.getElementById("fontIncrease");
+    const fontDecrease = document.getElementById("fontDecrease");
+
+    // 초기 폰트 크기 설정
+    const articles = document.getElementById("article");
+
+    const updateFontSize = () => {
+      const textElements = articles.querySelectorAll("*");
+      textElements.forEach(el => {
+        el.style.fontSize = fontSize + "px";
+      });
+    };
+
+    fontIncrease.addEventListener("click", function () {
+      if (fontSize < 50) {
+        fontSize += 2;
+        updateFontSize();
+      }
+    });
+
+    fontDecrease.addEventListener("click", function () {
+      if (fontSize > 10) {
+        fontSize -= 2;
+        updateFontSize();
       }
     });
   }

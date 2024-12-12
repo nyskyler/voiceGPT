@@ -100,8 +100,9 @@ def question():
     content = []
     content.append({"type": "text", "text": _content})
     for _image in _images:
-      # url에 '127.0.0.1'이 포함돼 있다면 '121.189.157.152' 수정할 것
+      # url에 '127.0.0.1' 또는 '172.30.1.25'가 포함돼 있다면 '121.189.157.152' 수정할 것
       _image = _image.replace("127.0.0.1", "121.189.157.152")
+      _image = _image.replace("172.30.1.25", "121.189.157.152")
       content.append({"type": "image_url", "image_url": {"url": _image},})
     _messages.append({"role": "user", "content": content})
     
@@ -189,6 +190,25 @@ def upload():
   except Exception as e:
     db.session.rollback()
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+    
+@bp.route("/chatlist/<string:searchWord>", methods=['GET'])
+@login_required
+def searchlist(searchWord):
+  try:
+    # 검색어가 title에 포함된 Subject를 필터링
+    subjects = (Subject.query
+                .filter(Subject.user_id == g.user.id, Subject.title.ilike(f"%{searchWord}%"))
+                .order_by(Subject.create_date.desc())
+                .all())
+    if subjects:
+      subjects_data = [subject_to_dict(subject) for subject in subjects]
+      return jsonify({'data': subjects_data}), 200
+    else:
+      return '', 204
+  except SQLAlchemyError as e:
+    return jsonify({'error': 'Database error', 'message': str(e)}), 500
+  except Exception as e:
+    return jsonify({'error': 'Server error', 'message': str(e)}), 500
 
 @bp.route("/chatlist/", methods=['GET'])
 @login_required
@@ -204,7 +224,7 @@ def chatlist():
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
-  
+    
 @bp.route("/content/<string:itemId>", methods=['GET'])
 @login_required
 def content(itemId):
