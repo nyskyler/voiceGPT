@@ -1,16 +1,31 @@
 {% extends "base2.html" %}
 {% block content %}
+<link href="https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-gothic.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-gothic-coding.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-gothic-eco.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-myeongjo.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-myeongjo-eco.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/NanumMyeongjoYetHangul.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/NanumBarunGothicYetHangul.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-pen.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-brush.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-pen.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/NanumHuman.css" rel="stylesheet">
 <style>
   #myRow {
     display: flex;
     flex-direction: row;
   }
-  .sidebar {
+  #sidebar {
     display: flex;
     flex-direction: column;
     height: 94vh;
-    background-color: #f8f9fa;
-    border-right: 1px solid #dee2e6;
+    border-right: 1px solid black;
     transform: translateX(0); /* 기본 위치 */
     transition: transform 0.5s ease, width 0.5s ease; /* 슬라이드 애니메이션 */
   }
@@ -25,7 +40,6 @@
     flex-direction: column;
     flex: auto;
     height: 94vh;
-    background-color: #e9ecef;
     border-left: 1px solid #dee2e6;
     transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
   }
@@ -50,6 +64,7 @@
   .banner {
     flex: 0 0 auto;
     padding-top: 0.9rem;
+    padding-bottom: 0.5rem;
   }
   .sideBanner {
     flex: 0 0 auto;
@@ -89,6 +104,11 @@
     resize: none;
     max-height: 300px;
     overflow-y: auto;
+  }
+  #myInput:focus, #systemInput:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: black;
   }
   .attach-icon {
     margin-left: 3px;
@@ -150,6 +170,21 @@
   .btn-margin {
     margin-left: 0.8rem;
   }
+  #searchInput:focus, #searchInput2:focus, #topicInput:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: black;
+  }
+  #article {
+    font-family: 'inherit';
+  }
+  .btn-transparent {
+    background-color: transparent;
+    border: none;
+  }
+  .btn-transparent:hover {
+    background-color: rgba(0, 0, 0, 0.1); /* 호버 시 배경색 추가 (선택 사항) */
+  }
 
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
@@ -200,7 +235,7 @@
   <div id="myRow" class="row">
     <div id="sidebar" class="col-12 col-md-3 col-xl-2 sidebar d-none d-md-block">
       <div class="sideBanner" style="display: flex; align-items: center;">
-        <button id="chatBtn" class="btn btn-light chatBtn" style="padding: 0.5rem; margin-right: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button>
+        <button id="chatBtn" class="btn btn-transparent chatBtn" style="padding: 0.5rem; margin-right: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button>
         <form id="searchForm" style="display: flex; align-items: center;">
           <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
             <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px;" maxlength="12" id="searchInput" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1">
@@ -217,16 +252,17 @@
       <div class="banner">
         <div class="header">
           <span>
-            <button id="toggleButton" class="toggle-btn">
+            <button id="toggleButton" class="toggle-btn btn btn-transparent">
               <i class="fa-regular fa-square-caret-left"></i><!-- FontAwesome icon -->
             </button>
             <span id="currentModel" class="fs-5">GPT-4o mini</span>
           </span>
           <span>
-            <button id="fontIncrease" class="btn btn-light"><i class="fa-regular fa-square-plus"></i></button>
-            <button id="fontDecrease" class="btn btn-light"><i class="fa-regular fa-square-minus"></i></button>
-            <button id="settingBtn" class="btn btn-light"><i class="fa-solid fa-gear"></i></button>
-            <button id="deleteBtn" class="btn btn-light"><i class="fa-regular fa-trash-can"></i></button>
+            <button id="fontIncrease" class="btn btn-transparent"><i class="fa-regular fa-square-plus"></i></button>
+            <button id="fontDecrease" class="btn btn-transparent"><i class="fa-regular fa-square-minus"></i></button>
+            <button id="paletteBtn" class="btn btn-transparent"><i class="fa-solid fa-palette"></i></i></button>
+            <button id="settingBtn" class="btn btn-transparent"><i class="fa-solid fa-gear"></i></button>
+            <button id="deleteBtn" class="btn btn-transparent"><i class="fa-regular fa-trash-can"></i></button>
             <!-- 모바일에서 오프캔버스를 여는 버튼 -->
             <div class="d-md-none p-1 border-bottom" style="display: inline;">
               <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
@@ -312,14 +348,134 @@
           </div>
         </div>
       </div>
-      <div class="input-area">
-        <form id="messageForm">
+      <!-- 글꼴 및 배경 디자인을 변경할 때 사용하는 모달창 -->
+      <button type="button" id="designBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paletteModal" data-bs-whatever="{{ g.user.username }}"></button>
+      <div class="modal fade" id="paletteModal" tabindex="-1" aria-labelledby="paletteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="paletteModalLabel"></h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="paletteForm">
+                <label for="fontSelect" class="form-label"><i class="fa-solid fa-font"></i>&nbsp;&nbsp;글꼴</label>
+                <select id="fontSelect" class="form-select form-select-sm mb-2" aria-label="Large select example">
+                  <option value="inherit">시스템 글꼴</option>
+                  <option value="MaruBuriExtraLight">마루부리 아주 가는</option>
+                  <option value="MaruBuriLight">마루부리 가는</option>
+                  <option value="MaruBuri">마루부리</option>
+                  <option value="MaruBuriBold">마루부리 굵은</option>
+                  <option value="MaruBuriSemiBold">마루부리 조금 굵은</option>
+                  <option value="NanumGothicLight">나눔고딕 가는</option>
+                  <option value="NanumGothic">나눔고딕 중간</option>
+                  <option value="NanumGothicBold">나눔고딕 굵은</option>
+                  <option value="NanumGothicExtraBold">나눔고딕 아주 굵은</option>
+                  <option value="NanumGothicCodingLigature">나눔고딕 D2coding ligature</option>
+                  <option value="NanumGothicCodingLigatureBold">나눔고딕 D2coding ligatureBold</option>
+                  <option value="NanumGothicCoding">나눔고딕 D2coding 중간</option>
+                  <option value="NanumGothicCodingBold">나눔고딕 D2coding 굵은</option>
+                  <option value="NanumGothicEco">나눔고딕에코 중간</option>
+                  <option value="NanumGothicEcoBold">나눔고딕에코 굵은</option>
+                  <option value="NanumGothicEcoExtraBold">나눔고딕에코 아주 굵은</option>
+                  <option value="NanumMyeongjo">나눔명조 중간</option>
+                  <option value="NanumMyeongjoBold">나눔명조 굵은</option>
+                  <option value="NanumMyeongjoExtraBold">나눔명조 아주 굵은</option>
+                  <option value="NanumMyeongjoEco">나눔명조에코 중간</option>
+                  <option value="NanumMyeongjoEcoBold">나눔명조에코 굵은</option>
+                  <option value="NanumMyeongjoEcoExtraBold">나눔명조에코 아주 굵은</option>
+                  <option value="NanumMyeongjoYetHangul">나눔명조옛한글</option>
+                  <option value="NanumBarunGothicUltraLight">나눔바른고딕 아주 가는</option>
+                  <option value="NanumBarunGothicLight">나눔바른고딕 가는</option>
+                  <option value="NanumBarunGothic">나눔바른고딕 중간</option>
+                  <option value="NanumBarunGothicBold">나눔바른고딕 굵은</option>
+                  <option value="NanumBarunGothicYetHangul">나눔바른고딕옛한글</option>
+                  <option value="NanumBarunPen">나눔바른펜 일반용 중간</option>
+                  <option value="NanumBarunPenBold">나눔바른펜 일반용 굵은</option>
+                  <option value="NanumBrush">나눔손글씨 붓</option>
+                  <option value="NanumPen">나눔손글씨 펜</option>
+                  <option value="NanumSquareLight">나눔스퀘어 가는</option>
+                  <option value="NanumSquare">나눔스퀘어 중간</option>
+                  <option value="NanumSquareBold">나눔스퀘어 굵은</option>
+                  <option value="NanumSquareExtraBold">나눔스퀘어 아주 굵은</option>
+                  <option value="NanumSquareAcb">나눔스퀘어 acB</option>
+                  <option value="NanumSquareAceb">나눔스퀘어 acEB</option>
+                  <option value="NanumSquareAcl">나눔스퀘어 acL</option>
+                  <option value="NanumSquareAcr">나눔스퀘어 acR</option>
+                  <option value="NanumSquareNeoLight">나눔스퀘어 네오 가는</option>
+                  <option value="NanumSquareNeo">나눔스퀘어 네오</option>
+                  <option value="NanumSquareNeoBold">나눔스퀘어 네오 굵은</option>
+                  <option value="NanumSquareNeoExtraBold">나눔스퀘어 네오 아주 굵은</option>
+                  <option value="NanumSquareNeoHeavy">나눔스퀘어 네오 무거운</option>
+                  <option value="NanumSquareRoundLight">나눔스퀘어라운드 가는</option>
+                  <option value="NanumSquareRound">나눔스퀘어라운드</option>
+                  <option value="NanumSquareRoundBold">나눔스퀘어라운드 굵은</option>
+                  <option value="NanumSquareRoundExtraBold">나눔스퀘어라운드 아주 굵은</option>
+                  <option value="NanumHumanheavy">나눔휴먼 무거운</option>
+                  <option value="NanumHumanEB">나눔휴먼 아주 굵은</option>
+                  <option value="NanumHumanbold">나눔휴먼 굵은</option>
+                  <option value="NanumHuman">나눔휴먼 중간</option>
+                  <option value="NanumHumanlight">나눔휴먼 가는</option>
+                  <option value="NanumHumanEL">나눔휴먼 아주 가는</option>
+                </select>
+                <p id="fontSample" class="mb-2" style="font-family: 'inherit'; text-align: center;">안녕하세요 | Hello | 你好 | こんにちは</p>
+                <label for="borderSelect" class="form-label mt-3"><i class="fa-regular fa-square"></i>&nbsp;&nbsp;테두리</label>
+                <select id="borderSelect" class="form-select form-select-sm mb-2">
+                  <option value="none">테두리 없음</option>
+                  <option value="border-primary">Primary</option>
+                  <option value="border-secondary">Secondary</option>
+                  <option value="border-success">Success</option>
+                  <option value="border-danger">Danger</option>
+                  <option value="border-warning">Warning</option>
+                  <option value="border-info">Info</option>
+                  <option value="border-light">Light</option>
+                  <option value="border-dark">Dark</option>
+                </select> 
+                <label for="themeSelect" class="form-label mt-3"><i class="fa-solid fa-brush"></i>&nbsp;&nbsp;테마</label>
+                <select id="themeSelect" class="form-select form-select-sm">
+                  <option value="bg-warning text-dark bg-opacity-25">햇살 노랑</option>
+                  <option value="bg-light text-dark bg-opacity-50">구름 흰색</option>
+                  <option value="bg-primary text-dark bg-opacity-10">하늘 파랑</option>
+                  <option value="bg-dark text-light bg-opacity-75">차콜 블랙</option>
+                  <option value="bg-secondary text-dark bg-opacity-50">스틸 그레이</option>
+                  <option value="bg-black text-white bg-opacity-25">은은한 어둠</option>
+                  <option value="bg-success text-dark bg-opacity-25">싱그러운 초록</option>
+                  <option value="bg-danger text-dark bg-opacity-10">따뜻한 레드</option>
+                  <option value="bg-info text-dark bg-opacity-50">맑은 물빛</option>
+                  <option value="bg-success text-dark bg-opacity-10">맑은 아침</option>
+                </select>
+                <label for="bg-colorSelect" class="form-label mt-3"><i class="fa-solid fa-fill"></i>&nbsp;&nbsp;배경색</label>
+                <select id="bg-colorSelect" class="form-select form-select-sm">
+                  <option value="#ffcdd2">연한 붉은색</option>
+                  <option value="#dcedc8">연한 올리브 그린</option>
+                  <option value="#c8e6c9">연한 녹색</option>
+                  <option value="#d1c4e9">연한 보라색</option>
+                  <option value="#fce4ec">연한 분홍색</option>
+                  <option value="#e3f2fd">하늘색</option>
+                  <option value="#f8f9fa">밝은 회색</option>
+                  <option value="#ffffff">흰색</option>
+                  <option value="#000000">검정</option>
+                  <option value="#ffeb3b">밝은 노란색</option>
+                  <option value="#90a4ae">어두운 회색</option>
+                  <option value="#e9ecef">차분한 회색</option>
+                </select>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+              <button type="submit" class="btn btn-primary" form="paletteForm">정하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="input-area" style="border-top: 1px solid black;">
+        <form id="messageForm" style="border: 1px solid black; border-radius: 4px 4px 4px 4px;">
           <div id="thumbnails">
             <div id="imgSpinner" class="spinner-border" role="status" style="display:none;">
               <span class="visually-hidden">Loading...</span>
             </div>
           </div>
-          <div class="input-group">
+          <div class="input-group" style="border: none; outline: none;">
             <label id="img-label" for="img"><i class="fa-solid fa-paperclip attach-icon"></i></label>
             <input id="img" type="file" accept="image/*" style="display:none" multiple>
             <textarea required minlength="3" maxlength="5000" id="myInput" name="message" class="form-control" placeholder="메시지를 입력하세요..." aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
@@ -339,6 +495,12 @@
   let fontSize = 16; // 기본 크기 (px)
   const articles = document.getElementById("article");
 
+  document.getElementById('fontSelect').addEventListener('change', function () {
+    const selectedFont = this.value;
+    const fontSample = document.getElementById('fontSample');
+    fontSample.style.fontFamily = selectedFont || 'inherit';
+  });
+
   const updateFontSize = () => {
     const textElements = articles.querySelectorAll("*");
     textElements.forEach(el => {
@@ -357,7 +519,7 @@
 
     const $myInput = document.getElementById('myInput')
     $myInput.value = '';
-    $myInput.focus();
+    // $myInput.focus();
     if (sizeDefault != null) {
       fontSize = sizeDefault;
       updateFontSize();
@@ -444,11 +606,13 @@
       }
     }
 
+    const border = localStorage.getItem('border');
+    const theme = localStorage.getItem('theme');
     const content = state.contents.map(el => `
       <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
         <div class="col-md-${el.author === 'user' ? 6 : 9} col-10">
-          <div class="card mb-2">
-            <div class="card-body bg-success text-dark bg-opacity-10">
+          <div class="card ${border == 'none' ? '' : border} mb-2">
+            <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
               <div class="thumbnails" data-url="${el.imgUrl}"}></div>
               <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${el.desc}</div>
               <button type="button" class="btn-close delete_message" aria-label="Close"></button>
@@ -748,9 +912,10 @@
   }
   // 서버로부터 로그인한 사용자가 작성한 주제 항목들을 가나다 순으로 받아오고 dispatch 호출 시 이를 인자로 전달함. 
   // id, user_id, title, system, create_date 등
-  const getChatList = async (searchWord) => {
+  const getChatList = async () => {
     let response;
     try {
+      const searchWord = localStorage.getItem('kw');
       if (searchWord) {
         response = await fetch(_URL + `/textgpt/chatlist/${encodeURIComponent(searchWord)}`, {
           method: 'GET',
@@ -766,6 +931,8 @@
       }
       const answer = await response.json();
       store.dispatch({type:'UPDATE', content:'list', items:answer.data});
+      document.getElementById('searchInput').placeholder = searchWord;
+      document.getElementById('searchInput2').placeholder = searchWord;
     } catch(error) {
       console.error('Error: ', error);
     }
@@ -808,6 +975,9 @@
       $myInput.style.height = 'auto';
       $myInput.style.height = ($myInput.scrollHeight) + 'px';
     });
+    document.getElementById('article').style.fontFamily = localStorage.getItem('font') || 'inherit';
+    document.getElementById('sidebar').style.backgroundColor = localStorage.getItem('bg-color') || '#e9ecef';
+    document.getElementById('chatWindow').style.backgroundColor = localStorage.getItem('bg-color') || '#e9ecef';
     // '전송' 클릭 시 발생하는 이벤트 내용을 정의 state의 subject가 null로 비어있을 경우에는 메시지 전송이 아닌 모달창이 띄워지며, 이미 subject가 있을 시에는 입력창의 메시지를 chatGPT에 질의함.
     document.getElementById('messageForm').addEventListener('submit', function(event){
       event.preventDefault();
@@ -828,8 +998,9 @@
     document.getElementById('searchForm').addEventListener('submit', async function(event) {
       event.preventDefault(); // 기본 폼 제출 동작 방지
       const searchInput = event.target.searchInput.value.trim(); // 입력값 가져오기 및 공백 제거
+      localStorage.setItem('kw', searchInput);
       try {
-        getChatList(searchInput);
+        getChatList();
       } catch (error) {
         console.error('Fetch error:', error);
       }
@@ -841,8 +1012,9 @@
     document.getElementById('searchForm2').addEventListener('submit', async function(event) {
       event.preventDefault(); // 기본 폼 제출 동작 방지
       const searchInput = event.target.searchInput2.value.trim(); // 입력값 가져오기 및 공백 제거
+      localStorage.setItem('kw', searchInput);
       try {
-        getChatList(searchInput);
+        getChatList();
       } catch (error) {
         console.error('Fetch error:', error);
       }
@@ -876,6 +1048,45 @@
         const modalBodyInput = systemModal.querySelector('.modal-body input')
         modalTitle.textContent = 'Preferences';
       })
+    }
+    // palette 모달창의 세부 항목의 내용 지정하기
+    const paletteModal = document.getElementById('paletteModal')
+    if (paletteModal) {
+      paletteModal.addEventListener('show.bs.modal', event => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = paletteModal.querySelector('.modal-title')
+        const modalBodyInput = paletteModal.querySelector('.modal-body input')
+        modalTitle.textContent = '글꼴 및 디자인 설정';
+        // LocalStorage에서 값 가져오기
+        const savedFont = localStorage.getItem('font');
+        const savedBorder = localStorage.getItem('border');
+        const savedTheme = localStorage.getItem('theme');
+        const savedColor = localStorage.getItem('bg-color');
+
+        // 각 select 요소
+        const fontSelect = document.getElementById('fontSelect');
+        const borderSelect = document.getElementById('borderSelect');
+        const themeSelect = document.getElementById('themeSelect');
+        const bgcolorSelect = document.getElementById('bg-colorSelect');
+
+        // 기존 값이 있으면 해당 값으로 선택
+        if (savedFont) {
+          fontSelect.value = savedFont;
+          document.getElementById('fontSample').style.fontFamily = savedFont;
+        }
+        if (savedBorder) {
+          borderSelect.value = savedBorder;
+        }
+        if (savedTheme) {
+          themeSelect.value = savedTheme;
+        }
+        if (savedColor) {
+          bgcolorSelect.value = savedColor;
+        }
+      });
     }
     // 모달창에서 '정하기'를 클릭했을 시, 입력한 주제명에 사용자 지정 시간 포맷을 추가하고 이를 반영하기 위한 dispatch 호출. 질문 입력창에 값이 있을 시에만 '전송'을 자동으로 클릭.
     document.getElementById('modalForm').addEventListener('submit', event => {
@@ -926,6 +1137,47 @@
           console.error('Error: ', error);
         }
       })();
+    });
+    // palette 모달창에서 '정하기'를 클릭했을 시, 글꼴과 배경디자인을 화면에 반영하기 위한 dispatch 호출
+    document.getElementById('paletteForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const selectedFont = document.getElementById('fontSelect').value;
+      const selectedBorder = document.getElementById('borderSelect').value;
+      const selectedTheme = document.getElementById('themeSelect').value;
+      const selectedBgColor = document.getElementById('bg-colorSelect').value;
+      const $sidebar = document.getElementById('sidebar');
+      const $chatWindow = document.getElementById('chatWindow');
+      document.getElementById('article').style.fontFamily = selectedFont;
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+        // 기존 'border-*' 클래스 제거
+        card.classList.forEach(cls => {
+          if (cls.startsWith('border-')) {
+            card.classList.remove(cls);
+          }
+        });
+        // 새로운 'border-dark' 클래스 추가
+        if (selectedBorder != 'none') {
+          card.classList.add(selectedBorder);
+        }
+      });
+      const cardBody = document.querySelectorAll('.card-body');
+      cardBody.forEach(card => {
+        // 기존의 'bg-* text-* bg-opacity-*' 클래스 제거
+        card.classList.remove(...Array.from(card.classList).filter(cls => 
+          cls.startsWith('bg-') || cls.startsWith('text-') || cls.startsWith('bg-opacity-')
+        ));
+
+        // 선택된 새로운 클래스 추가
+        card.classList.add(...selectedTheme.split(' '));
+      });
+      $sidebar.style.backgroundColor = selectedBgColor;
+      $chatWindow.style.backgroundColor = selectedBgColor;
+      localStorage.setItem('font', selectedFont);
+      localStorage.setItem('border', selectedBorder);
+      localStorage.setItem('theme', selectedTheme);
+      localStorage.setItem('bg-color', selectedBgColor);
+      $('#paletteModal').modal('hide');
     });
     // 배너에 있는 '#deleteBtn' 클릭 시, state의 subject를 인자로 전달하며 해당 주제 및 대화글의 삭제를 위한 fetch 요청을 수행함
     // 삭제 요청 전 사용자에게 선택에 대해 확인하는 절차를 거칠 것
@@ -987,6 +1239,10 @@
       $('#memoryRange').val(state.range);
       $('#topicInput').val(state.subject);
       $('#systemBtn').click();
+    });
+
+    document.getElementById('paletteBtn').addEventListener('click', () => {
+      $('#designBtn').click();
     });
 
     document.getElementById('article').addEventListener('click', async function(e) {
