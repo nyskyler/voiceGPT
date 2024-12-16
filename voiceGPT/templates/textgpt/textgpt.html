@@ -40,7 +40,6 @@
     flex-direction: column;
     flex: auto;
     height: 94vh;
-    border-left: 1px solid #dee2e6;
     transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
   }
   .sidebar-hidden {
@@ -84,14 +83,12 @@
     overflow-y: auto;
   }
   .input-area {
-    padding: 1rem;
-    border-top: 1px solid #dee2e6;
-    background-color: #f8f9fa;
+    padding: 0rem 2rem 0.6rem 1rem;
   }
   .input-group {
     display: flex;
     align-items: center;
-    border: 1px solid #ccc;
+    /* border: 1px solid #ccc; */
     border-radius: 5px;
     padding: 5px;
     width: 100%;
@@ -134,6 +131,10 @@
   }
   .card-body {
     position: relative;
+  }
+  .card {
+    border: 1px solid;
+    border-radius: 2px;
   }
   .delete_message {
     position: absolute;
@@ -188,26 +189,32 @@
 
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
-    .sidebar {
+    #sidebar {
       height: 87vh;
     }
     .sideItem {
-      height: 80vh;
+      height: 79vh;
     }
     .chat-window {
       height: 87vh;
     }
-  }
+    .input-area {
+      padding-right: 1rem;
+    }
+  } 
 
-  @media (max-width: 767.98px) {
+  @media (max-width: 767.98px) and (orientation: portrait) {
     .chat-window {
-      height: 80vh; /* 모바일에서는 전체 화면 높이로 설정 */
+      height:79vh; /* 모바일에서는 전체 화면 높이로 설정 */
     }
     .toggle-btn {
       display: none;
     }
     #fontIncrease, #fontDecrease {
       display: none;
+    }
+    .input-area {
+      padding-right: 1rem;
     }
   }
 </style>
@@ -454,7 +461,7 @@
                   <option value="#e3f2fd">하늘색</option>
                   <option value="#f8f9fa">밝은 회색</option>
                   <option value="#ffffff">흰색</option>
-                  <option value="#000000">검정</option>
+                  <option value="#2B3035">검정</option>
                   <option value="#ffeb3b">밝은 노란색</option>
                   <option value="#90a4ae">어두운 회색</option>
                   <option value="#e9ecef">차분한 회색</option>
@@ -468,8 +475,8 @@
           </div>
         </div>
       </div>
-      <div class="input-area" style="border-top: 1px solid black;">
-        <form id="messageForm" style="border: 1px solid black; border-radius: 4px 4px 4px 4px;">
+      <div class="input-area">
+        <form id="messageForm" style="border: 1px solid black; border-radius: 4px 4px 4px 4px; background-color: #f8f9fa;;">
           <div id="thumbnails">
             <div id="imgSpinner" class="spinner-border" role="status" style="display:none;">
               <span class="visually-hidden">Loading...</span>
@@ -915,7 +922,7 @@
   const getChatList = async () => {
     let response;
     try {
-      const searchWord = localStorage.getItem('kw');
+      const searchWord = localStorage.getItem('kw') || '';
       if (searchWord) {
         response = await fetch(_URL + `/textgpt/chatlist/${encodeURIComponent(searchWord)}`, {
           method: 'GET',
@@ -975,9 +982,34 @@
       $myInput.style.height = 'auto';
       $myInput.style.height = ($myInput.scrollHeight) + 'px';
     });
+
     document.getElementById('article').style.fontFamily = localStorage.getItem('font') || 'inherit';
     document.getElementById('sidebar').style.backgroundColor = localStorage.getItem('bg-color') || '#e9ecef';
     document.getElementById('chatWindow').style.backgroundColor = localStorage.getItem('bg-color') || '#e9ecef';
+    const selectedBgColor = localStorage.getItem('bg-color');
+    const $buttons = document.querySelectorAll('.btn-transparent');
+      const $model = document.getElementById('currentModel');
+      if (selectedBgColor === '#2B3035') {
+        $buttons.forEach(button => {
+          const icon = button.querySelector('i');
+          if (icon) {
+            icon.style.color = 'white';
+          }
+        });
+        $model.style.color = 'white';
+        document.getElementById('mySpinner').classList.remove('text-dark');
+        document.getElementById('mySpinner').classList.add('text-light');
+      } else {
+        $buttons.forEach(button => {
+          const icon = button.querySelector('i');
+          if (icon) {
+            icon.style.color = 'black';
+          }
+        });
+        $model.style.color = 'black';
+        document.getElementById('mySpinner').classList.remove('text-light');
+        document.getElementById('mySpinner').classList.add('text-dark');
+      }
     // '전송' 클릭 시 발생하는 이벤트 내용을 정의 state의 subject가 null로 비어있을 경우에는 메시지 전송이 아닌 모달창이 띄워지며, 이미 subject가 있을 시에는 입력창의 메시지를 chatGPT에 질의함.
     document.getElementById('messageForm').addEventListener('submit', function(event){
       event.preventDefault();
@@ -1148,6 +1180,7 @@
       const $sidebar = document.getElementById('sidebar');
       const $chatWindow = document.getElementById('chatWindow');
       document.getElementById('article').style.fontFamily = selectedFont;
+      const $spinner = document.getElementById('mySpinner');
       const cards = document.querySelectorAll('.card');
       cards.forEach(card => {
         // 기존 'border-*' 클래스 제거
@@ -1171,6 +1204,35 @@
         // 선택된 새로운 클래스 추가
         card.classList.add(...selectedTheme.split(' '));
       });
+
+      const $buttons = document.querySelectorAll('.btn-transparent');
+      const $model = document.getElementById('currentModel');
+      if (selectedBgColor === '#2B3035') {
+        $buttons.forEach(button => {
+          const icon = button.querySelector('i');
+          if (icon) {
+            icon.style.color = 'white';
+          }
+        });
+        $model.style.color = 'white';
+        if ($spinner.classList.contains('text-dark')) {
+          document.getElementById('mySpinner').classList.remove('text-dark');
+          document.getElementById('mySpinner').classList.add('text-light');
+        }
+      } else {
+        $buttons.forEach(button => {
+          const icon = button.querySelector('i');
+          if (icon) {
+            icon.style.color = 'black';
+          }
+        });
+        $model.style.color = 'black';
+        if ($spinner.classList.contains('text-light')) {
+          document.getElementById('mySpinner').classList.remove('text-light');
+          document.getElementById('mySpinner').classList.add('text-dark');
+        }
+      }
+      
       $sidebar.style.backgroundColor = selectedBgColor;
       $chatWindow.style.backgroundColor = selectedBgColor;
       localStorage.setItem('font', selectedFont);
