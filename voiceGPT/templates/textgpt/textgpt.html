@@ -24,13 +24,13 @@
   #sidebar {
     display: flex;
     flex-direction: column;
-    height: 94vh;
+    height: 95vh;
     border-right: 1px solid black;
     transform: translateX(0); /* 기본 위치 */
     transition: transform 0.5s ease, width 0.5s ease; /* 슬라이드 애니메이션 */
   }
   .sideItem {
-    height: 85vh;
+    height: 87vh;
     /* flex: 1; */
     /* padding: 0.1rem; */
     overflow-y: auto;
@@ -39,7 +39,7 @@
     display: flex;
     flex-direction: column;
     flex: auto;
-    height: 94vh;
+    height: 95vh;
     transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
   }
   .sidebar-hidden {
@@ -287,7 +287,7 @@
       </div>
       <!-- 새로 채팅창을 시작할 때 주제를 입력받는 모달창 -->
       <button type="button" id="modalBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal" data-bs-whatever="{{ g.user.username }}"></button>
-      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -311,7 +311,7 @@
       </div>
       <!-- 특정 주제에 대한 GPT 역할을 지정할 때 사용하는 모달창 -->
       <button type="button" id="systemBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#systemModal" data-bs-whatever="{{ g.user.username }}"></button>
-      <div class="modal fade" id="systemModal" tabindex="-1" aria-labelledby="systemModalLabel" aria-hidden="true">
+      <div class="modal fade" id="systemModal" tabindex="-1" aria-labelledby="systemModalLabel">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -357,7 +357,7 @@
       </div>
       <!-- 글꼴 및 배경 디자인을 변경할 때 사용하는 모달창 -->
       <button type="button" id="designBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paletteModal" data-bs-whatever="{{ g.user.username }}"></button>
-      <div class="modal fade" id="paletteModal" tabindex="-1" aria-labelledby="paletteModalLabel" aria-hidden="true">
+      <div class="modal fade" id="paletteModal" tabindex="-1" aria-labelledby="paletteModalLabel">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -566,9 +566,23 @@
               if (!response.ok) {
                 throw new Error(response.status);
               }
-              const answer = await response.json();
+
+              let answer = null;
+              try {
+                answer = await response.json(); // JSON 파싱 오류를 무시
+              } catch (jsonError) {
+                console.warn('JSON parsing error, continuing:', jsonError);
+              }
+              // const answer = await response.json();
               // console.log(answer.data);
-              store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
+              store.dispatch({ 
+                type: 'UPDATE', 
+                content: 'chat', 
+                subject: subjectItem.textContent, 
+                items: answer ? answer.data : [] // 유효한 데이터가 없으면 빈 배열 전달
+              });
+
+              // store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
               Initialize_textareaTag();
             } catch (error) {
               console.error('Error:', error);
@@ -807,7 +821,7 @@
             }
             const res = await response.json();
             console.log(res.msgIds);
-            store.dispatch({type:'CREATE', author:'initializer'});
+            store.dispatch({type:'CREATE', author:'initializer', msgIds: res.msgIds});
           } catch(error) {
             console.error('Error: ', error);
           }
@@ -817,7 +831,12 @@
           images: [],
         });
       } else if (action.author === 'initializer'){
+        const _contents = [...state.contents];
+        _contents.slice(-2).forEach((obj, index) => {
+          obj.id = action.msgIds[index];
+        });
         newState = Object.assign({}, state, {
+          contents: _contents,
           disabled: false, 
         });
       }
@@ -913,6 +932,13 @@
             images: [...state.images.slice(0, _idx), ...state.images.slice(_idx + 1)],
           });
         } 
+      } else if (action.content === 'delete_messages') {
+        const targetIdsSet = new Set(action.targetIds); // Set으로 변환해 빠른 조회 가능
+        newState = {
+          ...state,
+          contents: state.contents.filter(item => !targetIdsSet.has(item.id)), // 삭제 대상 필터링
+        };
+        // console.log('SET!');
       }
     }
     return newState;
@@ -1333,6 +1359,9 @@
         targetSection.previousElementSibling.remove();
       }
       targetSection.remove();
+      
+      console.log(first_id, second_id);
+
       try {
         const id_list = {
           'first_id': first_id,
@@ -1351,6 +1380,7 @@
         }
         const answer = await response.json();
         console.log('삭제 성공: ', answer);
+        store.dispatch({ type:'UPDATE', content:'delete_messages', targetIds:[parseInt(first_id), parseInt(second_id)] });
       } catch(error) {
         console.error('Error: ', error);
       }
