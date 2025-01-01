@@ -130,7 +130,7 @@ def upload():
   contents = data['content']
   _system = data['system']
   _images = data['images']
-  print(f'_images: {_images}')
+  # print(f'_images: {_images}')
 
   if not isinstance(contents, list):
     return jsonify({'erorr': 'Content must be a list'}), 400
@@ -152,7 +152,7 @@ def upload():
         resolution=512,
       )
       db.session.add(_subject)
-      db.session.commit()
+      db.session.flush()
       mySubject = _subject
     else:
       mySubject = subjectFlag
@@ -183,7 +183,7 @@ def upload():
       targetImage.message_id = int(msgIds[0])
       
     db.session.commit()
-    return jsonify({'message': 'created!', 'msgIds': msgIds}), 201
+    return jsonify({'message': 'created!', 'msgIds': msgIds, 'subjectId':mySubject.id }), 201
   except SQLAlchemyError as e:
     db.session.rollback()
     return jsonify({'error': 'Database error', 'message': str(e)}), 500

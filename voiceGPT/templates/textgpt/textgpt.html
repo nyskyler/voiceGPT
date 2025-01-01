@@ -560,37 +560,63 @@
           const itemId = subjectItem.getAttribute('data-id');
           // data-id가 null이 아닐 경우, 즉 해당 목록이 이미 서버측 데이터베이스에 반영돼 있는 항목이라면 fetch 요청 시 id값을 인자로 전달해 대화 내용을 받아와 dispatch 요청
           // id, subject_id, create_date, role, content
-          if (itemId != 'null') {
-            try {
-              const response = await fetch(_URL + `/textgpt/content/${itemId}`);
-              if (!response.ok) {
-                throw new Error(response.status);
-              }
-
-              let answer = null;
-              try {
-                answer = await response.json(); // JSON 파싱 오류를 무시
-              } catch (jsonError) {
-                console.warn('JSON parsing error, continuing:', jsonError);
-              }
-              // const answer = await response.json();
-              // console.log(answer.data);
-              store.dispatch({ 
-                type: 'UPDATE', 
-                content: 'chat', 
-                subject: subjectItem.textContent, 
-                items: answer ? answer.data : [] // 유효한 데이터가 없으면 빈 배열 전달
-              });
-
-              // store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
-              Initialize_textareaTag();
-            } catch (error) {
-              console.error('Error:', error);
+          try {
+            const response = await fetch(_URL + `/textgpt/content/${itemId}`);
+            if (!response.ok) {
+              throw new Error(response.status);
             }
-          } else {
-            subjectItem.remove();
-            getChatList();
+
+            let answer = null;
+            try {
+              answer = await response.json(); // JSON 파싱 오류를 무시
+            } catch (jsonError) {
+              console.warn('JSON parsing error, continuing:', jsonError);
+            }
+            // const answer = await response.json();
+            // console.log(answer.data);
+            store.dispatch({ 
+              type: 'UPDATE', 
+              content: 'chat', 
+              subject: subjectItem.textContent, 
+              items: answer ? answer.data : [] // 유효한 데이터가 없으면 빈 배열 전달
+            });
+
+            // store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
+            Initialize_textareaTag();
+          } catch (error) {
+            console.error('Error:', error);
           }
+          // if (itemId != 'null') {
+          //   try {
+          //     const response = await fetch(_URL + `/textgpt/content/${itemId}`);
+          //     if (!response.ok) {
+          //       throw new Error(response.status);
+          //     }
+
+          //     let answer = null;
+          //     try {
+          //       answer = await response.json(); // JSON 파싱 오류를 무시
+          //     } catch (jsonError) {
+          //       console.warn('JSON parsing error, continuing:', jsonError);
+          //     }
+          //     // const answer = await response.json();
+          //     // console.log(answer.data);
+          //     store.dispatch({ 
+          //       type: 'UPDATE', 
+          //       content: 'chat', 
+          //       subject: subjectItem.textContent, 
+          //       items: answer ? answer.data : [] // 유효한 데이터가 없으면 빈 배열 전달
+          //     });
+
+          //     // store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
+          //     Initialize_textareaTag();
+          //   } catch (error) {
+          //     console.error('Error:', error);
+          //   }
+          // } else {
+          //   subjectItem.remove();
+          //   getChatList();
+          // }
         }); 
       }
       toc.dataset.listenerAdded = 'true';
@@ -820,8 +846,9 @@
               throw new Error(response.status);
             }
             const res = await response.json();
-            console.log(res.msgIds);
-            store.dispatch({type:'CREATE', author:'initializer', msgIds: res.msgIds});
+            // console.log(res.msgIds);
+            // console.log(res.subjectId);
+            store.dispatch({type:'CREATE', author:'initializer', msgIds: res.msgIds, subjectId: res.subjectId});
           } catch(error) {
             console.error('Error: ', error);
           }
@@ -835,10 +862,31 @@
         _contents.slice(-2).forEach((obj, index) => {
           obj.id = action.msgIds[index];
         });
-        newState = Object.assign({}, state, {
-          contents: _contents,
-          disabled: false, 
-        });
+        const activeSubjectId = $('.toc a.active')[0]?.getAttribute('data-id');
+        if (activeSubjectId == 'null') {
+          const newListItems = [...state.list_items];
+          newListItems[0].id = action.subjectId;
+
+          // $('.toc a.active').each(function () {
+          //   $(this).attr('data-id', action.subjectId);
+          // });
+
+          const activeElements = document.querySelectorAll('.toc a.active');
+          activeElements.forEach((element) => {
+            element.setAttribute('data-id', action.subjectId);
+          });
+
+          newState = Object.assign({}, state, {
+            contents: _contents,
+            list_items: newListItems,
+            disabled: false, 
+          });
+        } else {
+          newState = Object.assign({}, state, {
+            contents: _contents,
+            disabled: false, 
+          });
+        }
       }
     } else if(action.type === 'SUBJECT'){
       if (action.target === 'subject') {
