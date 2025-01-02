@@ -466,6 +466,17 @@
                   <option value="#90a4ae">어두운 회색</option>
                   <option value="#e9ecef">차분한 회색</option>
                 </select>
+                <label for="toc-styleSelect" class="form-label mt-3"><i class="fa-solid fa-list"></i>&nbsp;&nbsp;대화목록 스타일</label>
+                <select id="toc-styleSelect" class="form-select form-select-sm">
+                  <option value="list-group-item-primary">Primary</option>
+                  <option value="list-group-item-secondary">Secondary</option>
+                  <option value="list-group-item-success">Success</option>
+                  <option value="list-group-item-danger">Danger</option>
+                  <option value="list-group-item-warning">Warning</option>
+                  <option value="list-group-item-info">Info</option>
+                  <option value="list-group-item-light">Light</option>
+                  <option value="list-group-item-dark">Dark</option>
+                </select>
               </form>
             </div>
             <div class="modal-footer">
@@ -485,7 +496,7 @@
           <div class="input-group" style="border: none; outline: none;">
             <label id="img-label" for="img"><i class="fa-solid fa-paperclip attach-icon"></i></label>
             <input id="img" type="file" accept="image/*" style="display:none" multiple>
-            <textarea required minlength="3" maxlength="5000" id="myInput" name="message" class="form-control" placeholder="메시지를 입력하세요..." aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
+            <textarea required minlength="3" maxlength="5000" id="myInput" name="message" class="form-control" placeholder="프롬프트를 입력해 주세요" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
             <button id="myBtn" class="btn btn-primary" type="submit" id="send-button"><i class="fa-solid fa-circle-arrow-up"></i></button>
           </div>          
         </form>
@@ -535,8 +546,9 @@
 
   function TOC(){
     const state = store.getState();
+    const itemStyle = localStorage.getItem('toc-style') || 'list-group-item-secondary';
     let liTags = state.list_items.map(({ id, title }) => `
-      <a href='#' data-id=${id} class="subjectItem list-group-item list-group-item-action list-group-item-secondary ${state.subject === title ? 'active' : ''}">${title}</a>
+      <a href='#' data-id=${id} class="subjectItem list-group-item list-group-item-action ${itemStyle} ${state.subject === title ? 'active' : ''}">${title}</a>
     `).join('');
     // liTags = '<div class="sideBanner"><button class="btn btn-light chatBtn" style="padding: 0.5rem; margin-top: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button></div>' + '<div class="sideItem">' + liTags + '</div>';
     liTags = '<div class="sideItem">' + liTags + '</div>';     
@@ -586,37 +598,6 @@
           } catch (error) {
             console.error('Error:', error);
           }
-          // if (itemId != 'null') {
-          //   try {
-          //     const response = await fetch(_URL + `/textgpt/content/${itemId}`);
-          //     if (!response.ok) {
-          //       throw new Error(response.status);
-          //     }
-
-          //     let answer = null;
-          //     try {
-          //       answer = await response.json(); // JSON 파싱 오류를 무시
-          //     } catch (jsonError) {
-          //       console.warn('JSON parsing error, continuing:', jsonError);
-          //     }
-          //     // const answer = await response.json();
-          //     // console.log(answer.data);
-          //     store.dispatch({ 
-          //       type: 'UPDATE', 
-          //       content: 'chat', 
-          //       subject: subjectItem.textContent, 
-          //       items: answer ? answer.data : [] // 유효한 데이터가 없으면 빈 배열 전달
-          //     });
-
-          //     // store.dispatch({ type: 'UPDATE', content: 'chat', subject: subjectItem.textContent, items: answer.data });
-          //     Initialize_textareaTag();
-          //   } catch (error) {
-          //     console.error('Error:', error);
-          //   }
-          // } else {
-          //   subjectItem.remove();
-          //   getChatList();
-          // }
         }); 
       }
       toc.dataset.listenerAdded = 'true';
@@ -1058,32 +1039,36 @@
     });
 
     document.getElementById('article').style.fontFamily = localStorage.getItem('font') || 'inherit';
+    const listElems = document.querySelectorAll('.toc');
+    listElems.forEach((toc) => {
+      toc.style.fontFamily = localStorage.getItem('font') || 'inherit';
+    });
     document.getElementById('sidebar').style.backgroundColor = localStorage.getItem('bg-color') || '#e9ecef';
     document.getElementById('chatWindow').style.backgroundColor = localStorage.getItem('bg-color') || '#e9ecef';
     const selectedBgColor = localStorage.getItem('bg-color');
     const $buttons = document.querySelectorAll('.btn-transparent');
-      const $model = document.getElementById('currentModel');
-      if (selectedBgColor === '#2B3035') {
-        $buttons.forEach(button => {
-          const icon = button.querySelector('i');
-          if (icon) {
-            icon.style.color = 'white';
-          }
-        });
-        $model.style.color = 'white';
-        document.getElementById('mySpinner').classList.remove('text-dark');
-        document.getElementById('mySpinner').classList.add('text-light');
-      } else {
-        $buttons.forEach(button => {
-          const icon = button.querySelector('i');
-          if (icon) {
-            icon.style.color = 'black';
-          }
-        });
-        $model.style.color = 'black';
-        document.getElementById('mySpinner').classList.remove('text-light');
-        document.getElementById('mySpinner').classList.add('text-dark');
-      }
+    const $model = document.getElementById('currentModel');
+    if (selectedBgColor === '#2B3035') {
+      $buttons.forEach(button => {
+        const icon = button.querySelector('i');
+        if (icon) {
+          icon.style.color = 'white';
+        }
+      });
+      $model.style.color = 'white';
+      document.getElementById('mySpinner').classList.remove('text-dark');
+      document.getElementById('mySpinner').classList.add('text-light');
+    } else {
+      $buttons.forEach(button => {
+        const icon = button.querySelector('i');
+        if (icon) {
+          icon.style.color = 'black';
+        }
+      });
+      $model.style.color = 'black';
+      document.getElementById('mySpinner').classList.remove('text-light');
+      document.getElementById('mySpinner').classList.add('text-dark');
+    }
     // '전송' 클릭 시 발생하는 이벤트 내용을 정의 state의 subject가 null로 비어있을 경우에는 메시지 전송이 아닌 모달창이 띄워지며, 이미 subject가 있을 시에는 입력창의 메시지를 chatGPT에 질의함.
     document.getElementById('messageForm').addEventListener('submit', function(event){
       event.preventDefault();
@@ -1171,12 +1156,14 @@
         const savedBorder = localStorage.getItem('border');
         const savedTheme = localStorage.getItem('theme');
         const savedColor = localStorage.getItem('bg-color');
+        const savedStyle = localStorage.getItem('toc-style');
 
         // 각 select 요소
         const fontSelect = document.getElementById('fontSelect');
         const borderSelect = document.getElementById('borderSelect');
         const themeSelect = document.getElementById('themeSelect');
         const bgcolorSelect = document.getElementById('bg-colorSelect');
+        const tocstyleSelect = document.getElementById('toc-styleSelect');
 
         // 기존 값이 있으면 해당 값으로 선택
         if (savedFont) {
@@ -1191,6 +1178,9 @@
         }
         if (savedColor) {
           bgcolorSelect.value = savedColor;
+        }
+        if (savedStyle) {
+          tocstyleSelect.value = savedStyle;
         }
       });
     }
@@ -1251,9 +1241,34 @@
       const selectedBorder = document.getElementById('borderSelect').value;
       const selectedTheme = document.getElementById('themeSelect').value;
       const selectedBgColor = document.getElementById('bg-colorSelect').value;
+      const selectedStyle = document.getElementById('toc-styleSelect').value;
       const $sidebar = document.getElementById('sidebar');
       const $chatWindow = document.getElementById('chatWindow');
       document.getElementById('article').style.fontFamily = selectedFont;
+      
+      const listElems = document.querySelectorAll('.toc');
+      listElems.forEach((toc) => {
+        toc.style.fontFamily = selectedFont;
+      });
+
+      const subjectItems = document.querySelectorAll('.subjectItem');
+      const regex = /^list-group-item-(?!a)\w*/;
+
+      subjectItems.forEach(elem => {
+        // 우선 클래스 배열을 복사하여 변경할 클래스명들을 저장하기 위함
+        const classListArray = Array.from(elem.classList);
+        
+        classListArray.forEach(cls => {
+          const flag = regex.test(cls);
+          if (flag) {
+            elem.classList.remove(cls); // 클래스 삭제
+          }
+        });
+        
+        // 사용자가 원하는 클래스를 추가할 수 있도록
+        elem.classList.add(selectedStyle);
+      });
+
       const $spinner = document.getElementById('mySpinner');
       const cards = document.querySelectorAll('.card');
       cards.forEach(card => {
@@ -1313,6 +1328,7 @@
       localStorage.setItem('border', selectedBorder);
       localStorage.setItem('theme', selectedTheme);
       localStorage.setItem('bg-color', selectedBgColor);
+      localStorage.setItem('toc-style', selectedStyle);
       $('#paletteModal').modal('hide');
     });
     // 배너에 있는 '#deleteBtn' 클릭 시, state의 subject를 인자로 전달하며 해당 주제 및 대화글의 삭제를 위한 fetch 요청을 수행함
