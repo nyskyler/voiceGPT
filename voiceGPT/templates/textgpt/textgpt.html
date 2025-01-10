@@ -77,6 +77,12 @@
     width: 100%;
     padding: 0 10px;
   }
+  .modeChange {
+    display: none;
+  }
+  .cursor-pointer {
+    cursor: pointer; /* 포인터 모양으로 변경 */
+  }
   .messages {
     flex: auto;
     padding: 1rem;
@@ -269,6 +275,7 @@
             <button id="fontDecrease" class="btn btn-transparent"><i class="fa-regular fa-square-minus"></i></button>
             <button id="paletteBtn" class="btn btn-transparent"><i class="fa-solid fa-palette"></i></i></button>
             <button id="settingBtn" class="btn btn-transparent"><i class="fa-solid fa-gear"></i></button>
+            <button id="dalleSettingBtn" class="btn btn-transparent modeChange"><i class="fa-solid fa-gears"></i></button>
             <button id="deleteBtn" class="btn btn-transparent"><i class="fa-regular fa-trash-can"></i></button>
             <!-- 모바일에서 오프캔버스를 여는 버튼 -->
             <div class="d-md-none p-1 border-bottom" style="display: inline;">
@@ -311,7 +318,7 @@
       </div>
       <!-- 특정 주제에 대한 GPT 역할을 지정할 때 사용하는 모달창 -->
       <button type="button" id="systemBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#systemModal" data-bs-whatever="{{ g.user.username }}"></button>
-      <div class="modal fade" id="systemModal" tabindex="-1" aria-labelledby="systemModalLabel">
+      <div class="modal fade" id="systemModal" tabindex="-1" aria-labelledby="systemModalLabel" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -355,9 +362,60 @@
           </div>
         </div>
       </div>
+      <!-- DALL-E API 설정을 지정할 때 사용하는 모달창 -->
+      <button type="button" id="dalleBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#dalleModal" data-bs-whatever="{{ g.user.username }}"></button>
+      <div class="modal fade" id="dalleModal" tabindex="-1" aria-labelledby="dalleModalLabel" aria-hidden="true">   
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="dalleModalLabel"></h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="dalleForm">
+                <p class="fs-6"><i class="fa-regular fa-square-check"></i>&nbsp;&nbsp;DALL-E 모델</p>
+                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
+                  <input type="radio" class="btn-check" name="dallemodels" id="dall-e-3" autocomplete="off">
+                  <label class="btn" for="dall-e-3">DALL-E-3</label>
+                  <input type="radio" class="btn-check" name="dallemodels" id="dall-e-2" autocomplete="off">
+                  <label class="btn" for="dall-e-2">DALL-E-2</label>
+                </div>
+                <label for="numberRange" class="form-label"><i class="fa-solid fa-n"></i>&nbsp;&nbsp;생성되는 이미지의 개수(1~5)</label>
+                <input type="range" class="form-range" min="1" max="5" step="1" id="numberRange" value="1">
+                <p class="mt-3 fs-6"><i class="fa-regular fa-image"></i>&nbsp;&nbsp;품질</p>
+                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
+                  <input type="radio" class="btn-check" name="quality" id="quality1" autocomplete="off">
+                  <label class="btn" for="quality1">standard</label>
+                  <input type="radio" class="btn-check" name="quality" id="quality2" autocomplete="off">
+                  <label class="btn" for="quality2">hd</label>
+                </div>
+                <label for="dalleSize" class="form-label mt-3"><i class="fa-solid fa-expand"></i>&nbsp;&nbsp;크기</label>
+                <select id="dalleSize" class="form-select form-select-sm">
+                  <option value="256x256">256x256</option>
+                  <option value="512x512">512x512</option>
+                  <option value="1024x1024">1024x1024</option>
+                  <option value="1792x1024">1792x1024</option>
+                  <option value="1024x1792">1024x1792</option>
+                </select>
+                <p class="mt-4 fs-6"><i class="fa-solid fa-pen-fancy"></i>&nbsp;&nbsp;스타일</p>
+                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
+                  <input type="radio" class="btn-check" name="dalleStyle" id="style1" autocomplete="off">
+                  <label class="btn" for="style1">vivid</label>
+                  <input type="radio" class="btn-check" name="dalleStyle" id="style2" autocomplete="off">
+                  <label class="btn" for="style2">natural</label>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+              <button type="submit" class="btn btn-primary" form="dalleForm">정하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- 글꼴 및 배경 디자인을 변경할 때 사용하는 모달창 -->
       <button type="button" id="designBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paletteModal" data-bs-whatever="{{ g.user.username }}"></button>
-      <div class="modal fade" id="paletteModal" tabindex="-1" aria-labelledby="paletteModalLabel">
+      <div class="modal fade" id="paletteModal" tabindex="-1" aria-labelledby="paletteModalLabel" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -670,13 +728,10 @@
     });
 
     updateFontSize();
-    // const chatWindow = document.getElementById('article');
-    // if (chatWindow.lastElementChild) {
-    //   chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
-    // }
-    const $model = document.getElementById('currentModel');
-    $model.textContent = state.model === 'gpt-4o' ? 'GPT-4o' : 'GPT-4o mini';
-
+    const $currentModel = document.getElementById('currentModel');
+    const $dalleSettingBtn = document.getElementById('dalleSettingBtn');
+    $currentModel.textContent = $dalleSettingBtn.classList.contains('modeChange') ? state.model === 'gpt-4o' ? 'GPT-4o' : 'GPT-4o mini' : state.dalle_model.toUpperCase();
+  
     const thumbnailPromises = state.contents.map(async (el) => {
       const $target = document.querySelector(`div.thumbnails[data-url="${el.imgUrl}"]`);
       if (!($target && Array.isArray(el.imgUrl) && el.imgUrl.length > 0)) {
@@ -688,7 +743,7 @@
           url = _URL + '/textgpt/get_thumbnail/' + url;
         }
         const imgSrc = await fetchThumbnail(url);
-        if (imgSrc && el.author == 'user') {
+        if (imgSrc) {
           const $container = document.createElement('div');
           $container.style.position = 'relative';
           $container.style.display = 'inline-block';
@@ -745,6 +800,15 @@
       $mySpinner.style.display = 'none';
     }
   }
+  
+  function modelReset() {
+    const $settingBtn = document.getElementById('settingBtn');
+    const $dalleSettingBtn = document.getElementById('dalleSettingBtn');
+    if ($settingBtn.classList.contains('modeChange')) {
+      $settingBtn.classList.toggle('modeChange');
+      $dalleSettingBtn.classList.toggle('modeChange');
+    }
+  }
 
   function reducer(state, action){
     if(state === undefined){
@@ -758,6 +822,11 @@
         contents:[],
         images:[],
         resolution: 512,
+        dalle_model: 'dall-e-3',
+        number_of_images: 1,
+        quality_of_image: 'standard',
+        size_of_image: '1024x1024',
+        style_of_image: 'vivid',
       }
     }
     let newState;
@@ -869,6 +938,116 @@
           });
         }
       }
+    } else if (action.type === 'IMG_CREATE') {
+      // 사용자 질문 또는 ChatGPT 응답으로 인한 CREATE 발생 시 contents에 내용을 추가하여 렌더링함
+      const newContents = [...state.contents];
+      const latestImages = [...state.images]; // images 상태를 클로저로 캡처
+      if(action.author === 'user'){
+        // 사용자가 메시지를 생성하고 CREATE type 발생 시 ChatGPT에 응답 요청을 보내고, 그 응답을 받아 연쇄적으로 dispatch 호출
+        newContents.push({author:action.author, desc:action.desc, imgUrl:state.images});
+        (async () => {
+          try {
+            const question = {
+              'prompt': action.desc,
+              'images': latestImages, // 캡처된 images 배열을 사용
+              'subject_id': $('.toc a.active')[0]?.getAttribute('data-id') || '',
+            };
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(question),
+            };
+
+            // console.log(action.desc);
+            const response = await fetch(_URL + '/textgpt/generate_image/', options);
+            if(!response.ok){
+              throw new Error(response.status);
+            }
+            const answer = await response.json();
+            const imgUrlArray = [];
+            for (const msgId of answer.msgIds) {
+              imgUrlArray.push(_URL + `/textgpt/get_image/${msgId}`);
+            }
+            // console.log(imgUrlArray);
+            store.dispatch({type:'IMG_CREATE', author:'assistant', desc:answer.revised_prompt || '', images: imgUrlArray});
+          } catch(error) {
+            console.error('Error: ', error);
+          }
+        })();
+        const btnFlag = action.author === 'user' ? true : false;
+        newState = Object.assign({}, state, {
+          contents: newContents,
+          disabled: btnFlag, 
+        });
+      } else if(action.author === 'assistant'){
+        newContents.push({author:action.author, desc:action.desc, imgUrl:action.images});
+        // 가장 최근의 질문과 응답을 데이터베이스에 저장하기 위하여 서버측에 fetch 호출
+        // 전달되는 인자로는 state에 설정된 주제 및 최신의 질문과 응답
+        (async () => {
+          try {
+            const latestContents = newContents.slice(-2);
+            const _body = {
+              "subject": state.subject, // 여기서는 문자열을 기대하고 있음.
+              "images": action.images, 
+              "source_images": latestImages,
+              "content": latestContents,
+            };
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(_body),
+            };
+            const response = await fetch(_URL + '/textgpt/upload_generated_image/', options);
+            if(!response.ok){
+              throw new Error(response.status);
+            }
+            const res = await response.json();
+            // console.log(res.msgIds);
+            // console.log(res.subjectId);
+            store.dispatch({type:'CREATE', author:'initializer', msgIds: res.msgIds, subjectId: res.subjectId});
+          } catch(error) {
+            console.error('Error: ', error);
+          }
+        })();
+        newState = Object.assign({}, state, {
+          contents: newContents,
+          images: [],
+        });
+      } else if (action.author === 'initializer'){
+        const _contents = [...state.contents];
+        _contents.slice(-2).forEach((obj, index) => {
+          obj.id = action.msgIds[index];
+        });
+        const activeSubjectId = $('.toc a.active')[0]?.getAttribute('data-id');
+        if (activeSubjectId == 'null') {
+          const newListItems = [...state.list_items];
+          newListItems[0].id = action.subjectId;
+
+          // $('.toc a.active').each(function () {
+          //   $(this).attr('data-id', action.subjectId);
+          // });
+
+          const activeElements = document.querySelectorAll('.toc a.active');
+          activeElements.forEach((element) => {
+            element.setAttribute('data-id', action.subjectId);
+          });
+
+          newState = Object.assign({}, state, {
+            contents: _contents,
+            list_items: newListItems,
+            disabled: false, 
+          });
+        } else {
+          newState = Object.assign({}, state, {
+            contents: _contents,
+            disabled: false, 
+          });
+        }
+      }
     } else if(action.type === 'SUBJECT'){
       if (action.target === 'subject') {
         // 모달창에 주제를 입력하고 정하기를 클릭하면 SUBJECT 발생. 데이터베이스 반영 전이므로 id는 없음(null)으로 설정.   
@@ -892,6 +1071,15 @@
           resolution: action.resolution,
           subject: action.title,
         });
+      } else if (action.target === 'dalle_system') {
+        getChatList();
+        newState = Object.assign({}, state, {
+          dalle_model: action.model,
+          number_of_images: action.number,
+          quality_of_image: action.quality,
+          size_of_image: action.size,
+          style_of_image: action.style,
+        });
       }
     } else if(action.type === 'UPDATE'){
       // 전달받은 주제 항목에서 subject.id와 subject.title만으로 구성된 객체 배열을 생성해 list_items에 전달하여 화면 갱신 
@@ -902,13 +1090,19 @@
           'system': el.system,
           'model': el.model,
           'range': el.range,
-          'resolution': el.resolution, 
+          'resolution': el.resolution,
+          'dalle_model': el.dalle_model,
+          'number_of_images': el.number_of_images,
+          'quality_of_image': el.quality_of_image,
+          'size_of_image': el.size_of_image,
+          'style_of_image': el.style_of_image, 
         }));
         // console.log(_items);
         newState = Object.assign({}, state, {
           list_items: _items,
         });
       } else if (action.content === 'chat') {
+        modelReset();
         // 데이터베이스의 Message 모델로부터 전달받은 배열 객체에서 content와 role만을 추출해 새로운 content 생성
         const _contents = action.items.map(el => ({
           'id': el.id,
@@ -926,8 +1120,14 @@
           resolution: state.list_items[idx].resolution, 
           images: [],
           contents: _contents,
-        });
+          dalle_model: state.list_items[idx].dalle_model || 'dall-e-3',
+          number_of_images: state.list_items[idx].number_of_images || 1,
+          quality_of_image: state.list_items[idx].quality_of_image || 'standard',
+          size_of_image: state.list_items[idx].size_of_image || '1024x1024',
+          style_of_image: state.list_items[idx].style_of_image || 'vivid',
+          });
       } else if (action.content === 'newChat') {
+        modelReset();
         // state의 subject를 null로, contents를 빈 배열로, list_items는 그대로
         newState = Object.assign({}, state, {
           subject: null,
@@ -937,8 +1137,14 @@
           contents: [],
           images: [],
           resolution: 512,
+          dalle_model: 'dall-e-3',
+          number_of_images: 1,
+          quality_of_image: 'standard',
+          size_of_image: '1024x1024',
+          style_of_image: 'vivid',
         });
       } else if (action.content === 'reset') {
+        modelReset();
         const newList_items = [...state.list_items.slice(0, action.idx), ...state.list_items.slice(action.idx+1)];
         newState = Object.assign({}, state, {
           subject: null,
@@ -949,6 +1155,11 @@
           contents: [],
           images: [],
           resolution: 512,
+          dalle_model: 'dall-e-3',
+          number_of_images: 1,
+          quality_of_image: 'standard',
+          size_of_image: '1024x1024',
+          style_of_image: 'vivid',
         });
       } else if (action.content === 'add_images') {
         newState = Object.assign({}, state, {
@@ -1079,7 +1290,14 @@
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
         // console.log(_desc);
-        store.dispatch({type:'CREATE', author:_author, desc:_desc});
+        
+        const currentModel = document.getElementById('currentModel').textContent.toLowerCase();
+        if (currentModel.startsWith('gpt')) {
+          store.dispatch({type:'CREATE', author:_author, desc:_desc});
+        } else if (currentModel.startsWith('dall')) {
+          // console.log('dall!');
+          store.dispatch({type:'IMG_CREATE', author:_author, desc:_desc});
+        }
         Initialize_textareaTag(null); 
       } else {
         $('#modalBtn').click();
@@ -1131,19 +1349,53 @@
     const systemModal = document.getElementById('systemModal')
     if (systemModal) {
       systemModal.addEventListener('show.bs.modal', event => {
+        // 포커스를 첫 번째 입력 요소로 이동
+        systemModal.querySelector('input, textarea, button').focus();
+        systemModal.setAttribute('aria-hidden', 'false');
         // Button that triggered the modal
         const button = event.relatedTarget
         // Extract info from data-bs-* attributes
         const recipient = button.getAttribute('data-bs-whatever')
         const modalTitle = systemModal.querySelector('.modal-title')
         const modalBodyInput = systemModal.querySelector('.modal-body input')
-        modalTitle.textContent = 'Preferences';
-      })
+        modalTitle.textContent = 'GPT Preferences';
+      });
+
+      systemModal.addEventListener('hidden.bs.modal', function () {
+        // 포커스를 모달을 연 버튼으로 복원
+        document.getElementById('systemBtn').focus();
+        systemModal.setAttribute('aria-hidden', 'true');
+      });
+    }
+    // dall-e 모달창의 세부 항목의 내용 지정하기
+    const dalleModal = document.getElementById('dalleModal')
+    if (dalleModal) {
+      dalleModal.addEventListener('show.bs.modal', event => {
+        // 포커스를 첫 번째 입력 요소로 이동
+        dalleModal.querySelector('input, button').focus();
+        dalleModal.setAttribute('aria-hidden', 'false');
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = dalleModal.querySelector('.modal-title')
+        const modalBodyInput = dalleModal.querySelector('.modal-body input')
+        modalTitle.textContent = 'DALL-E Preferences';
+      });
+
+      dalleModal.addEventListener('hidden.bs.modal', function () {
+        // 포커스를 모달을 연 버튼으로 복원
+        document.getElementById('dalleBtn').focus();
+        dalleModal.setAttribute('aria-hidden', 'true');
+      });
     }
     // palette 모달창의 세부 항목의 내용 지정하기
     const paletteModal = document.getElementById('paletteModal')
     if (paletteModal) {
       paletteModal.addEventListener('show.bs.modal', event => {
+        // 포커스를 첫 번째 입력 요소로 이동
+        paletteModal.querySelector('input, button').focus();
+        paletteModal.setAttribute('aria-hidden', 'false');
         // Button that triggered the modal
         const button = event.relatedTarget
         // Extract info from data-bs-* attributes
@@ -1182,6 +1434,12 @@
         if (savedStyle) {
           tocstyleSelect.value = savedStyle;
         }
+      });
+
+      paletteModal.addEventListener('hidden.bs.modal', function () {
+        // 포커스를 모달을 연 버튼으로 복원
+        document.getElementById('paletteBtn').focus();
+        paletteModal.setAttribute('aria-hidden', 'true');
       });
     }
     // 모달창에서 '정하기'를 클릭했을 시, 입력한 주제명에 사용자 지정 시간 포맷을 추가하고 이를 반영하기 위한 dispatch 호출. 질문 입력창에 값이 있을 시에만 '전송'을 자동으로 클릭.
@@ -1229,6 +1487,48 @@
           const answer = await response.json();
           // console.log(answer);
           store.dispatch({type:'SUBJECT', target:'system', content: gpt_role, range: range_val, model: selectedModelLabel.toLowerCase(), title: topic_val, resolution: selectedResolutionLabel});
+        } catch(error) {
+          console.error('Error: ', error);
+        }
+      })();
+    });
+    // dalle 모달창에서 '정하기'를 클릭했을 시, 주제에 dalle 설정을 반영하기 위한 dispatch 호출.
+    document.getElementById('dalleForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const selectedModelLabel = document.querySelector('input[name="dallemodels"]:checked').nextElementSibling.textContent.toLowerCase();  // 체크된 라디오 버튼의 텍스트 값 가져오기
+      const range_val = document.getElementById('numberRange').value;
+      const selectedQualityInput = document.querySelector('input[name="quality"]:checked');
+      const selectedQualityLabel = selectedQualityInput ? selectedQualityInput.nextElementSibling.textContent : 'standard';
+      const selectedSize = document.getElementById('dalleSize').value;
+      const selectedStyleInput = document.querySelector('input[name="dalleStyle"]:checked');
+      const selectedStyleLabel = selectedStyleInput ? selectedStyleInput.nextElementSibling.textContent : 'vivid';
+      $('#dalleModal').modal('hide');
+      console.log(`model: ${selectedModelLabel}, range_val: ${range_val}, quality: ${selectedQualityLabel}, size: ${selectedSize}, style: ${selectedStyleLabel}`);
+      (async () => {
+        const _id = $('.toc a.active')[0].getAttribute('data-id');
+        try {
+          const update = {
+            'id': _id,
+            'dalle_model': selectedModelLabel,
+            'number_of_images': range_val,
+            'quality_of_image': selectedQualityLabel,
+            'size_of_image': selectedSize,
+            'style_of_image': selectedStyleLabel,
+          };
+          const options = {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(update),
+          };
+          const response = await fetch(_URL + '/textgpt/update/dalle_setting/', options);
+          if(!response.ok){
+            throw new Error(response.status);
+          }
+          const answer = await response.json();
+          console.log(answer);
+          store.dispatch({type:'SUBJECT', target:'dalle_system', model: selectedModelLabel, number: range_val, quality: selectedQualityLabel, size: selectedSize, style: selectedStyleLabel});
         } catch(error) {
           console.error('Error: ', error);
         }
@@ -1380,9 +1680,7 @@
         '1024': '#resolution2',
         '2048': '#resolution3'
       };
-
       let $resElem = resolutions[state.resolution.toString()];
-      
       if($resElem) {
         $($resElem).prop('checked', true);
       }
@@ -1391,6 +1689,104 @@
       $('#memoryRange').val(state.range);
       $('#topicInput').val(state.subject);
       $('#systemBtn').click();
+    });
+
+    document.getElementById('dalleSettingBtn').addEventListener('click', () => {
+      const state = store.getState();
+      const activeItems = $('.toc a.active');
+      if (!activeItems.length) {
+        return;
+      }
+
+      const $elem = (state.dalle_model === 'dall-e-3' ? $('#dall-e-3') : $('#dall-e-2'));
+      $elem.prop('checked', true);
+
+      const $dalleForm = document.getElementById('dalleForm');
+      const $dalle3Radio = document.getElementById('dall-e-3');
+      const $dalle2Radio = document.getElementById('dall-e-2');
+      const $numberRange = document.getElementById('numberRange');
+      const $quality1 = document.getElementById('quality1');
+      const $quality2 = document.getElementById('quality2');
+      const $style1 = document.getElementById('style1');
+      const $style2 = document.getElementById('style2');
+      const $dalleSize = document.getElementById('dalleSize');
+      const $sizeOptions = $dalleSize.querySelectorAll('option');
+
+      const handleModelChange = () => {
+        if ($dalle2Radio.checked) {
+          // Disable 'hd', 'style' option
+          $numberRange.removeAttribute('disabled');
+          $quality1.checked = false;
+          $quality2.checked = false;
+          $style1.checked = false;
+          $style2.checked = false;
+          const temp = ['256x256', '512x512'];
+          $sizeOptions.forEach(option => {
+            if(temp.includes(option.value)) {
+              option.removeAttribute('disabled');
+            }
+          });
+          document.querySelector('select option[value="1024x1024"]').selected = true;
+          $quality1.setAttribute('disabled', true);
+          $quality2.setAttribute('disabled', true);
+          $style1.setAttribute('disabled', true);
+          $style2.setAttribute('disabled', true);
+          const targets = ['1024x1792', '1792x1024'];
+          $sizeOptions.forEach(option => {
+            if(targets.includes(option.value)) {
+              option.setAttribute('disabled', true);
+            }
+          });
+        } else {
+          // Enable 'hd', 'style' option
+          const temp = ['1024x1792', '1792x1024'];
+          $sizeOptions.forEach(option => {
+            if(temp.includes(option.value)) {
+              option.removeAttribute('disabled');
+            }
+          });
+          document.querySelector('select option[value="1024x1024"]').selected = true;
+          $numberRange.value = '1';
+          $numberRange.setAttribute('disabled', true);
+          $quality1.removeAttribute('disabled');
+          $quality2.removeAttribute('disabled');
+          $style1.removeAttribute('disabled');
+          $style2.removeAttribute('disabled');
+          $quality1.checked = true;
+          $style1.checked = true;
+          const targets = ['256x256', '512x512'];
+          $sizeOptions.forEach(option => {
+            if(targets.includes(option.value)) {
+              option.setAttribute('disabled', true);
+            }
+          });
+        }
+      };
+      $dalle3Radio.addEventListener('change', handleModelChange);
+      $dalle2Radio.addEventListener('change', handleModelChange);
+      handleModelChange();
+
+      const qualities = {
+        'standard': '#quality1',
+        'hd': '#quality2',
+      };
+      let $qualElem = qualities[state.quality_of_image];
+      if($qualElem) {
+        $($qualElem).prop('checked', true);
+      }
+
+      const styles = {
+        'vivid': '#style1',
+        'natural': '#style2',
+      };
+      let $styleElem = styles[state.style_of_image];
+      if($styleElem) {
+        $($styleElem).prop('checked', true);
+      }
+
+      $('#numberRange').val(state.number_of_images);
+      $('#dalleSize').val(state.size_of_image);
+      $('#dalleBtn').click();
     });
 
     document.getElementById('paletteBtn').addEventListener('click', () => {
@@ -1636,6 +2032,66 @@
         fontSize -= 2;
         updateFontSize();
       }
+    });
+
+    const $currentModel = document.getElementById('currentModel');
+    const $settingBtn = document.getElementById('settingBtn');
+    const $dalleSettingBtn = document.getElementById('dalleSettingBtn');
+    $currentModel.addEventListener('mouseenter', () => {
+      $currentModel.classList.add('cursor-pointer');
+    });
+
+    $currentModel.addEventListener('mouseleave', () => {
+      $currentModel.classList.remove('cursor-pointer');
+    });
+
+    $currentModel.addEventListener('click', () => {
+      const state = store.getState();
+      $settingBtn.classList.toggle('modeChange');
+      $dalleSettingBtn.classList.toggle('modeChange');
+      $currentModel.textContent = $dalleSettingBtn.classList.contains('modeChange') ? state.model === 'gpt-4o' ? 'GPT-4o' : 'GPT-4o mini' : state.dalle_model.toUpperCase();
+    });
+
+    // MutationObserver에 사용할 콜백 함수 정의
+    const observerCallback = function(mutationsList) {
+      const textarea = document.getElementById('myInput');
+      const imgLabel = document.getElementById('img-label');
+      for (let mutation of mutationsList) {
+          if (mutation.type === 'childList' || mutation.type === 'characterData') {
+            if ($currentModel.textContent.startsWith('GPT')) {
+              // console.log('GPT');
+              textarea.setAttribute('maxlength', 5000);
+              textarea.setAttribute('placeholder', '프롬프트를 입력해 주세요');
+              imgLabel.style.display = 'block';
+            } else if ($currentModel.textContent === 'DALL-E-2') {
+              // console.log('DALL-E-2');
+              textarea.setAttribute('maxlength', 1000);
+              textarea.setAttribute('placeholder', '이미지 생성 및 편집, 변환 등을 위한 프롬프트를 영어로 입력해 주세요');
+              imgLabel.style.display = 'block';
+            } else if ($currentModel.textContent === 'DALL-E-3') {
+              // console.log('DALL-E-3');
+              textarea.setAttribute('maxlength', 4000);
+              textarea.setAttribute('placeholder', '이미지 생성을 위한 프롬프트를 입력해 주세요');
+              imgLabel.style.display = 'none';
+              const $thumbnails = document.getElementById('thumbnails');
+              const children = $thumbnails.children;
+              while (children.length > 1) {
+                $thumbnails.removeChild(children[0]);
+              }
+              const $imgInput = document.getElementById('img');
+              $imgInput.value = '';
+            }
+          }
+      }
+    };
+
+    // MutationObserver 생성
+    const observer = new MutationObserver(observerCallback);
+
+    // 대상 노드와 옵션 설정
+    observer.observe(currentModel, {
+      childList: true,   // 자식 요소의 추가 또는 삭제 감지
+      characterData: true // 텍스트 내용의 변화 감지
     });
   }
 </script>
