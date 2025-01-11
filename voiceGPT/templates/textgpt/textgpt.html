@@ -58,7 +58,23 @@
   }
   .thumbnails {
     display: flex;
-    flex-direction: row;
+    /* flex-direction: row; */
+    /* flex-wrap: wrap; */
+    overflow-x: scroll;
+    white-space: nowrap; /* 줄바꿈 방지 */
+  }
+  /* 스크롤바 스타일링 (웹킷 브라우저용) */
+  .thumbnails::-webkit-scrollbar {
+    height: 8px; /* 스크롤바 높이 */
+  }
+
+  .thumbnails::-webkit-scrollbar-thumb {
+    background-color: #888; /* 스크롤바 색상 */
+    border-radius: 4px; /* 스크롤바 모서리 둥글게 */
+  }
+
+  .thumbnails::-webkit-scrollbar-thumb:hover {
+    background-color: #555; /* 스크롤바 색상 (호버 시) */
   }
   .banner {
     flex: 0 0 auto;
@@ -380,8 +396,8 @@
                   <input type="radio" class="btn-check" name="dallemodels" id="dall-e-2" autocomplete="off">
                   <label class="btn" for="dall-e-2">DALL-E-2</label>
                 </div>
-                <label for="numberRange" class="form-label"><i class="fa-solid fa-n"></i>&nbsp;&nbsp;생성되는 이미지의 개수(1~5)</label>
-                <input type="range" class="form-range" min="1" max="5" step="1" id="numberRange" value="1">
+                <label for="numberRange" class="form-label"><i class="fa-solid fa-n"></i>&nbsp;&nbsp;생성되는 이미지의 개수(1~10)</label>
+                <input type="range" class="form-range" min="1" max="10" step="1" id="numberRange" value="1">
                 <p class="mt-3 fs-6"><i class="fa-regular fa-image"></i>&nbsp;&nbsp;품질</p>
                 <div class="mb-3" style="display: flex; justify-content: space-evenly;">
                   <input type="radio" class="btn-check" name="quality" id="quality1" autocomplete="off">
@@ -1847,8 +1863,9 @@
     });
 
     document.getElementById('img').addEventListener('change', function(e) {
+      const currentModel = document.getElementById('currentModel').textContent;
       const state = store.getState();
-      const maxFiles = 3;
+      const maxFiles = currentModel.startsWith('GPT') ? 3 : 2;
       const files = this.files;
       const $imgContainers = document.getElementsByClassName('.imgContainer');
       const imgUrlArray = [];
@@ -1866,6 +1883,7 @@
           formData.append('images[]', file);
         }
         formData.append('resolution', state.resolution);
+        formData.append('currentModel', currentModel);
 
         fetch(_URL + '/textgpt/upload_image/', {
           method: 'POST',
@@ -2061,16 +2079,19 @@
             if ($currentModel.textContent.startsWith('GPT')) {
               // console.log('GPT');
               textarea.setAttribute('maxlength', 5000);
+              textarea.setAttribute('minlength', 2);
               textarea.setAttribute('placeholder', '프롬프트를 입력해 주세요');
               imgLabel.style.display = 'block';
             } else if ($currentModel.textContent === 'DALL-E-2') {
               // console.log('DALL-E-2');
               textarea.setAttribute('maxlength', 1000);
+              textarea.setAttribute('minlength', 0);
               textarea.setAttribute('placeholder', '이미지 생성 및 편집, 변환 등을 위한 프롬프트를 영어로 입력해 주세요');
               imgLabel.style.display = 'block';
             } else if ($currentModel.textContent === 'DALL-E-3') {
               // console.log('DALL-E-3');
               textarea.setAttribute('maxlength', 4000);
+              textarea.setAttribute('minlength', 2);
               textarea.setAttribute('placeholder', '이미지 생성을 위한 프롬프트를 입력해 주세요');
               imgLabel.style.display = 'none';
               const $thumbnails = document.getElementById('thumbnails');

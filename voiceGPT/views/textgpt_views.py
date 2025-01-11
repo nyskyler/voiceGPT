@@ -142,6 +142,22 @@ def validate_image(file_path):
 
   return True, "Image is valid."
 
+def check_transparency(file_path):
+  try:
+    with Image.open(file_path) as img:
+      # 이미지를 RGB 모드로 변환. 만약 이미 RGBA 모드라면 불필요하지만 안전한 방식.
+      img = img.convert("RGBA")
+      datas = img.getdata()
+
+      # 각 픽셀의 알파 값이 0인(완전히 투명한) 경우가 있는지 확인
+      for item in datas:
+        if item[3] < 255:  # 알파 채널의 값 확인
+          return True, "Image has transparency."
+      return False, "Image has no transparency."
+  except Exception as e:
+    print(f"An error occurred: {e}")
+    return False, f"{e}"
+
 @bp.route("/generate_image/", methods=["POST"])
 @login_required
 def generate_image():
@@ -178,23 +194,68 @@ def generate_image():
             n=subjectFlag.number_of_images,
             response_format='b64_json',
           )
+        elif data['images'] and len(data['images']) == 2:
+          file_info = []
+          for img_file in data['images']:
+            source_filename = img_file.split('/')[-1]
+            source_filename = ''.join(source_filename.split('t_')[1:])
+            file_path = upload_folder / source_filename
+            if not file_path.exists():
+              return jsonify({'error': 'File does not exist.'}), 400
+            is_valid, _ = validate_image(str(file_path))
+            if not is_valid:
+              return jsonify({'error': 'File is not valid.'}), 400
+            has_transparency, _ = check_transparency(str(file_path))
+            file_info.append((file_path, has_transparency))
+          # True의 개수
+          true_count = sum(1 for _, value in file_info if value)
+          # True의 인덱스 찾기
+          true_indices = [index for index, (_, value) in enumerate(file_info) if value]
+          if not true_count == 1:
+            return jsonify({'error': 'Invalid file set for dall-e-2 API.'}), 400
+          # print('edit!')
+          true_index = true_indices[0]
+          false_index = 1 - true_index
+          # print(file_info)
+          # print(true_index)
+          # print(false_index)
+          response = client.images.edit(
+            image=open(str(file_info[false_index][0]), "rb"),
+            mask=open(str(file_info[true_index][0]), "rb"),
+            prompt=data['prompt'],
+            n=subjectFlag.number_of_images,
+            size=subjectFlag.size_of_image,
+            response_format='b64_json',
+          )
         elif data['images'] and len(data['images']) == 1:
           source_filename = data['images'][0].split('/')[-1]
           source_filename = ''.join(source_filename.split('t_')[1:])
           file_path = upload_folder / source_filename
           if not file_path.exists():
             return jsonify({'error': 'File does not exist.'}), 400
+          
           is_valid, message = validate_image(str(file_path))
+          has_transparency, message2 = check_transparency(str(file_path))
 
-          if is_valid:
+          if is_valid and not has_transparency: # 이미지 변형하기 처리
+            # print('variation!')
             response = client.images.create_variation(
               image=open(str(file_path), "rb"),
               n=subjectFlag.number_of_images,
               size=subjectFlag.size_of_image,
               response_format='b64_json',
             )
+          elif is_valid and has_transparency: # 이미지 편집하기 처리
+            # print('edit!')
+            response = client.images.edit(
+              image=open(str(file_path), "rb"),
+              prompt=data['prompt'],
+              n=subjectFlag.number_of_images,
+              size=subjectFlag.size_of_image,
+              response_format='b64_json',
+            )
           else:
-            return jsonify({'error': f'{message}'}), 400
+            return jsonify({'error': f'{message}, {message2}'}), 400
     else:
       response = client.images.generate(
         model="dall-e-3",
@@ -646,6 +707,7 @@ def upload_image():
   # request.files에서 'images[]' 키를 통해 파일 리스트를 가져옴
   files = request.files.getlist('images[]')
   resolution = request.form.get('resolution', type=int, default=512)
+  currentModel = request.form.get('currentModel')
 
   # 파일 수 체크
   if len(files) > max_files:
@@ -657,6 +719,9 @@ def upload_image():
     if file and file.filename:
       # 이미지 열기
       img = Image.open(file)
+
+      # 투명성 확인
+      has_transparency, message = check_transparency(file)
 
       #EXIF 데이터를 사용하여 이미지 회전
       try:
@@ -682,8 +747,12 @@ def upload_image():
       img.thumbnail(max_size, Image.LANCZOS)
       
       # 새로운 512x512 캔버스에 중앙 배치
-      img_out = Image.new('RGB', (resolution, resolution), (255, 255, 255))
-      img_out.paste(img, ((resolution - img.width) // 2, (resolution - img.height) // 2))
+      if currentModel.startswith('DALL') and has_transparency:
+        img_out = Image.new('RGBA', (resolution, resolution), (255, 255, 255, 0))
+        img_out.paste(img, ((resolution - img.width) // 2, (resolution - img.height) // 2))
+      else:
+        img_out = Image.new('RGB', (resolution, resolution), (255, 255, 255))
+        img_out.paste(img, ((resolution - img.width) // 2, (resolution - img.height) // 2))
 
       # 파일 확장자 처리
       ext = Path(file.filename).suffix.lower()
