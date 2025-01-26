@@ -36,7 +36,7 @@ def create_app():
   register_heif_opener()
 
   #블루프린트
-  from .views import main_views, content_views, eval_views, auth_views, comment_views, vote_views, chatgpt_views, topic_views, userImage_views, textgpt_views
+  from .views import main_views, content_views, eval_views, auth_views, comment_views, vote_views, chatgpt_views, topic_views, userImage_views, textgpt_views, cloudstroage_views
   app.register_blueprint(main_views.bp)
   app.register_blueprint(content_views.bp)
   app.register_blueprint(eval_views.bp)
@@ -47,6 +47,7 @@ def create_app():
   app.register_blueprint(topic_views.bp)
   app.register_blueprint(userImage_views.bp)
   app.register_blueprint(textgpt_views.bp)
+  app.register_blueprint(cloudstroage_views.bp)
 
   #필터
   from .filter import format_datetime, markdown_to_html, shorten_text

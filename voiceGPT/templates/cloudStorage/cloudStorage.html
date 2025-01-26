@@ -1,0 +1,845 @@
+{% extends "base2.html" %}
+{% block content %}
+<style>
+  #myRow {
+    display: flex;
+    flex-direction: row;
+  }
+  #sidebar {
+    display: flex;
+    flex-direction: column;
+    flex: auto;
+    height: 94vh;
+    border-right: 1px solid #DDDDDD;
+    transform: translateX(0); /* 기본 위치 */
+    transition: transform 0.5s ease, width 0.5s ease; /* 슬라이드 애니메이션 */
+    padding: 0px; 
+    margin: 0 auto;
+  }
+  #nav_dir {
+    flex: auto;
+    padding: 1rem;
+    overflow-y: auto;
+    background-color: #F6F7FA;
+  }
+  #toc {
+    white-space: nowrap; /* 줄 바꿈 방지 */
+    overflow-x: auto;    /* 가로 스크롤 표시 */
+    display: block;      /* ul 기본 블록 요소로 설정 */
+  }
+  #toc li {
+    display: inline-block; /* 목록 항목을 인라인 블록으로 설정하여 한 줄에 표시 */
+  }
+  #nav_dir .list-group-item {
+    border: none;
+    background-color: #F6F7FA;
+  }
+  #storage_info {
+    padding: 0.6rem 1rem 1rem 1rem;
+    border-top: 1px solid #DDDDDD;
+    background-color: #F6F7FA;
+    /* 기본 높이만 차지 */
+    /* flex-shrink: 0; */
+  }
+  #storage_info span {
+    font-size: 0.8rem;
+  }
+  #nav_files {
+    display: flex;
+    flex-direction: column;
+    flex: auto;
+    height: 94vh;
+    transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
+  }
+  .sidebar-hidden {
+    transform: translateX(-100%);
+    transition: transform 0.5s ease, width 0.5s ease;
+    width: 0%;
+    padding: 0px;
+  }
+  .nav_files_expanded {
+    flex-grow: 1; /* 부모 너비를 기준으로 남은 공간 채우기 */
+    transition: flex-grow 0.5s ease;
+  }
+  #file_list {
+    display: flex;
+    flex-direction: row;
+    flex: auto;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  #my_table {
+    flex: auto;
+    min-width: 600px;
+    overflow-y: auto;
+  }
+  #right_panel {
+    display: flex;
+    flex-direction: column;
+    width: 350px;
+    height: 100%;
+    border-left: 1px solid #DDDDDD;
+    padding: 1rem; 
+  }
+  .invisible {
+    /* width: 0%; */
+    display: none;
+  }
+  .table-hover td, .table-hover th {
+    white-space: nowrap;
+  }
+  .flex-grow {
+    width: 100%;
+    white-space: normal;
+  }
+  .table thead th {
+    position: sticky;
+    top: 0; /* 테이블 헤더가 스크롤될 때 고정 위치 */
+    background-color: white; /* 헤더 배경색 설정 */
+    z-index: 1; /* 다른 콘텐츠보다 위에 표시되도록 설정 */
+    font-weight: normal;
+    font-size: 0.7rem;
+    color: #767780;
+  }
+  .table tr .mobile {
+    color: #9398A0;
+    font-size: 0.8rem;
+    font-weight: normal;
+  }
+  tbody#rp_text_info tr td {
+    border: none !important;
+  }
+  td.td_key {
+    color: #767780;
+    white-space: nowrap;
+    font-weight: normal;
+    font-size: 0.8rem;
+  }
+  td.td_value {
+    color: black;
+    font-weight: normal;
+    font-size: 0.8rem;
+    word-break: break-word;  /* 긴 단어를 적절히 줄바꿈 */
+    white-space: normal;
+  }
+  #table_body td.file,
+  #table_body td.directory {
+    word-break: break-word;  /* 긴 단어를 적절히 줄바꿈 */
+    white-space: normal;    /* 텍스트가 줄 바꿈을 허용 */
+  }
+  .form-check-input:focus {
+    box-shadow: none;
+  }
+  #home {
+    margin-left: 1rem;
+  }
+  #breadcrumb li {
+    cursor: pointer;
+  }
+  #banner {
+    flex: 0 0 auto;
+    /* padding-top: 0.9rem;
+    padding-bottom: 0.5rem; */
+    border-bottom: 1px solid #DDDDDD;
+  }
+  #top_banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding-top: 0.6rem;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    /* padding: 0 10px; */
+  }
+  .cursor-pointer {
+    cursor: pointer; /* 포인터 모양으로 변경 */
+  }
+  #toggleButton {
+    display: none;
+  }
+  /* Toggle Button */
+  .toggle-btn {
+    border: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    outline: none;
+    margin-right: 0.3rem;
+  }
+  .toggle-btn i {
+    font-size: 1.2rem;
+  }
+  .btn-margin {
+    margin-left: 0.8rem;
+  }
+  #searchInput:focus, #searchInput2:focus, #topicInput:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: black;
+  }
+  .btn-transparent {
+    background-color: transparent;
+    border: none;
+  }
+  .btn-transparent:hover {
+    background-color: rgba(0, 0, 0, 0.1); /* 호버 시 배경색 추가 (선택 사항) */
+  }
+
+  @media (min-width: 1024px) and (max-width: 1366px) {
+  /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
+    #sidebar {
+      height: 87vh;
+    }
+    #nav_dir {
+      height: 79vh;
+    }
+    #nav_files {
+      height: 87vh;
+    }
+  } 
+
+  @media (max-width: 767.98px) and (orientation: portrait) {
+    #nav_files {
+      height:79vh; /* 모바일에서는 전체 화면 높이로 설정 */
+    }
+    .toggle-btn {
+      display: none;
+    }
+    #fontIncrease, #fontDecrease {
+      display: none;
+    }
+    #sidebar {
+      display: none;
+    }
+    .mobile {
+      display: none;
+    }
+    form#searchForm {
+      display: none !important;
+    }
+    #toggleButton {
+      display: inline-block;
+    }
+    #home {
+      margin-left: 0rem;
+    }
+  }
+</style>
+<div class="container-fluid">
+  <div id="myRow" class="row">
+    <div id="sidebar" class="col-12 col-md-3 col-xl-2">
+      <div id="nav_dir">
+        <ul id="toc" class="list-group list-group-flush"></ul>
+      </div>
+      <div id="storage_info">
+        <div style="margin-bottom: 0.5rem;">
+          <span style="margin-right: 0.3rem;"><i class="fa-regular fa-hard-drive"></i></span>
+          <span id="used" style="font-weight: bold; color: #4078FF;"></span>
+          <span> / </span>
+          <span id="total"></span>
+        </div>
+        <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
+          <div id="storage_bar" class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+    <div id="nav_files" class="col-12 col-md-9 col-xl-10 p-0">
+      <div id="top_banner" style="display: flex; align-items: center;">
+        <div style="display: inline-block;">
+          <span>
+            <button id="toggleButton" class="toggle-btn btn btn-transparent">
+              <!-- <i class="fa-regular fa-square-caret-left"></i>FontAwesome icon -->
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+          </span>
+          <nav class="fs-5" style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;); display: inline-block;" aria-label="breadcrumb">
+            <ol id="breadcrumb" class="breadcrumb">
+            </ol>
+          </nav>
+        </div>
+        <form id="searchForm" style="display: flex; align-items: center;">
+          <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
+            <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px;" maxlength="12" id="searchInput" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1">
+            <button id="searchBtn" class="btn btn-light" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0;" type="submit">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+      <div id="banner">
+        <div class="header">
+          <span>
+            <button id="fontIncrease" class="btn btn-transparent"><i class="fa-regular fa-square-plus"></i></button>
+            <button id="fontDecrease" class="btn btn-transparent"><i class="fa-regular fa-square-minus"></i></button>
+            <button id="paletteBtn" class="btn btn-transparent"><i class="fa-solid fa-palette"></i></i></button>
+          </span>
+          <span>
+            <button id="settingBtn" class="btn btn-transparent"><i class="fa-solid fa-gear"></i></button>
+            <button id="dalleSettingBtn" class="btn btn-transparent modeChange"><i class="fa-solid fa-gears"></i></button>
+            <button id="deleteBtn" class="btn btn-transparent"><i class="fa-regular fa-trash-can"></i></button>
+            <div class="d-md-none p-1" style="display: inline;">
+              <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
+                <i class="fa-brands fa-stack-exchange"></i>
+              </button>
+            </div>
+          </span>
+        </div>
+      </div>
+      <div id="file_list" style="padding: 0px;">
+        <div id="my_table">
+          <table class="table table-hover">
+            <thead>
+              <tr id="table_header">
+              </tr>
+            </thead>
+            <tbody id="table_body">
+            </tbody>
+          </table>
+        </div>
+        <div id="right_panel" class="mobile">
+          <div id="rp_header" class="fs-5">
+            <span id="rp_title" class="fw-semibold"></span>
+          </div>
+          <div id="rp_thumb"></div>
+          <table class="table">
+            <tbody id="rp_text_info">
+            </tbody>
+          </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+  import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
+
+  // 'invisible' 클래스를 토글하는 함수
+  function toggleVisibility(item, isInvisible) {
+    if (isInvisible) {
+      item.classList.add('invisible');
+      const icon = item.querySelector('.fa-solid');
+      if (icon && icon.classList.contains('fa-folder-open')) {
+        icon.classList.remove('fa-folder-open');
+        icon.classList.add('fa-folder');
+        item.classList.remove('open');
+      }
+    } else {
+      item.classList.remove('invisible');
+    }
+  }
+
+  // 아이콘을 변경하는 함수
+  function toggleFolderIcon(item, isOpen) {
+    const icon = item.querySelector('.fa-solid');
+    if (icon) {
+      if (isOpen) {
+        icon.classList.remove('fa-folder');
+        icon.classList.add('fa-folder-open');
+      } else {
+        icon.classList.remove('fa-folder-open');
+        icon.classList.add('fa-folder');
+      }
+    }
+  }
+
+  // 하위 아이템을 숨기거나 표시하는 함수
+  function handleSubItems(item, shouldDisplay) {
+    const targetIds = JSON.parse(item.dataset.subids);
+    targetIds.forEach(id => {
+      const subItem = document.querySelector(`.list-group-item[data-id='${id}']`);
+      if (subItem) {
+        toggleVisibility(subItem, shouldDisplay);
+        // 하위 항목이 토글되었으면, 그 하위 아이템의 subids도 처리
+        if (shouldDisplay) {
+          handleSubItems(subItem, shouldDisplay);
+        }
+      }
+    });
+  }
+
+  // 특정 ID들의 항목을 표시하는 함수
+  function displayTagsById(subids) {
+    const listItems = document.querySelectorAll('#toc .list-group-item');
+    
+    listItems.forEach(item => {
+      const itemId = parseInt(item.dataset.id, 10);
+      
+      // 클릭된 ID가 포함된 아이템만 처리
+      if (subids.includes(itemId)) {
+        const isCurrentlyInvisible = item.classList.contains('invisible');
+        const shouldDisplay = !isCurrentlyInvisible;  // 서브 요소가 가려져 있을 경우, shouldDisplay에 false가 담김
+        
+        toggleVisibility(item, shouldDisplay);
+        
+        // 하위 항목을 표시하려면, 하위 아이템이 보이도록 처리
+        if (shouldDisplay) {
+          handleSubItems(item, shouldDisplay);
+        }
+      }
+    });
+  }
+
+  function getStyledDirectoryName(d_path, depth) {
+    return '&emsp;'.repeat(depth) + '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>' + '&emsp;' + d_path;
+  }
+
+  const icons = {
+    'folder': '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>',
+    'pdf': '<i class="fa-solid fa-file-pdf" style="color: #DA5A37"></i>',
+    'zip': '<i class="fa-solid fa-file-zipper" style="color: #968069"></i>',
+    'doc': '<i class="fa-solid fa-file-word" style="color: #457DD8"></i>',
+    'docx': '<i class="fa-solid fa-file-word" style="color: #457DD8"></i>',
+    'ppt': '<i class="fa-solid fa-file-powerpoint" style="color: #E76C4E"></i>',
+    'pptx': '<i class="fa-solid fa-file-powerpoint" style="color: #E76C4E"></i>',
+    'xls': '<i class="fa-solid fa-file-excel" style="color: #30A364"></i>',
+    'xlsx': '<i class="fa-solid fa-file-excel" style="color: #30A364"></i>',
+    'hwp': '<i class="fa-solid fa-file-signature" style="color: #43A6DD"></i>',
+    'hwpx': '<i class="fa-solid fa-file-signature" style="color: #43A6DD"></i>',
+    'video': '<i class="fa-solid fa-file-video" style="color: #01C75A"></i>',
+  }
+
+  function TOC() {
+    const state = store.getState();
+    const html_for_toc = state.directoryTree
+      .filter(item => item.type === 'directory')
+      .map(({ id, path, children, pathForDisplay, subdirectoryDepth }) => `
+        <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${path.includes('/') ? 'invisible' : ''}">
+          ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth)}
+        </a>
+      `).join('');
+    
+    const $toc = document.getElementById('toc');
+    $toc.innerHTML = html_for_toc;
+    $toc.addEventListener('click', function(e) {
+      e.preventDefault();
+      const elem = e.target.closest('.list-group-item');
+      if (elem) {
+        const id = elem.dataset.id;
+        const dir_path = state.directoryTree.filter(item => item.id == id)[0]?.path;
+        if (dir_path) {
+          fetchDirectoryDetails(dir_path);
+        }
+        const subIds = JSON.parse(elem.dataset.subids);
+        if (subIds.length > 0) {
+          if (!elem.classList.contains('open')) {
+            toggleFolderIcon(elem, true);
+            elem.classList.add('open');
+          } else {
+            toggleFolderIcon(elem, false);
+            elem.classList.remove('open');
+          }
+          displayTagsById(subIds);
+        }
+      }
+    });
+  }
+
+  function getFileExtensionIcon(_ext) {
+    // console.log(_ext);
+    const ext = _ext.split('.')[1].toLowerCase();
+    let tag = icons[ext] || '<i class="fa-regular fa-file"></i>';
+    return tag;
+  }
+
+  function convertBytesToReadableUnit(sizeBytes) {
+    let size;
+    if (sizeBytes < 1_000_000) {  // Less than 1 MB
+      size = `${(sizeBytes / 1_024).toFixed(1)} KB`;
+    } else {  // 1 MB or more
+      size = `${(sizeBytes / 1_048_576).toFixed(1)} MB`;
+    }
+    return size;
+  }
+
+  function initializeTableHeader() {
+    const $table_header = document.getElementById('table_header');
+    const $ths = $table_header.querySelectorAll('th');
+    $ths.forEach(th => {
+      th.remove();
+    });
+    $table_header.innerHTML = `
+      <th scope="col">   </th>
+      <th scope="col" data-id="type">종류 </th>
+      <th scope="col" data-id="name" class="flex-grow">이름 </th>
+      <th scope="col" data-id="size" class="mobile">크기 </th>
+      <th scope="col" data-id="date" class="mobile">수정한 날짜 </th>
+    `;  
+
+    const ths = document.querySelectorAll('#table_header th');
+    ths.forEach((th, idx) => {
+      if (idx == 0) {
+        return;
+      }
+      th.addEventListener('click', () => {
+        const $elem = document.querySelector('th i');
+        if ($elem) {
+          $elem.remove();
+        }
+  
+        th.classList.toggle('oddEvenToggle');
+        // console.log(th);
+        const oddEven = th.classList.contains('oddEvenToggle') ? 'odd' : 'even';
+        const $iconEl = document.createElement('i');
+        $iconEl.classList.add('fa-solid');
+        oddEven == 'odd' ? $iconEl.classList.add('fa-arrow-up') : $iconEl.classList.add('fa-arrow-down');
+        // console.log(oddEven);
+        th.appendChild($iconEl);
+        store.dispatch({ type: 'UPDATE', target: 'sort_table', rule: th.dataset.id, count: oddEven });
+      });
+    });
+  }
+
+  const fetchItemThumbnailAndDetails = async (item_path) => {
+    // fetch를 사용하여 서버에서 이미지를 가져오고, Blob과 URL.createObjectURL을 사용하여 이미지를 웹 페이지에 표시하기
+    const state = store.getState();
+    const url = `${_URL}/cloudstorage/getThumbnailAndDetails/${item_path}`;
+    
+    try {
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      if (response.status === 204) {
+        console.log('No Content');
+        return;
+      }
+
+      const $thumbnail = document.getElementById('rp_thumb');
+      const $rp_text_info = document.getElementById('rp_text_info');
+      $thumbnail.innerHTML = '';
+      $rp_text_info.innerHTML = '';
+      const res = await response.json();
+      // console.log(res.info);
+      const mediaTypesForThumbnails = ['pdf', 'image', 'video'];
+
+      if (mediaTypesForThumbnails.includes(res.type)) {
+        const thumbnailBase64 = res.data;
+        const imageUrl = `data:image/png;base64,${thumbnailBase64}`;
+        const $imgElement = document.createElement('img');
+        $imgElement.src = imageUrl;
+        $imgElement.style.width = '100%'; // Adjust based on container
+        $imgElement.style.paddingTop = '0.8rem';
+        $imgElement.style.paddingBottom = '0.8rem';
+        $thumbnail.appendChild($imgElement);
+      } else {
+        const $divElement = document.createElement('div');
+        $divElement.innerHTML = icons[res.type] || '<i class="fa-regular fa-file"></i>';
+        $divElement.style.width = '100%'; // Adjust based on container
+        $divElement.style.textAlign = 'center'
+        $divElement.style.fontSize = '6rem';
+        $divElement.style.paddingTop = '0.8rem';
+        $divElement.style.paddingBottom = '0.8rem';
+        $divElement.style.backgroundColor = '#F5F6F9';
+        $thumbnail.appendChild($divElement);
+      }
+      
+      const $fragment = document.createDocumentFragment();
+
+      Object.entries(res.info).forEach(item => {
+        const $tr = document.createElement('tr');
+        const $td_for_key = document.createElement('td');
+        $td_for_key.classList.add('td_key');
+        const $td_for_value = document.createElement('td');
+        $td_for_value.classList.add('td_value');
+        $td_for_key.textContent = item[0];
+        $td_for_value.textContent = item[1];
+        $tr.appendChild($td_for_key);
+        $tr.appendChild($td_for_value);
+        $fragment.appendChild($tr);
+      });
+      $rp_text_info.appendChild($fragment);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+
+  function generateThumbnailOrIconTag(_type, _thumbnail) {
+    if (_type == 'Directory') {
+      return '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>';
+    } else if (_thumbnail) {
+      const thumbnailBase64 = _thumbnail;
+      const imageUrl = `data:image/png;base64,${thumbnailBase64}`;
+      return `<img src=${imageUrl}></img>`;
+    } else {
+      return getFileExtensionIcon(_type);
+    }
+  }
+
+  function article() {
+    const state = store.getState();
+    const current_path = state.current_path;
+    let html_for_article = state.view_contents.map(
+      ({ _type, _name, _size, _modified, _thumbnail }) => {
+        return `<tr>
+          <td><input class="form-check-input" type="checkbox" value="" aria-label="..."></td>
+          <td>${generateThumbnailOrIconTag(_type, _thumbnail)}</td>
+          <td class="flex-grow ${_type == 'Directory' ? 'directory' : 'file'}">${_name}</td>
+          <td class="mobile">${convertBytesToReadableUnit(_size)}</td>
+          <td class="mobile">${_modified}</td>
+        </tr>`
+    }).join('');
+
+    document.getElementById('table_body').innerHTML = html_for_article;
+    const dir_tds = document.querySelectorAll('#table_body td.directory');
+    dir_tds.forEach(td => {
+      td.addEventListener('click', async () => {
+        await fetchDirectoryDetails(`${current_path}/${td.textContent}`);
+        updateAndActivateDirectoryTreeItem();
+      });
+    });
+
+    // 각 체크박스에 이벤트 리스너 추가
+    const checkboxes = document.querySelectorAll('#table_body .form-check-input');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', (event) => {
+        const row = event.target.closest('tr');
+        if (event.target.checked) { // 체크 상태인 경우에만 실행
+          // 체크박스가 속한 행의 세 번째 <td>의 텍스트 가져오기
+          row.classList.add('table-active');
+          const nameTd = row.querySelector('td:nth-child(3)');
+          // console.log(nameTd.textContent);
+          document.getElementById('rp_title').textContent = nameTd.textContent;
+          fetchItemThumbnailAndDetails(current_path + '/' + nameTd.textContent);
+        } else { // 체크 해제된 경우
+          row.classList.remove('table-active');
+        }
+      });
+    });
+  }
+
+  function generateBreadcrumbFromPath() {
+    const current_path = store.getState().current_path;
+    const $breadcrumb = document.getElementById('breadcrumb');
+    const splited_path = current_path.split('/');
+  
+    const html_for_crumb = splited_path.map((_, index) => {
+      const path = splited_path.slice(0, index + 1).join('/');
+      const dir_name = splited_path[index];
+      const isActive = index === splited_path.length - 1;
+      
+      return `
+        <li data-path="${path}" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
+      `;
+    }).join('');
+
+    $breadcrumb.innerHTML = '<li data-path="" id="home" class="breadcrumb-item fw-light" >Home</li>' + html_for_crumb;
+    const $breadcrumbs = document.querySelectorAll('#breadcrumb li');
+    $breadcrumbs.forEach(li => {
+      li.addEventListener('click', async () => {
+        await fetchDirectoryDetails(li.dataset.path);
+        updateAndActivateDirectoryTreeItem();
+      });
+    });
+  }
+
+  function updateAndActivateDirectoryTreeItem() {
+    const state = store.getState();
+    const currentPath = state.current_path.startsWith('/') 
+      ? state.current_path.substring(1) 
+      : state.current_path;
+      
+    const directoryItem = state.directoryTree.find(item => item.path === currentPath);
+    const id = directoryItem?.id;
+
+    if (id) {
+      const $elem = document.querySelector(`#toc a[data-id="${id}"]`);
+      const $icon = $elem.querySelector('.fa-solid');
+
+      if (!$icon.classList.contains('fa-folder-open')) {
+        $elem.click();
+      }
+    }
+  }
+
+  function reducer(state, action) {
+    if (state === undefined) {
+      return {
+        directoryTree: [],
+        view_contents: [],
+        current_path: '',
+      }
+    }
+    let newState;
+    if (action.type === 'UPDATE'){
+      if (action.target === 'nav_dir') {
+        const newContents = [...action.content];
+        newState = Object.assign({}, state, {
+          directoryTree: newContents,
+        });
+      } else if (action.target === 'file_list') {
+        const newContents = [...action.content];
+        newState = Object.assign({}, state, {
+          view_contents: newContents,
+          current_path: action.dir,
+        });
+      } else if (action.target === 'breadcrumb') {
+        const pathLen = state.current_path.split('/');
+        if (pathLen.length > 0) {
+          const updatedPath = pathLen.slice(0, pathLen.length - 1).join('/');
+          newState = Object.assign({}, state, {
+            current_path: updatedPath,
+          });
+        }
+      } else if (action.target === 'sort_table') {
+        const sortByRule = (rule, oddEven) => (a, b) => {
+          const num = oddEven == 'odd' ? -1 : 1;
+          if (a[rule] === b[rule]) {
+            return 0;
+          } 
+          return a[rule] > b[rule] ? 1 * num : -1 * num;
+        }
+        let key = null;
+        switch (action.rule) {
+          case 'type':
+            key = '_type';
+            break;
+          case 'size':
+            key = '_size';
+            break;
+          case 'name':
+            key = '_name';
+            break;
+          case 'date':
+            key = '_modified'
+            break;
+          default:
+            return;
+        }
+        const newContents = [...state.view_contents].sort(sortByRule(key, action.count));
+        newState = Object.assign({}, state, {
+          view_contents: newContents,
+        });        
+      }
+    }
+    return newState;
+  }
+
+  const productionURL = 'http://121.189.157.152:8080';
+  const testURL = 'http://127.0.0.1:8080';
+  const localURL = 'http://172.30.1.25:8080';
+  let _URL = null;
+  if (window.location.href.split('/')[2] === '127.0.0.1:8080'){
+    _URL = testURL;
+  } else if (window.location.href.split('/')[2] === '172.30.1.25:8080'){
+    _URL = localURL;
+  } else {
+    _URL = productionURL;
+  }
+
+  const fetchDirectoryContents = async () => {
+    const state = store.getState();
+    const url = `${_URL}/cloudstorage/directoryContents/`;
+    
+    try {
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      if (response.status === 204) {
+        console.log('No Content');
+        return;
+      }
+
+      const res = await response.json();
+      const directoryTree = res.message.map((item, idx) => {
+        const isFile = item.includes('.');
+        const num = item.split('/').length - 1; 
+        const _path = item.split('/').pop();
+        return {
+          id: idx + 1,
+          path: item,
+          pathForDisplay: _path,
+          subdirectoryDepth: num,
+          type: isFile ? 'file' : 'directory',
+          children: [],
+        };
+      });
+
+      directoryTree.forEach((elem) => {
+        const children = directoryTree.filter(item => 
+          item.path.startsWith(`${elem.path}/`) && item.path !== elem.path
+          && !item.path.split(`${elem.path}/`)[1].includes('/')
+        );
+        const children_ids = children.map(child => child.id);
+        elem.children = children_ids;
+      });
+
+      store.dispatch({ type: 'UPDATE', target: 'nav_dir', content: directoryTree });
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const fetchDirectoryDetails = async (dir_path) => {
+    const state = store.getState();
+    const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_path}`;
+    
+    try {
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      if (response.status === 204) {
+        console.log('No Content');
+        return;
+      }
+
+      const res = await response.json();
+      store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: dir_path });
+      initializeTableHeader();
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const fetchDriveStorageInfo = async () => {
+    const state = store.getState();
+    const url = `${_URL}/cloudstorage/getDriveUsage/`;
+    
+    try {
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      if (response.status === 204) {
+        console.log('No Content');
+        return;
+      }
+
+      const res = await response.json();
+      // used, total, storage_bar
+      const used_percentage = parseInt(parseFloat(res.message.used_gb) / parseFloat(res.message.total_gb) * 100);
+      document.getElementById('used').textContent = res.message.used_gb.toFixed(2) + 'GB';
+      document.getElementById('total').textContent = res.message.total_gb.toFixed(2) + 'GB';
+      document.getElementById('storage_bar').style.width = used_percentage + '%';
+      document.getElementById('storage_bar').textContent = used_percentage + '%';
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+
+  const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
+  window.store = store;
+  // store.subscribe(TOC);
+  store.subscribe(article);
+  store.subscribe(generateBreadcrumbFromPath);
+
+  window.onload = async function(){
+    await fetchDirectoryContents();
+    await fetchDirectoryDetails('');
+    await fetchDriveStorageInfo();
+    TOC();
+
+    document.getElementById('toggleButton').addEventListener('click', () => {
+      store.dispatch({ type: 'UPDATE', target: 'breadcrumb'});
+      fetchDirectoryDetails(store.getState().current_path);
+    });
+  }
+</script>
+{% endblock %}

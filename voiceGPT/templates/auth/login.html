@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+  div.form-group input:focus {
+    box-shadow: none;
+    outline: none;
+    border-color: black;
+  }
+</style>
 <div class="container my-3">
   <form method="post" class="post-form" autocomplete="off">
     {{ form.csrf_token }}

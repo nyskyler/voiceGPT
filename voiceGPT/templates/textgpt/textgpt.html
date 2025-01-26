@@ -294,7 +294,7 @@
             <button id="dalleSettingBtn" class="btn btn-transparent modeChange"><i class="fa-solid fa-gears"></i></button>
             <button id="deleteBtn" class="btn btn-transparent"><i class="fa-regular fa-trash-can"></i></button>
             <!-- 모바일에서 오프캔버스를 여는 버튼 -->
-            <div class="d-md-none p-1 border-bottom" style="display: inline;">
+            <div class="d-md-none p-1" style="display: inline;">
               <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
                 <i class="fa-brands fa-stack-exchange"></i>
               </button>
@@ -551,6 +551,8 @@
                   <option value="list-group-item-light">Light</option>
                   <option value="list-group-item-dark">Dark</option>
                 </select>
+                <label for="widthRange" class="form-label mt-3"><i class="fa-solid fa-text-width"></i>&nbsp;&nbsp;GPT 답변창의 너비(6~12)</label>
+                <input type="range" class="form-range" min="6" max="12" step="1" id="widthRange" value="9">
               </form>
             </div>
             <div class="modal-footer">
@@ -622,7 +624,7 @@
     const state = store.getState();
     const itemStyle = localStorage.getItem('toc-style') || 'list-group-item-secondary';
     let liTags = state.list_items.map(({ id, title }) => `
-      <a href='#' data-id=${id} class="subjectItem list-group-item list-group-item-action ${itemStyle} ${state.subject === title ? 'active' : ''}">${title}</a>
+      <div class="position-relative"><a href='#' data-id=${id} class="subjectItem list-group-item list-group-item-action ${itemStyle} ${state.subject === title ? 'active' : ''}">${title}</a></div>
     `).join('');
     // liTags = '<div class="sideBanner"><button class="btn btn-light chatBtn" style="padding: 0.5rem; margin-top: 0.8rem;"><i class="fa-regular fa-pen-to-square"></i></button></div>' + '<div class="sideItem">' + liTags + '</div>';
     liTags = '<div class="sideItem">' + liTags + '</div>';     
@@ -710,9 +712,10 @@
 
     const border = localStorage.getItem('border');
     const theme = localStorage.getItem('theme');
+    const width = localStorage.getItem('width') || 9;
     const content = state.contents.map(el => `
       <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
-        <div class="col-md-${el.author === 'user' ? 6 : 9} col-10">
+        <div class="col-md-${el.author === 'user' ? 6 : width} col-11">
           <div class="card ${border == 'none' ? '' : border} mb-2">
             <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
               <div class="thumbnails" data-url="${el.imgUrl}"}></div>
@@ -797,6 +800,13 @@
     const chatWindow = document.getElementById('article');
     if (chatWindow.lastElementChild) {
       chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
+    }
+  
+    const badgeHTML = `${state.subject}<span class="position-absolute top-0 end-0 badge rounded-pill border border-light"> ${state.contents.length / 2}</span>`; 
+    const $target = document.querySelectorAll('ul.toc a.active')?.[1] || undefined;
+    if ($target) {
+      $target.innerHTML = badgeHTML;
+      $target.scrollIntoView({ behavior : 'instant' });
     }
   }
     
@@ -1425,6 +1435,7 @@
         const savedTheme = localStorage.getItem('theme');
         const savedColor = localStorage.getItem('bg-color');
         const savedStyle = localStorage.getItem('toc-style');
+        const savedWidth = localStorage.getItem('width');
 
         // 각 select 요소
         const fontSelect = document.getElementById('fontSelect');
@@ -1432,6 +1443,7 @@
         const themeSelect = document.getElementById('themeSelect');
         const bgcolorSelect = document.getElementById('bg-colorSelect');
         const tocstyleSelect = document.getElementById('toc-styleSelect');
+        const widthSelect = document.getElementById('widthRange');
 
         // 기존 값이 있으면 해당 값으로 선택
         if (savedFont) {
@@ -1449,6 +1461,9 @@
         }
         if (savedStyle) {
           tocstyleSelect.value = savedStyle;
+        }
+        if (savedWidth) {
+          widthSelect.value = savedWidth;
         }
       });
 
@@ -1519,7 +1534,7 @@
       const selectedStyleInput = document.querySelector('input[name="dalleStyle"]:checked');
       const selectedStyleLabel = selectedStyleInput ? selectedStyleInput.nextElementSibling.textContent : 'vivid';
       $('#dalleModal').modal('hide');
-      console.log(`model: ${selectedModelLabel}, range_val: ${range_val}, quality: ${selectedQualityLabel}, size: ${selectedSize}, style: ${selectedStyleLabel}`);
+      // console.log(`model: ${selectedModelLabel}, range_val: ${range_val}, quality: ${selectedQualityLabel}, size: ${selectedSize}, style: ${selectedStyleLabel}`);
       (async () => {
         const _id = $('.toc a.active')[0].getAttribute('data-id');
         try {
@@ -1543,7 +1558,7 @@
             throw new Error(response.status);
           }
           const answer = await response.json();
-          console.log(answer);
+          // console.log(answer);
           store.dispatch({type:'SUBJECT', target:'dalle_system', model: selectedModelLabel, number: range_val, quality: selectedQualityLabel, size: selectedSize, style: selectedStyleLabel});
         } catch(error) {
           console.error('Error: ', error);
@@ -1558,6 +1573,7 @@
       const selectedTheme = document.getElementById('themeSelect').value;
       const selectedBgColor = document.getElementById('bg-colorSelect').value;
       const selectedStyle = document.getElementById('toc-styleSelect').value;
+      const selectedWidth = document.getElementById('widthRange').value;
       const $sidebar = document.getElementById('sidebar');
       const $chatWindow = document.getElementById('chatWindow');
       document.getElementById('article').style.fontFamily = selectedFont;
@@ -1610,6 +1626,27 @@
         card.classList.add(...selectedTheme.split(' '));
       });
 
+      // 모든 'justify-content-start' 클래스를 가진 div 요소를 선택
+      const startDivs = document.querySelectorAll('#article .justify-content-start');
+
+      // 각 div의 자식 요소를 검사
+      startDivs.forEach(div => {
+        // col-md-로 시작하는 클래스를 가진 자식 요소를 찾음
+        const colMdElement = div.querySelector('[class*="col-md-"]');
+
+        if (colMdElement) {
+          // 기존 클래스 중 'col-md-'로 시작하는 클래스를 모두 제거
+          colMdElement.classList.forEach(className => {
+            if (className.startsWith('col-md-')) {
+              colMdElement.classList.remove(className);
+            }
+          });
+
+          // 'col-md-11' 클래스 추가
+          colMdElement.classList.add(`col-md-${selectedWidth}`);
+        }
+      });
+
       const $buttons = document.querySelectorAll('.btn-transparent');
       const $model = document.getElementById('currentModel');
       if (selectedBgColor === '#2B3035') {
@@ -1645,6 +1682,7 @@
       localStorage.setItem('theme', selectedTheme);
       localStorage.setItem('bg-color', selectedBgColor);
       localStorage.setItem('toc-style', selectedStyle);
+      localStorage.setItem('width', selectedWidth);
       $('#paletteModal').modal('hide');
     });
     // 배너에 있는 '#deleteBtn' 클릭 시, state의 subject를 인자로 전달하며 해당 주제 및 대화글의 삭제를 위한 fetch 요청을 수행함
@@ -1670,7 +1708,7 @@
             throw new Error(`서버 오류: ${response.status}`);
           }
           const result = await response.json();
-          console.log(result);
+          // console.log(result);
           alert("정상적으로 삭제하였습니다.")
           // 삭제 완료 후 초기화 작업
           store.dispatch({ type: 'UPDATE', content: 'reset', idx:_idx });
@@ -1836,7 +1874,7 @@
       }
       targetSection.remove();
       
-      console.log(first_id, second_id);
+      // console.log(first_id, second_id);
 
       try {
         const id_list = {
@@ -1896,7 +1934,7 @@
           return res.json();
         })
         .then(data => {
-          console.log('Success: ', data);
+          // console.log('Success: ', data);
           Promise.all(data.msgIds.map(msgId => {
             return fetch(_URL + `/textgpt/get_thumbnail/${msgId}`)
               .then(response => {
@@ -2080,18 +2118,27 @@
               // console.log('GPT');
               textarea.setAttribute('maxlength', 5000);
               textarea.setAttribute('minlength', 2);
+              if (!textarea.hasAttribute('required')) {
+                textarea.setAttribute('required', '');
+              }
               textarea.setAttribute('placeholder', '프롬프트를 입력해 주세요');
               imgLabel.style.display = 'block';
             } else if ($currentModel.textContent === 'DALL-E-2') {
               // console.log('DALL-E-2');
               textarea.setAttribute('maxlength', 1000);
-              textarea.setAttribute('minlength', 0);
+              textarea.removeAttribute('minlength');
+              if (textarea.hasAttribute('required')) {
+                textarea.removeAttribute('required');
+              } 
               textarea.setAttribute('placeholder', '이미지 생성 및 편집, 변환 등을 위한 프롬프트를 영어로 입력해 주세요');
               imgLabel.style.display = 'block';
             } else if ($currentModel.textContent === 'DALL-E-3') {
               // console.log('DALL-E-3');
               textarea.setAttribute('maxlength', 4000);
               textarea.setAttribute('minlength', 2);
+              if (!textarea.hasAttribute('required')) {
+                textarea.setAttribute('required', '');
+              }
               textarea.setAttribute('placeholder', '이미지 생성을 위한 프롬프트를 입력해 주세요');
               imgLabel.style.display = 'none';
               const $thumbnails = document.getElementById('thumbnails');
