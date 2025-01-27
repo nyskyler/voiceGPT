@@ -40,17 +40,17 @@ def listSubdirectoryPaths(path):
     
   return list(subdirectories)
 
-def encodeImageToBase64(file_path, img_size, backGroundColor=False):
+def encodeImageToBase64(file_path, img_size=150, backGroundColor=False):
   # 이미지가 올바르게 열리는지 확인
   if imghdr.what(file_path) in ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp']:
     try:
       with Image.open(file_path) as img:
         img_buffer = BytesIO()
         if backGroundColor:
-          max_size = (200, 200)
+          max_size = (img_size, img_size)
           img.thumbnail(max_size, Image.LANCZOS)
-          img_out = Image.new('RGBA', (200, 200), (246, 247, 250, 255))
-          img_out.paste(img, ((200 - img.width) // 2, (200 - img.height) // 2))
+          img_out = Image.new('RGBA', (img_size, img_size), backGroundColor)
+          img_out.paste(img, ((img_size - img.width) // 2, (img_size - img.height) // 2))
           img_out.save(img_buffer, format="PNG")  # PNG 또는 원하는 포맷
         else:
           img.thumbnail((img_size, img_size))
@@ -65,7 +65,7 @@ def encodeImageToBase64(file_path, img_size, backGroundColor=False):
   else:
       print(f"File {file_path} is not a valid image.")
 
-def encodeVideoToBase64(file_path, img_size):
+def encodeVideoToBase64(file_path, img_size, backgroundColor):
   """
   동영상 파일 경로를 입력받아 썸네일 이미지를 생성한 뒤 Base64로 인코딩하여 반환합니다.
 
@@ -80,11 +80,16 @@ def encodeVideoToBase64(file_path, img_size):
       img = Image.fromarray(frame)  # Numpy 배열을 PIL 이미지로 변환
       
       # 썸네일 생성
-      img.thumbnail((img_size, img_size))
+      # img.thumbnail((img_size, img_size))
+      max_size = (img_size, img_size)
+      img.thumbnail(max_size, Image.LANCZOS)
+      img_out = Image.new('RGBA', (img_size, img_size), backgroundColor)
+      img_out.paste(img, ((img_size - img.width) // 2, (img_size - img.height) // 2))
+      # img_out.save(img_buffer, format="PNG")  # PNG 또는 원하는 포맷
       
       # BytesIO 객체에 이미지 저장
       output = BytesIO()
-      img.save(output, format='PNG')  # PNG 형식으로 저장
+      img_out.save(output, format='PNG')  # PNG 형식으로 저장
       output.seek(0)
       
       # Base64로 인코딩
@@ -229,6 +234,19 @@ def parse_mediainfo_date(date_str):
   except ValueError:
     return date_str  # 원본 문자열을 반환 (알 수 없는 형식인 경우)
 
+def calculate_directory_size(directory):
+  """디렉토리의 총 크기를 계산"""
+  total_size = 0
+  for root, dirs, files in os.walk(directory):
+    for file in files:
+      file_path = os.path.join(root, file)
+      try:
+        total_size += os.path.getsize(file_path)
+      except FileNotFoundError:
+        # 파일이 삭제되었거나 접근할 수 없는 경우를 처리
+        continue
+  return total_size
+
 @bp.route("/main/")
 @login_required
 def main():
@@ -284,8 +302,14 @@ def listDirectoryDetails(dir_path):
         if name.startswith(('.', '$')) or name == 'System Volume Information':
           continue
 
-        type_ = 'Directory' if entry.is_dir() else ext
-        size_bytes = entry.stat().st_size
+        # 디렉토리인지 파일인지 판별
+        if entry.is_dir():
+          type_ = 'Directory'
+          size_bytes = calculate_directory_size(file_path)  # 디렉토리 크기 계산
+        else:
+          type_ = ext
+          size_bytes = entry.stat().st_size
+
         modification_time = datetime.datetime.fromtimestamp(entry.stat().st_mtime)
         hour = modification_time.hour
         period = "오전" if hour < 12 else "오후"
@@ -300,14 +324,14 @@ def listDirectoryDetails(dir_path):
 
         if ext in ('.png', '.jpeg', '.jpg', '.gif', '.bmp', '.tiff', '.webp', '.heic'):
           try:
-            thumbnail_base64 = encodeImageToBase64(file_path, 25)
+            thumbnail_base64 = encodeImageToBase64(file_path, 146, (255, 255, 255, 0))
             directory_info[-1]['_thumbnail'] = thumbnail_base64
           except Exception as e:
             print(f"Error processing {entry}: {e}")
             continue
         elif ext in ('.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'):
           try:
-            thumbnail_base64 = encodeVideoToBase64(file_path, 25)
+            thumbnail_base64 = encodeVideoToBase64(file_path, 146, (255, 255, 255, 0))
             directory_info[-1]['_thumbnail'] = thumbnail_base64
           except Exception as e:
             pass
@@ -340,13 +364,15 @@ def get_drive_usage():
     print(f"An unexpected error occurred: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
   
+@bp.route("/getThumbnailAndDetails//", defaults={'item_path': ''}, methods=['GET'])
 @bp.route("/getThumbnailAndDetails/<path:item_path>", methods=['GET'])
 @login_required
 def getThumbnailAndDetails(item_path):
   try:
-    target_loc = root_dir / item_path if item_path != '' else root_dir
-    print(target_loc)
-    # target_loc = root_dir / item_path
+    print('item_path:', item_path)
+    # target_loc = root_dir / item_path if item_path != '' else root_dir
+    target_loc = root_dir / item_path
+    print('target_loc:', target_loc)
     if not target_loc.exists():
       return jsonify({"message": "Item not found"}), 404
     
@@ -383,11 +409,11 @@ def getThumbnailAndDetails(item_path):
                 image_info["촬영 일시"] = value
                 break
 
-          thumbnail_base64 = encodeImageToBase64(target_loc, 200, backGroundColor=True)
+          thumbnail_base64 = encodeImageToBase64(target_loc, 200, (246, 247, 250, 255))
           return jsonify({"type": "image", "info": image_info, "data": thumbnail_base64}), 200
       elif ext in ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv']:
         video_info = get_video_metadata(target_loc)
-        thumbnail_base64 = encodeVideoToBase64(str(target_loc), 200)
+        thumbnail_base64 = encodeVideoToBase64(str(target_loc), 200, (246, 247, 250, 255))
         return jsonify({"type": "video", "info": video_info, "data": thumbnail_base64}), 200
       else:
         return jsonify({"type": f"{ext.lstrip('.')}", "info": get_file_info(target_loc)}), 200

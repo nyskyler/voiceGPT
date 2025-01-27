@@ -73,17 +73,35 @@
     min-width: 600px;
     overflow-y: auto;
   }
+  #my_table.hidden {
+    display: none;
+  }
+  #my_grid {
+    flex: auto;
+    min-width: 600px;
+    overflow-y: auto;
+  }
+  #my_grid.hidden {
+    display: none;
+  }
   #right_panel {
     display: flex;
     flex-direction: column;
     width: 350px;
+    min-width: 300px;
     height: 100%;
     border-left: 1px solid #DDDDDD;
     padding: 1rem; 
   }
-  .invisible {
+  #right_panel.hidden {
     /* width: 0%; */
     display: none;
+  }
+  .invisible {
+    display: none;
+  }
+  .currentMode {
+    color: #4078FF !important; 
   }
   .table-hover td, .table-hover th {
     white-space: nowrap;
@@ -109,6 +127,10 @@
   tbody#rp_text_info tr td {
     border: none !important;
   }
+  span#rp_title {
+    word-break: break-word;  /* 긴 단어를 적절히 줄바꿈 */
+    white-space: normal;
+  }
   td.td_key {
     color: #767780;
     white-space: nowrap;
@@ -126,6 +148,29 @@
   #table_body td.directory {
     word-break: break-word;  /* 긴 단어를 적절히 줄바꿈 */
     white-space: normal;    /* 텍스트가 줄 바꿈을 허용 */
+  }
+  #grid_content {
+    display: flex;         /* Flexbox 레이아웃 사용 */
+    flex-flow: row wrap;    /* 줄바꿈 허용 */
+    justify-content: flex-start;
+    padding: 3rem;
+    gap: 1rem;             /* 요소 간격 설정 */
+  }
+  #grid_content i {
+    font-size: 4.5rem;
+    padding: 2.5rem;
+  }
+  #grid_content p {
+    white-space: nowrap;
+    overflow: hidden; 
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+  #grid_content .card-body {
+    padding: 0px;
+  }
+  #grid_content .card span.hidden {
+    display: none;
   }
   .form-check-input:focus {
     box-shadow: none;
@@ -219,6 +264,15 @@
     .mobile {
       display: none;
     }
+    #my_table {
+      min-width: 300px;
+    }
+    #my_grid {
+      min-width: 300px;
+    }
+    #right_panel, #infoToggleBtn {
+      display: none;
+    }
     form#searchForm {
       display: none !important;
     }
@@ -228,6 +282,9 @@
     #home {
       margin-left: 0rem;
     }
+    #grid_content {
+     padding: 1rem;
+  }
   }
 </style>
 <div class="container-fluid">
@@ -279,14 +336,9 @@
             <button id="paletteBtn" class="btn btn-transparent"><i class="fa-solid fa-palette"></i></i></button>
           </span>
           <span>
-            <button id="settingBtn" class="btn btn-transparent"><i class="fa-solid fa-gear"></i></button>
-            <button id="dalleSettingBtn" class="btn btn-transparent modeChange"><i class="fa-solid fa-gears"></i></button>
-            <button id="deleteBtn" class="btn btn-transparent"><i class="fa-regular fa-trash-can"></i></button>
-            <div class="d-md-none p-1" style="display: inline;">
-              <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
-                <i class="fa-brands fa-stack-exchange"></i>
-              </button>
-            </div>
+            <button id="tableBtn" class="btn btn-transparent currentMode"><i class="fa-solid fa-bars"></i></button>
+            <button id="gridBtn" class="btn btn-transparent"><i class="fa-solid fa-grip"></i></button>
+            <button id="infoToggleBtn" class="btn btn-transparent"><i class="fa-solid fa-circle-info" style="color: #4078FF;"></i></button>
           </span>
         </div>
       </div>
@@ -301,7 +353,11 @@
             </tbody>
           </table>
         </div>
-        <div id="right_panel" class="mobile">
+        <div id="my_grid" class="hidden">
+          <div id="grid_content">
+          </div> 
+        </div>
+        <div id="right_panel">
           <div id="rp_header" class="fs-5">
             <span id="rp_title" class="fw-semibold"></span>
           </div>
@@ -310,6 +366,7 @@
             <tbody id="rp_text_info">
             </tbody>
           </table>
+        </div>
       </div>
     </div>
   </div>
@@ -443,7 +500,7 @@
   function getFileExtensionIcon(_ext) {
     // console.log(_ext);
     const ext = _ext.split('.')[1].toLowerCase();
-    let tag = icons[ext] || '<i class="fa-regular fa-file"></i>';
+    let tag = icons[ext] || `<i class="fa-regular fa-file"></i>`;
     return tag;
   }
 
@@ -548,7 +605,10 @@
         const $td_for_value = document.createElement('td');
         $td_for_value.classList.add('td_value');
         $td_for_key.textContent = item[0];
-        $td_for_value.textContent = item[1];
+        $td_for_value.textContent = (item[1] == '/Users/yuseung-u/Desktop/pythonLab/voiceGPT' ? '/' : item[1]);
+        if (res.type == 'folder' && item[0] == '위치') {
+          document.getElementById('rp_title').textContent = $td_for_value.textContent;
+        } 
         $tr.appendChild($td_for_key);
         $tr.appendChild($td_for_value);
         $fragment.appendChild($tr);
@@ -559,13 +619,13 @@
     }
   }
 
-  function generateThumbnailOrIconTag(_type, _thumbnail) {
+  function generateThumbnailOrIconTag(_type, _thumbnail, _size=25, card=false) {
     if (_type == 'Directory') {
       return '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>';
     } else if (_thumbnail) {
       const thumbnailBase64 = _thumbnail;
       const imageUrl = `data:image/png;base64,${thumbnailBase64}`;
-      return `<img src=${imageUrl}></img>`;
+      return `<img src=${imageUrl} style="width:${_size}px; height:${_size}" padding:2px; text-align: center; ${card ? 'class="card-img-top" alt="..."' : ''}></img>`;
     } else {
       return getFileExtensionIcon(_type);
     }
@@ -576,9 +636,10 @@
     const current_path = state.current_path;
     let html_for_article = state.view_contents.map(
       ({ _type, _name, _size, _modified, _thumbnail }) => {
+        const isChecked = state.selectedItems.includes(_name); // 선택 여부 확인
         return `<tr>
-          <td><input class="form-check-input" type="checkbox" value="" aria-label="..."></td>
-          <td>${generateThumbnailOrIconTag(_type, _thumbnail)}</td>
+          <td><input class="form-check-input" type="checkbox" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."></td>
+          <td>${generateThumbnailOrIconTag(_type, _thumbnail, 25, false)}</td>
           <td class="flex-grow ${_type == 'Directory' ? 'directory' : 'file'}">${_name}</td>
           <td class="mobile">${convertBytesToReadableUnit(_size)}</td>
           <td class="mobile">${_modified}</td>
@@ -608,6 +669,93 @@
           fetchItemThumbnailAndDetails(current_path + '/' + nameTd.textContent);
         } else { // 체크 해제된 경우
           row.classList.remove('table-active');
+        }
+
+        const itemName = event.target.value;
+        if (event.target.checked) {
+          store.dispatch({ type: "ADD_SELECTED_ITEM", payload: itemName });
+        } else {
+          store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: itemName });
+        }
+      });
+    });
+  }
+
+  function grid_article() {
+    const state = store.getState();
+    const current_path = state.current_path;
+    let html_for_article = state.view_contents.map(
+      ({ _type, _name, _size, _thumbnail }) => {
+        const isChecked = state.selectedItems.includes(_name); // 선택 여부 확인
+        return `
+        <div class="card mb-5 text-center ${_type == 'Directory' ? 'directory' : 'file'}" style="width: 150px; height: 150px; position: relative;">
+          ${generateThumbnailOrIconTag(_type, _thumbnail, 148, true)}
+          <span class="hidden" style="position: absolute; top: 5px; left: 5px;">
+            <input class="form-check-input" type="checkbox" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."> 
+          </span>
+          <div class="card-body">
+            <p class="card-text" style="font-size: 0.8rem;">${_name}</p>
+            <p class="card-text" style="font-size: 0.7rem;" class="text-body-secondary">${convertBytesToReadableUnit(_size)}</p>
+          </div>
+        </div>
+        `
+      }).join('');
+
+    const gridContent = document.getElementById('grid_content');
+    gridContent.innerHTML = html_for_article;
+
+    const dir_divs = document.querySelectorAll('#grid_content div.directory');
+    dir_divs.forEach(dir_div => {
+      dir_div.addEventListener('click', async () => {
+        const $file_name = dir_div.querySelector('input').getAttribute('value');
+        await fetchDirectoryDetails(`${current_path}/${$file_name}`);
+        updateAndActivateDirectoryTreeItem();
+      });
+    });  
+
+    const $inputs = gridContent.querySelectorAll('input');
+    $inputs.forEach(input => {
+      if (input.checked) {
+        input.closest('span').classList.remove('hidden');
+      }
+    });
+
+    // 이벤트 위임 방식으로 카드의 호버 이벤트 처리
+    gridContent.addEventListener('mouseover', (event) => {
+      const card = event.target.closest('.card');
+      if (card) {
+        card.classList.add('border-primary'); // 카드 테두리 강조
+        const span = card.querySelector('span');
+        const checkbox = span?.querySelector('input');
+        if (span) {
+          span.classList.remove('hidden'); // 체크박스 보이기
+        }
+      }
+    });
+
+    gridContent.addEventListener('mouseout', (event) => {
+      const card = event.target.closest('.card');
+      if (card) {
+        card.classList.remove('border-primary'); // 카드 테두리 원래대로
+        const span = card.querySelector('span');
+        const checkbox = span?.querySelector('input');
+        if (span && !checkbox.checked) {
+          span.classList.add('hidden'); // 체크박스 숨기기
+        }
+      }
+    });
+
+    // 각 체크박스에 이벤트 리스너 추가
+    const checkboxes = document.querySelectorAll('#grid_content .form-check-input');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', (event) => {
+        const itemValue = checkbox.getAttribute('value'); // checkbox 자체에서 속성을 가져옴
+        if (event.target.checked) { // 체크 상태인 경우에만 실행
+          document.getElementById('rp_title').textContent = itemValue;
+          fetchItemThumbnailAndDetails(current_path + '/' + itemValue);
+          store.dispatch({ type: "ADD_SELECTED_ITEM", payload: itemValue });
+        } else { // 체크 해제된 경우
+          store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: itemValue });
         }
       });
     });
@@ -663,6 +811,7 @@
         directoryTree: [],
         view_contents: [],
         current_path: '',
+        selectedItems: [], // 선택된 항목들
       }
     }
     let newState;
@@ -677,6 +826,7 @@
         newState = Object.assign({}, state, {
           view_contents: newContents,
           current_path: action.dir,
+          selectedItems: [],
         });
       } else if (action.target === 'breadcrumb') {
         const pathLen = state.current_path.split('/');
@@ -684,6 +834,7 @@
           const updatedPath = pathLen.slice(0, pathLen.length - 1).join('/');
           newState = Object.assign({}, state, {
             current_path: updatedPath,
+            selectedItems: [],
           });
         }
       } else if (action.target === 'sort_table') {
@@ -716,6 +867,18 @@
           view_contents: newContents,
         });        
       }
+    } else if (action.type === 'ADD_SELECTED_ITEM') {
+      return {
+        ...state,
+        selectedItems: [...state.selectedItems, action.payload]
+      };
+    } else if (action.type === 'REMOVE_SELECTED_ITEM') {
+      return {
+        ...state,
+        selectedItems: state.selectedItems.filter(
+          (item) => item !== action.payload
+        )
+      };
     }
     return newState;
   }
@@ -793,6 +956,8 @@
       const res = await response.json();
       store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: dir_path });
       initializeTableHeader();
+      document.getElementById('rp_title').textContent = dir_path;
+      await fetchItemThumbnailAndDetails(dir_path);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -828,6 +993,7 @@
   window.store = store;
   // store.subscribe(TOC);
   store.subscribe(article);
+  store.subscribe(grid_article);
   store.subscribe(generateBreadcrumbFromPath);
 
   window.onload = async function(){
@@ -839,6 +1005,37 @@
     document.getElementById('toggleButton').addEventListener('click', () => {
       store.dispatch({ type: 'UPDATE', target: 'breadcrumb'});
       fetchDirectoryDetails(store.getState().current_path);
+    });
+
+    const rightPanel = document.getElementById('right_panel');
+    document.getElementById('infoToggleBtn').addEventListener('click', () => {
+      rightPanel.classList.toggle('hidden'); // .hidden 클래스 추가
+    });
+    
+    const $my_table = document.getElementById('my_table');
+    const $my_grid = document.getElementById('my_grid');
+    const $tableBtn = document.getElementById('tableBtn');
+    const $gridBtn = document.getElementById('gridBtn');
+
+    // 버튼 및 콘텐츠 전환 함수
+    function toggleMode(activeBtn, inactiveBtn, showElement, hideElement) {
+      activeBtn.classList.add('currentMode');
+      inactiveBtn.classList.remove('currentMode');
+      showElement.classList.remove('hidden');
+      hideElement.classList.add('hidden');
+    }
+
+    // 이벤트 리스너 설정
+    $tableBtn.addEventListener('click', () => {
+      if (!$tableBtn.classList.contains('currentMode')) {
+        toggleMode($tableBtn, $gridBtn, $my_table, $my_grid);
+      }
+    });
+
+    $gridBtn.addEventListener('click', () => {
+      if (!$gridBtn.classList.contains('currentMode')) {
+        toggleMode($gridBtn, $tableBtn, $my_grid, $my_table);
+      }
     });
   }
 </script>
