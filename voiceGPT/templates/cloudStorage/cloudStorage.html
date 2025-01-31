@@ -61,6 +61,18 @@
     flex-grow: 1; /* 부모 너비를 기준으로 남은 공간 채우기 */
     transition: flex-grow 0.5s ease;
   }
+  .btn-file, .btn-folder {
+    margin-left: 0.2rem; 
+    padding: 0.2rem 0.6rem 0.3rem 0.6rem;
+    background-color: #F1F3F9; 
+  }
+  .btn-file:hover, .btn-folder:hover {
+    background-color: #D1D1D1; 
+  }
+  button span {
+    font-size: 0.8rem; 
+    font-weight: bold; 
+  }
   #file_list {
     display: flex;
     flex-direction: row;
@@ -68,12 +80,17 @@
     overflow-y: auto;
     padding: 1rem;
   }
+  #placeholder {
+    flex: auto;
+  }
   #my_table {
     flex: auto;
     min-width: 600px;
     overflow-y: auto;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
   }
-  #my_table.hidden {
+  #my_table.invisible {
     display: none;
   }
   #my_grid {
@@ -81,7 +98,7 @@
     min-width: 600px;
     overflow-y: auto;
   }
-  #my_grid.hidden {
+  #my_grid.invisible {
     display: none;
   }
   #right_panel {
@@ -102,6 +119,9 @@
   }
   .currentMode {
     color: #4078FF !important; 
+  }
+  #toggleAllCheckboxId {
+    font-size: 1.2rem;
   }
   .table-hover td, .table-hover th {
     white-space: nowrap;
@@ -283,7 +303,7 @@
       margin-left: 0rem;
     }
     #grid_content {
-     padding: 1rem;
+     padding: 1.8rem;
   }
   }
 </style>
@@ -302,6 +322,19 @@
         </div>
         <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
           <div id="storage_bar" class="progress-bar"></div>
+        </div>
+        <!-- 📌 다운로드 진행률 바 -->
+        <div style="width: 100%; background: #ddd; border-radius: 5px; margin-top: 10px;">
+          <div id="downloadProgress" style="
+            width: 0%;
+            height: 25px;
+            background: #4CAF50;
+            text-align: center;
+            line-height: 25px;
+            color: white;
+            border-radius: 5px;">
+            0%
+          </div>
         </div>
       </div>
     </div>
@@ -331,11 +364,57 @@
       <div id="banner">
         <div class="header">
           <span>
-            <button id="fontIncrease" class="btn btn-transparent"><i class="fa-regular fa-square-plus"></i></button>
-            <button id="fontDecrease" class="btn btn-transparent"><i class="fa-regular fa-square-minus"></i></button>
-            <button id="paletteBtn" class="btn btn-transparent"><i class="fa-solid fa-palette"></i></i></button>
-          </span>
-          <span>
+            <button id="toggleAllCheckboxId" class="btn btn-transparent"><i class="fa-regular fa-square" style="color: #DEE2E6;"></i></button>
+            <button id="uploadBtn" class="btn btn-transparent" style="background-color: #4078FF; padding: 0.2rem 0.6rem 0.3rem 0.6rem;"><i class="fa-solid fa-arrow-up-from-bracket" style="font-size: 0.9rem;  color: white;"></i><span style="color: white;"> 올리기</span></button>
+            <!-- 새 폴더의 이름을 입력받는 모달창 -->
+            <button type="button" id="newfolderBtn" class="btn btn-folder" data-bs-toggle="modal" data-bs-target="#createFolderModal" data-bs-whatever="{{ g.user.username }}"><span>새 폴더</span></button>
+            <div class="modal fade" id="createFolderModal" tabindex="-1" aria-labelledby="createFolderModalLabel">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="createFolderModalLabel"></h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <form id="createFolderForm">
+                      <div class="mb-3">
+                        <label for="folder_name" class="col-form-label"></label>
+                        <input type="text" class="form-control" id="folder_name" minlength="1" maxlength="30" placeholder="새 폴더" autocomplete="off">
+                      </div>
+                    </form>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary" form="createFolderForm">확인</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span id="btnFiles" class="invisible">
+              <button id="downloadBtn" class="btn btn-file"><span>내려받기</span></button>
+              <button id="shareBtn" class="btn btn-file"><span>공유</span></button>
+              <!-- 삭제 확인 모달창 -->
+              <button type="button" id="deleteBtn" class="btn btn-file" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-whatever="{{ g.user.username }}"><span>삭제</span></button>
+              <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h1 class="modal-title fs-5" id="deleteModalLabel"></h1>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p>공유 중이거나 즐겨 찾는 파일도 함께 삭제됩니다.</p>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                      <button type="button" id="confirmDeleteBtn" class="btn btn-primary">확인</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </span>
+            </span>
+            <span>
             <button id="tableBtn" class="btn btn-transparent currentMode"><i class="fa-solid fa-bars"></i></button>
             <button id="gridBtn" class="btn btn-transparent"><i class="fa-solid fa-grip"></i></button>
             <button id="infoToggleBtn" class="btn btn-transparent"><i class="fa-solid fa-circle-info" style="color: #4078FF;"></i></button>
@@ -343,6 +422,26 @@
         </div>
       </div>
       <div id="file_list" style="padding: 0px;">
+        <div id="placeholder" class="invisible text-center flex-column align-items-center justify-content-start" style="margin-top: 5rem;">
+          <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="placeholder-glow fs-5 mb-3">
+            <span class="placeholder col-8"></span>
+          </p>
+          <div class="d-flex gap-3">
+            <div class="placeholder-glow">
+              <div class="placeholder rounded bg-warning" style="width: 80px; height: 80px;"></div>
+            </div>
+            <div class="placeholder-glow">
+              <div class="placeholder rounded bg-primary" style="width: 80px; height: 80px;"></div>
+            </div>
+            <div class="placeholder-glow">
+              <div class="placeholder rounded bg-secondary" style="width: 80px; height: 80px;"></div>
+            </div>
+          </div>
+          <p class="mt-4 text-muted">데이터를 불러오는 중입니다... 잠시만 기다려 주세요.</p>
+        </div>
         <div id="my_table">
           <table class="table table-hover">
             <thead>
@@ -353,7 +452,7 @@
             </tbody>
           </table>
         </div>
-        <div id="my_grid" class="hidden">
+        <div id="my_grid" class="invisible">
           <div id="grid_content">
           </div> 
         </div>
@@ -375,6 +474,8 @@
 {% block script %}
 <script type="module">
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
+
+  let toc_flag = true; 
 
   // 'invisible' 클래스를 토글하는 함수
   function toggleVisibility(item, isInvisible) {
@@ -442,8 +543,13 @@
     });
   }
 
-  function getStyledDirectoryName(d_path, depth) {
-    return '&emsp;'.repeat(depth) + '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>' + '&emsp;' + d_path;
+  function getStyledDirectoryName(d_path, depth, path, array) {
+    const flag = [...array].slice(0, -1).includes(path);
+    if (flag) {
+      return '&emsp;'.repeat(depth) + '<i class="fa-solid fa-folder-open" style="color: #4078FF;"></i>' + '&emsp;' + d_path;
+    } else {
+      return '&emsp;'.repeat(depth) + '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>' + '&emsp;' + d_path; 
+    }
   }
 
   const icons = {
@@ -461,25 +567,29 @@
     'video': '<i class="fa-solid fa-file-video" style="color: #01C75A"></i>',
   }
 
-  function TOC() {
+  let toc_click_flag = true;
+  function TOC(array_for_path=[]) {
     const state = store.getState();
     const html_for_toc = state.directoryTree
       .filter(item => item.type === 'directory')
       .map(({ id, path, children, pathForDisplay, subdirectoryDepth }) => `
-        <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${path.includes('/') ? 'invisible' : ''}">
-          ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth)}
+        <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${path.includes('/') && !array_for_path.includes(path) ? 'invisible' : ''}">
+          ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth, path, array_for_path)}
         </a>
       `).join('');
     
     const $toc = document.getElementById('toc');
     $toc.innerHTML = html_for_toc;
+    if (!toc_click_flag) {
+      return;
+    }
     $toc.addEventListener('click', function(e) {
       e.preventDefault();
       const elem = e.target.closest('.list-group-item');
       if (elem) {
         const id = elem.dataset.id;
-        const dir_path = state.directoryTree.filter(item => item.id == id)[0]?.path;
-        if (dir_path) {
+        const dir_path = [...store.getState().directoryTree].filter(item => item.id == id)[0]?.path;
+        if (dir_path && toc_flag) {
           fetchDirectoryDetails(dir_path);
         }
         const subIds = JSON.parse(elem.dataset.subids);
@@ -495,6 +605,7 @@
         }
       }
     });
+    toc_click_flag = false;
   }
 
   function getFileExtensionIcon(_ext) {
@@ -631,12 +742,40 @@
     }
   }
 
+  function toggleElementVisibilityById(tag, hidden) {
+    const flag = $(tag).hasClass('invisible');
+    if (hidden && !flag) {  // 태그를 숨기고자 할 경우
+      $(tag).addClass('invisible');
+    } else if (!hidden && flag) { // 태그를 보이고자 할 경우
+      $(tag).removeClass('invisible');
+    }
+  }
+
+  function updateButtonIconBasedOnCheckboxes() { // 다른 체크박스 요소들이 체크되어 있는지 확인하여, 그 결과에 따라 특정 버튼 요소의 아이콘 모양을 바꿔주는 함수
+    const state = store.getState();
+    const { view_contents, selectedItems } = state;
+    const $toggleAllCheckboxId = document.getElementById('toggleAllCheckboxId');
+    if (selectedItems.length == 0) {
+      $toggleAllCheckboxId.innerHTML = '<i class="fa-regular fa-square" style="color: #DEE2E6;"></i>';
+      toggleElementVisibilityById('#btnFiles', true);
+      toggleElementVisibilityById('#newfolderBtn', false);
+    } else if (selectedItems && (selectedItems.length == view_contents.length)) {
+      $toggleAllCheckboxId.innerHTML = '<i class="fa-solid fa-square-check" style="color: #4078FF;"></i>';
+      toggleElementVisibilityById('#btnFiles', false);
+      toggleElementVisibilityById('#newfolderBtn', true);
+    } else {
+      $toggleAllCheckboxId.innerHTML = '<i class="fa-solid fa-square-minus" style="color: #4078FF;"></i>';
+      toggleElementVisibilityById('#btnFiles', false);
+      toggleElementVisibilityById('#newfolderBtn', true);
+    }
+  }
+
   function article() {
     const state = store.getState();
-    const current_path = state.current_path;
+    const { current_path, selectedItems } = state;
     let html_for_article = state.view_contents.map(
       ({ _type, _name, _size, _modified, _thumbnail }) => {
-        const isChecked = state.selectedItems.includes(_name); // 선택 여부 확인
+        const isChecked = selectedItems.includes(_name); // 선택 여부 확인
         return `<tr>
           <td><input class="form-check-input" type="checkbox" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."></td>
           <td>${generateThumbnailOrIconTag(_type, _thumbnail, 25, false)}</td>
@@ -649,17 +788,23 @@
     document.getElementById('table_body').innerHTML = html_for_article;
     const dir_tds = document.querySelectorAll('#table_body td.directory');
     dir_tds.forEach(td => {
-      td.addEventListener('click', async () => {
+      td.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        toc_flag = false;
         await fetchDirectoryDetails(`${current_path}/${td.textContent}`);
-        updateAndActivateDirectoryTreeItem();
+        await updateAndActivateDirectoryTreeItem();
+        toc_flag = true;
       });
     });
 
     // 각 체크박스에 이벤트 리스너 추가
     const checkboxes = document.querySelectorAll('#table_body .form-check-input');
     checkboxes.forEach(checkbox => {
+      const row = checkbox.closest('tr');
+      if (checkbox.checked) {
+        row.classList.add('table-active');
+      }
       checkbox.addEventListener('change', (event) => {
-        const row = event.target.closest('tr');
         if (event.target.checked) { // 체크 상태인 경우에만 실행
           // 체크박스가 속한 행의 세 번째 <td>의 텍스트 가져오기
           row.classList.add('table-active');
@@ -706,10 +851,13 @@
 
     const dir_divs = document.querySelectorAll('#grid_content div.directory');
     dir_divs.forEach(dir_div => {
-      dir_div.addEventListener('click', async () => {
+      dir_div.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        toc_flag = false;
         const $file_name = dir_div.querySelector('input').getAttribute('value');
         await fetchDirectoryDetails(`${current_path}/${$file_name}`);
-        updateAndActivateDirectoryTreeItem();
+        await updateAndActivateDirectoryTreeItem();
+        toc_flag = true;
       });
     });  
 
@@ -717,6 +865,7 @@
     $inputs.forEach(input => {
       if (input.checked) {
         input.closest('span').classList.remove('hidden');
+        input.closest('.card').classList.add('border-primary');
       }
     });
 
@@ -736,11 +885,11 @@
     gridContent.addEventListener('mouseout', (event) => {
       const card = event.target.closest('.card');
       if (card) {
-        card.classList.remove('border-primary'); // 카드 테두리 원래대로
         const span = card.querySelector('span');
         const checkbox = span?.querySelector('input');
         if (span && !checkbox.checked) {
           span.classList.add('hidden'); // 체크박스 숨기기
+          card.classList.remove('border-primary'); // 카드 테두리 원래대로
         }
       }
     });
@@ -748,6 +897,9 @@
     // 각 체크박스에 이벤트 리스너 추가
     const checkboxes = document.querySelectorAll('#grid_content .form-check-input');
     checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
       checkbox.addEventListener('change', (event) => {
         const itemValue = checkbox.getAttribute('value'); // checkbox 자체에서 속성을 가져옴
         if (event.target.checked) { // 체크 상태인 경우에만 실행
@@ -764,29 +916,32 @@
   function generateBreadcrumbFromPath() {
     const current_path = store.getState().current_path;
     const $breadcrumb = document.getElementById('breadcrumb');
-    const splited_path = current_path.split('/');
-  
+    const splited_path = current_path.split('/').filter(path => path);
+ 
     const html_for_crumb = splited_path.map((_, index) => {
       const path = splited_path.slice(0, index + 1).join('/');
       const dir_name = splited_path[index];
       const isActive = index === splited_path.length - 1;
       
       return `
-        <li data-path="${path}" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
+        <li data-path="${path.startsWith('/') ? path.slice(1) : path }" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
       `;
     }).join('');
 
     $breadcrumb.innerHTML = '<li data-path="" id="home" class="breadcrumb-item fw-light" >Home</li>' + html_for_crumb;
     const $breadcrumbs = document.querySelectorAll('#breadcrumb li');
     $breadcrumbs.forEach(li => {
-      li.addEventListener('click', async () => {
+      li.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        toc_flag = false;
         await fetchDirectoryDetails(li.dataset.path);
-        updateAndActivateDirectoryTreeItem();
+        await updateAndActivateDirectoryTreeItem();
+        toc_flag = true;
       });
     });
   }
 
-  function updateAndActivateDirectoryTreeItem() {
+  async function updateAndActivateDirectoryTreeItem() {
     const state = store.getState();
     const currentPath = state.current_path.startsWith('/') 
       ? state.current_path.substring(1) 
@@ -868,16 +1023,38 @@
         });        
       }
     } else if (action.type === 'ADD_SELECTED_ITEM') {
-      return {
+      newState = {
         ...state,
-        selectedItems: [...state.selectedItems, action.payload]
+        selectedItems: [...state.selectedItems, action.payload],
       };
     } else if (action.type === 'REMOVE_SELECTED_ITEM') {
-      return {
+      newState ={
         ...state,
         selectedItems: state.selectedItems.filter(
-          (item) => item !== action.payload
-        )
+          (item) => item != action.payload
+        ),
+      };
+    } else if (action.type === 'ADD_SELECTED_ITEMS') {
+      newState = {
+        ...state,
+        selectedItems: [...state.selectedItems, ...action.payload],
+      };
+    } else if (action.type === 'REMOVE_SELECTED_ITEMS') {
+      newState ={
+        ...state,
+        selectedItems: [...state.selectedItems].filter(
+          (item) => ![...action.payload].includes(item)
+        ),
+      };
+    } else if (action.type === 'DELETE_SELECTED_ITEMS') {
+      newState = {
+        ...state,
+        view_contents: [...state.view_contents].filter(
+          (item) => !(action.payload || []).includes(item['_name']) // undefined 방지
+        ),
+        directoryTree: [...state.directoryTree].filter(
+          (item) => !(action.dir || []).includes(item['id'])
+        ),
       };
     }
     return newState;
@@ -940,6 +1117,11 @@
   };
 
   const fetchDirectoryDetails = async (dir_path) => {
+    const $target = document.getElementById('my_table').classList.contains('invisible') ? document.getElementById('my_grid') : document.getElementById('my_table');
+    $target.classList.add('invisible');
+    document.getElementById('placeholder').classList.add('d-flex');
+    document.getElementById('placeholder').classList.remove('invisible');
+    
     const state = store.getState();
     const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_path}`;
     
@@ -954,6 +1136,9 @@
       }
 
       const res = await response.json();
+      $target.classList.remove('invisible');
+      document.getElementById('placeholder').classList.add('invisible');
+      document.getElementById('placeholder').classList.remove('d-flex');
       store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: dir_path });
       initializeTableHeader();
       document.getElementById('rp_title').textContent = dir_path;
@@ -994,6 +1179,7 @@
   // store.subscribe(TOC);
   store.subscribe(article);
   store.subscribe(grid_article);
+  store.subscribe(updateButtonIconBasedOnCheckboxes);
   store.subscribe(generateBreadcrumbFromPath);
 
   window.onload = async function(){
@@ -1021,8 +1207,8 @@
     function toggleMode(activeBtn, inactiveBtn, showElement, hideElement) {
       activeBtn.classList.add('currentMode');
       inactiveBtn.classList.remove('currentMode');
-      showElement.classList.remove('hidden');
-      hideElement.classList.add('hidden');
+      showElement.classList.remove('invisible');
+      hideElement.classList.add('invisible');
     }
 
     // 이벤트 리스너 설정
@@ -1035,6 +1221,219 @@
     $gridBtn.addEventListener('click', () => {
       if (!$gridBtn.classList.contains('currentMode')) {
         toggleMode($gridBtn, $tableBtn, $my_grid, $my_table);
+      }
+    });
+
+    document.getElementById('toggleAllCheckboxId').addEventListener('click', (e) => {
+      const { selectedItems, view_contents } = store.getState();
+      const $checkboxes = document.querySelectorAll('#my_table td input');
+      let itemName = [];
+      $checkboxes.forEach(checkbox => {
+        itemName.push(checkbox.value);
+      });
+      if (selectedItems.length == 0) { // 모든 요소 선택 후, 체크박스 아이콘으로 변경
+        store.dispatch({ type: "ADD_SELECTED_ITEMS", payload: itemName });
+      } else { // 모든 요소 해제 후, 빈 상자 아이콘으로 변경
+        store.dispatch({ type: "REMOVE_SELECTED_ITEMS", payload: itemName });
+      }
+    });
+    
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+      const state = store.getState();
+      const { selectedItems, current_path } = state;
+      const progressBar = document.getElementById('downloadProgress'); // 진행률 바
+
+      try {
+        for (const file_name of selectedItems) {
+          const file_path = current_path + '/' + file_name;
+          const url = `${_URL}/cloudstorage/sendFileResponse/${file_path}`;
+          
+          // fetch 요청 (HEADERS 포함)
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+          // 파일 크기 가져오기
+          const contentLength = response.headers.get('Content-Length');
+          if (!contentLength) throw new Error("Cannot determine file size.");
+          const totalSize = parseInt(contentLength, 10);
+
+          // 🔥 스트리밍 다운로드 설정
+          const reader = response.body.getReader();
+          let receivedSize = 0; // 받은 데이터 크기
+          let chunks = []; // 청크 저장
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            receivedSize += value.length;
+
+            // 진행률 계산 및 표시
+            const progress = Math.round((receivedSize / totalSize) * 100);
+            progressBar.style.width = progress + "%";
+            progressBar.innerText = progress + "%";
+          }
+
+          // Blob 생성 및 다운로드 실행
+          const blob = new Blob(chunks);
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = file_name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+
+        // 다운로드 완료 후 진행률 초기화
+        progressBar.style.width = "0%";
+        progressBar.innerText = "0%";
+
+        $('#toggleAllCheckboxId').click();
+      } catch (error) {
+        console.error('Error: ', error);
+      }
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+      const state = store.getState();
+      const { selectedItems, current_path } = state;
+
+      if (selectedItems.length === 0) {
+        console.warn("No items selected for deletion.");
+        return;  // 선택된 항목이 없으면 실행하지 않음
+      }
+      $('#toggleAllCheckboxId').click()
+      try {
+        const url = `${_URL}/cloudstorage/deleteResource/`;
+        // Promise.all을 사용하여 여러 개의 삭제 요청을 병렬로 처리
+        const responses = await Promise.all(selectedItems.map(async (file_name) => {
+          const file_path = `${current_path}/${file_name}`.startsWith('/') ? `${current_path}/${file_name}`.slice(1) : `${current_path}/${file_name}`;
+          const data = { path: file_path };
+
+          const options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`Failed to delete ${file_name}: ${response.statusText}`);
+          }
+          return response.json();  // JSON 응답 반환
+        }));
+
+        // 삭제된 파일들 출력 (모든 요청 완료 후 실행)
+        responses.forEach((res) => console.log(res.message));
+        
+        const del_dir = selectedItems.filter(item => !item.includes('.')).map(item => `${current_path}/${item}`.startsWith('/') ? `${current_path}/${item}`.slice(1) : `${current_path}/${item}`);
+        let delIds = [...state.directoryTree].filter(item => del_dir.includes(item.path)).map(item => item.id.toString());
+        const dirs = document.querySelectorAll('ul#toc a');
+        dirs.forEach(el => {
+          if (delIds.includes(el.dataset.id)) {
+            const subids = JSON.parse(el.dataset.subids).map(el => el.toString());
+            delIds = [...delIds, ...subids];
+            el.remove();
+          } 
+        });
+
+        delIds = delIds.map(item => parseInt(item));
+        store.dispatch({ type: "DELETE_SELECTED_ITEMS", payload: selectedItems, dir: delIds});
+        await fetchDriveStorageInfo();
+        $('#deleteModal').modal('hide');
+      } catch (error) {
+        console.error('Error deleting files:', error);
+      }
+    });
+
+    // '새 폴더' 모달창의 세부 항목의 내용 지정하기
+    const $createFolderModal = document.getElementById('createFolderModal')
+    if ($createFolderModal) {
+      $createFolderModal.addEventListener('show.bs.modal', event => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = $createFolderModal.querySelector('.modal-title')
+        const modalBodyInput = $createFolderModal.querySelector('.modal-body input')
+        modalTitle.textContent = `새 폴더 만들기`;
+        modalBodyInput.value = '';
+      })
+    }
+
+    // '삭제' 모달창의 세부 항목의 내용 지정하기
+    const $deleteModal = document.getElementById('deleteModal');
+    if ($deleteModal) {
+      $deleteModal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const recipient = button.getAttribute('data-bs-whatever');
+        const state = store.getState();
+        const { selectedItems, current_path } = state;
+        
+        if (selectedItems.length == 1 && !selectedItems[0].includes('.')) {
+          $('#deleteModalLabel').html(`<i class="fa-solid fa-triangle-exclamation" style="color: red;"></i>&nbsp;${JSON.stringify(selectedItems).slice(1, -1)}과(와) 모든 하위폴더를 삭제하시겠습니까?`);
+        } else {
+          $('#deleteModalLabel').html(`<i class="fa-solid fa-triangle-exclamation" style="color: red;"></i>&nbsp;${selectedItems.length}개의 항목을 삭제합니다.`);
+        }
+      });
+    }
+
+    // 모달창에서 '정하기'를 클릭했을 시, 입력한 이릉의 폴더가 current_path 하위에 생성되도록 서버에 요청하기
+    document.getElementById('createFolderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const dir_name = e.target.querySelector('input').value;
+      const { current_path, directoryTree } = store.getState();
+      try {
+        const url = `${_URL}/cloudstorage/createFolderAtPath/`;
+        const dir_path = `${current_path}/${dir_name}`.startsWith('/') ? `${current_path}/${dir_name}`.slice(1) : `${current_path}/${dir_name}`;
+        const data = { path: dir_path };
+
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`Failed to create ${dir_path}: ${response.statusText}`);
+        }
+        const msg = await response.json();
+        // console.log(msg.message);
+        await fetchDirectoryContents();
+
+        const path = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        const splited_path = path.split('/').filter(_path => _path);
+        const path_for_activate = splited_path.map((_, index) => splited_path.slice(0, index + 1).join('/'));
+        TOC(path_for_activate);
+        const p = path_for_activate.pop();
+        const dirElem = directoryTree.filter(item => item.path == p).map(item => item.id)[0];
+        document.querySelector(`ul#toc a[data-id="${dirElem}"]`).click();
+        
+        $('#createFolderModal').modal('hide');
+      } catch (error) {
+        console.error('Error creating new folder:', error);
+      }
+    });
+
+    const inputField = document.getElementById('folder_name');
+    let isComposing = false; // IME 입력 중 여부를 저장
+
+    // 한글 입력 조합 시작
+    inputField.addEventListener('compositionstart', function () {
+      isComposing = true;
+    });
+
+    // 한글 입력 조합 완료
+    inputField.addEventListener('compositionend', function (event) {
+      isComposing = false;
+      event.target.value = event.target.value.replace(/[^a-zA-Z0-9가-힣\s]/g, ''); // 최종 검증
+    });
+
+    // 입력 이벤트 처리 (IME 입력 중이 아닐 때만 실행)
+    inputField.addEventListener('input', function (event) {
+      if (!isComposing) {
+        event.target.value = event.target.value.replace(/[^a-zA-Z0-9가-힣\s]/g, '');
       }
     });
   }

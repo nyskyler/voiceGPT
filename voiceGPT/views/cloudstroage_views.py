@@ -1,12 +1,15 @@
-from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file
+from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file, Response
 from werkzeug.utils import redirect
-from sqlalchemy.exc import SQLAlchemyError
 import os
 import shutil
 import imghdr
 import base64
 import datetime
 import configparser
+import stat
+import sys
+import unicodedata
+import time
 from .auth_views import login_required
 from pathlib import Path
 from pdf2image import convert_from_path
@@ -14,7 +17,7 @@ from io import BytesIO
 from PIL import Image, UnidentifiedImageError, ExifTags
 from pymediainfo import MediaInfo
 from moviepy.editor import VideoFileClip
-
+from urllib.parse import quote
 
 config = configparser.ConfigParser()
 config.read('cloudstorage.ini')
@@ -421,3 +424,135 @@ def getThumbnailAndDetails(item_path):
     print(f"An unexpected error occurred: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
   
+
+# 파일 크기에 따른 청크 크기 설정 (사이즈: 청크 크기)
+CHUNK_SIZES = {
+  1 * 1024 * 1024: 1024 * 64,   # 1MB 이상 100MB 미만 → 64KB
+  100 * 1024 * 1024: 1024 * 128,  # 100MB 이상 500MB 이하 → 128KB
+  500 * 1024 * 1024: 1024 * 512,  # 500MB 이상 1GB 미만 → 512KB
+  1 * 1024 * 1024 * 1024: 1024 * 1024  # 1GB 이상 → 1MB
+}
+
+def generate_large_file(file_path, chunk_unit):
+  """파일을 청크 단위로 읽어서 반환하는 제너레이터"""
+  with open(file_path, "rb") as file:
+    while chunk := file.read(chunk_unit):  # 8KB 단위로 읽기
+      yield chunk
+
+def send_large_file(file_path, chunk_size, filename):
+  """ 큰 파일을 스트리밍으로 전송하는 함수 """
+  file_size = os.path.getsize(file_path)  # 🔥 파일 크기 가져오기
+  # 파일명을 URL-encoded UTF-8로 변환 (RFC 5987 표준 적용)
+  encoded_filename = quote(filename, encoding='utf-8')
+
+  return Response(
+    generate_large_file(file_path, chunk_size),  # ✅ 들여쓰기 정리
+    mimetype="application/octet-stream",
+    headers={
+      "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+      "Content-Length": str(file_size),  # ✅ 올바른 형식
+    }
+)
+
+def determineSendMethod(file_path, file_name):
+  file_size = os.path.getsize(file_path)
+  if file_size < 1 * 1024 * 1024:  # 1MB 미만
+    return send_file(file_path, as_attachment=True)
+  
+  # 파일 크기에 맞는 청크 크기 찾기
+  chunk_size = next((size for limit, size in CHUNK_SIZES.items() if file_size < limit), 1024 * 1024)
+  return send_large_file(file_path, chunk_size, file_name)
+
+@bp.route("/sendFileResponse/<path:item_path>", methods=['GET'])
+@login_required
+def sendFileResponse(item_path):
+  try: 
+    file_path = str(root_dir / item_path)
+    if not os.path.exists(file_path):
+      return jsonify({"error": "The specified file does not exist."}), 404
+
+    if os.path.isdir(file_path):
+      # 고유한 ZIP 파일명 생성
+      timestamp = int(time.time())
+      folder_name = os.path.basename(file_path)
+      zip_filename = f"{folder_name}"
+      zip_folder = os.path.join(root_dir, f"temp_zips_{timestamp}")
+      os.makedirs(zip_folder, exist_ok=True)
+
+      zip_path = os.path.join(zip_folder, zip_filename)
+
+      # 폴더를 ZIP으로 압축
+      shutil.make_archive(zip_path, 'zip', file_path)
+      zip_path += ".zip"  # 명시적으로 .zip 추가
+
+      # ZIP 파일이 정상적으로 생성되었는지 확인
+      if not os.path.exists(zip_path):
+        return jsonify({"error": "Failed to create ZIP file."}), 500
+
+      # ZIP 파일을 스트리밍 방식으로 전송
+      response = determineSendMethod(zip_path, zip_filename)
+
+      # 응답이 완료된 후 ZIP 삭제를 보장
+      def cleanup():
+        try:
+          if os.path.exists(zip_path):
+            os.remove(zip_path)
+          if os.path.exists(zip_folder):
+            os.rmdir(zip_folder)
+        except Exception as e:
+          print(f"Error deleting ZIP file: {e}")
+
+      response.call_on_close(cleanup)  # ✅ 응답이 종료될 때 ZIP 삭제 실행
+      return response
+    else:
+      return determineSendMethod(file_path, os.path.basename(item_path))
+
+  except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/deleteResource/", methods=['POST'])
+@login_required
+def deleteResponse(): 
+  data = request.get_json()
+  if not data or "path" not in data:
+    return jsonify({"error": "Invalid request. 'path' is required."}), 400
+  
+  # ✅ 경로를 절대 경로로 변환하여 인코딩 문제 해결
+  resource_path = os.path.abspath(os.path.join(str(root_dir), data["path"]))
+  resource_path = unicodedata.normalize("NFC", resource_path)
+  
+  # print(f"resouce_path: {resource_path}")
+  if not os.path.exists(resource_path):
+    return jsonify({"error": "The specified file or directory does not exist."}), 404
+    
+  def remove_readonly(func, path, _):
+    """파일이 읽기 전용일 경우 권한 변경 후 삭제"""
+    os.chmod(path, stat.S_IWRITE)  # 쓰기 가능으로 변경
+    func(path)  # 다시 삭제 시도
+
+  try:
+    if os.path.isfile(resource_path):
+      os.remove(resource_path)  # 파일 삭제
+    elif os.path.isdir(resource_path):
+      encoded_path = resource_path.encode(sys.getfilesystemencoding()).decode(sys.getfilesystemencoding())
+      shutil.rmtree(encoded_path, onerror=remove_readonly) # 폴더 삭제 (권한 문제 해결)
+    return jsonify({"message": f"Successfully deleted: {data['path']}"}), 200
+  except Exception as e:
+    print(f"Error deleting resource: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/createFolderAtPath/", methods=['POST'])
+@login_required
+def create_folder_at_path(): 
+  data = request.get_json()
+  if not data or "path" not in data:
+    return jsonify({"error": "Invalid request. 'path' is required."}), 400
+  
+  target_path = str(root_dir) + '/' + data["path"]
+  try:
+   os.mkdir(target_path)
+   return jsonify({"message": f"Successfully created: {data['path']}"}), 200
+  except Exception as e:
+    print(f"Error Createing Directory: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
