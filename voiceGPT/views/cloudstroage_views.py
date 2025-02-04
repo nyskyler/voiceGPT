@@ -9,6 +9,7 @@ import configparser
 import stat
 import sys
 import unicodedata
+import mimetypes
 import time
 from .auth_views import login_required
 from pathlib import Path
@@ -45,9 +46,26 @@ def listSubdirectoryPaths(path):
 
 def encodeImageToBase64(file_path, img_size=150, backGroundColor=False):
   # 이미지가 올바르게 열리는지 확인
-  if imghdr.what(file_path) in ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp']:
+  if imghdr.what(file_path) in ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp', 'heic']:
     try:
       with Image.open(file_path) as img:
+        #EXIF 데이터를 사용하여 이미지 회전
+        try:
+          for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+          exif = img._getexif()
+          if exif is not None:
+            orientation = exif.get(orientation, None)
+            if orientation == 3:
+                img = img.rotate(180, expand=True)
+            elif orientation == 6:
+                img = img.rotate(270, expand=True)
+            elif orientation == 8:
+                img = img.rotate(90, expand=True)
+        except (AttributeError, KeyError, IndexError):
+          # EXIF 데이터가 없는 경우 처리
+          pass
         img_buffer = BytesIO()
         if backGroundColor:
           max_size = (img_size, img_size)
@@ -233,7 +251,7 @@ def parse_mediainfo_date(date_str):
   try:
     if date_str.startswith("UTC"):
       date_str = date_str.replace("UTC ", "")
-    return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
   except ValueError:
     return date_str  # 원본 문자열을 반환 (알 수 없는 형식인 경우)
 
@@ -412,11 +430,11 @@ def getThumbnailAndDetails(item_path):
                 image_info["촬영 일시"] = value
                 break
 
-          thumbnail_base64 = encodeImageToBase64(target_loc, 200, (246, 247, 250, 255))
+          thumbnail_base64 = encodeImageToBase64(target_loc, 500, (246, 247, 250, 255))
           return jsonify({"type": "image", "info": image_info, "data": thumbnail_base64}), 200
       elif ext in ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv']:
         video_info = get_video_metadata(target_loc)
-        thumbnail_base64 = encodeVideoToBase64(str(target_loc), 200, (246, 247, 250, 255))
+        thumbnail_base64 = encodeVideoToBase64(str(target_loc), 500, (246, 247, 250, 255))
         return jsonify({"type": "video", "info": video_info, "data": thumbnail_base64}), 200
       else:
         return jsonify({"type": f"{ext.lstrip('.')}", "info": get_file_info(target_loc)}), 200
@@ -511,33 +529,80 @@ def sendFileResponse(item_path):
     print(f"An unexpected error occurred: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
   
+def normalize_path(path, form="NFC"):
+  """MacOS에서 한글 파일명을 정상 처리하도록 정규화"""
+  return unicodedata.normalize(form, path)
+
+def remove_readonly(func, path, _):
+  """읽기 전용 파일 삭제를 위한 권한 변경"""
+  os.chmod(path, stat.S_IWRITE)
+  func(path)
+
+def should_skip_file(file_path):
+  """MacOS의 AppleDouble 숨김 파일(`._`)은 삭제 대상에서 제외"""
+  return os.path.basename(file_path).startswith("._")
+
+def delete_file(file_path):
+  """파일 삭제 시도 (NFD → 실패 시 NFC)"""
+  if should_skip_file(file_path):
+    print(f"Skipping AppleDouble file: {file_path}")
+    return
+  
+  try:
+    os.remove(normalize_path(file_path, "NFD"))
+  except FileNotFoundError:
+    os.remove(normalize_path(file_path, "NFC"))
+
+def delete_directory(directory_path):
+  """폴더 내 모든 파일 및 하위 폴더 삭제 후, 최상위 폴더 삭제"""
+  directory_path = normalize_path(directory_path, "NFC")  # ✅ 폴더는 NFC 정규화
+
+  # 🔹 폴더 내부의 모든 파일 삭제
+  for root, _, files in os.walk(directory_path, topdown=False):
+    for file_name in files:
+      delete_file(os.path.join(root, file_name))
+
+  # 🔹 삭제 대상 폴더 내 모든 하위 디렉토리 목록 저장
+  all_dirs = [
+    normalize_path(os.path.join(root, dir_name), "NFC")
+    for root, dirs, _ in os.walk(directory_path, topdown=False)
+    for dir_name in dirs
+  ]
+
+  # 🔹 하위 폴더부터 삭제
+  for dir_path in all_dirs:
+    try:
+      shutil.rmtree(dir_path, onerror=remove_readonly)
+    except FileNotFoundError:
+      shutil.rmtree(normalize_path(dir_path, "NFD"), onerror=remove_readonly)
+
+  # 🔹 최상위 폴더 삭제
+  try:
+    shutil.rmtree(directory_path, onerror=remove_readonly)
+  except FileNotFoundError:
+    shutil.rmtree(normalize_path(directory_path, "NFD"), onerror=remove_readonly)
+
 @bp.route("/deleteResource/", methods=['POST'])
 @login_required
-def deleteResponse(): 
+def deleteResponse():
   data = request.get_json()
   if not data or "path" not in data:
     return jsonify({"error": "Invalid request. 'path' is required."}), 400
-  
-  # ✅ 경로를 절대 경로로 변환하여 인코딩 문제 해결
+
   resource_path = os.path.abspath(os.path.join(str(root_dir), data["path"]))
-  resource_path = unicodedata.normalize("NFC", resource_path)
-  
-  # print(f"resouce_path: {resource_path}")
+
+  # ✅ 존재 여부 확인
   if not os.path.exists(resource_path):
     return jsonify({"error": "The specified file or directory does not exist."}), 404
-    
-  def remove_readonly(func, path, _):
-    """파일이 읽기 전용일 경우 권한 변경 후 삭제"""
-    os.chmod(path, stat.S_IWRITE)  # 쓰기 가능으로 변경
-    func(path)  # 다시 삭제 시도
 
   try:
     if os.path.isfile(resource_path):
-      os.remove(resource_path)  # 파일 삭제
+      delete_file(resource_path)
     elif os.path.isdir(resource_path):
-      encoded_path = resource_path.encode(sys.getfilesystemencoding()).decode(sys.getfilesystemencoding())
-      shutil.rmtree(encoded_path, onerror=remove_readonly) # 폴더 삭제 (권한 문제 해결)
+      delete_directory(resource_path)
+
     return jsonify({"message": f"Successfully deleted: {data['path']}"}), 200
+
   except Exception as e:
     print(f"Error deleting resource: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
@@ -555,4 +620,87 @@ def create_folder_at_path():
    return jsonify({"message": f"Successfully created: {data['path']}"}), 200
   except Exception as e:
     print(f"Error Createing Directory: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/saveUploadedFileFromChunks/", methods=['POST'])
+@login_required
+def saveUploadedFileFromChunks():
+  try:
+    file = request.files['file']
+    file_name = request.form['fileName']
+    file_path = request.form['filePath']
+    chunk_index = int(request.form['chunkIndex'])
+    total_chunks = int(request.form['totalChunks'])
+
+    target_path = str(root_dir) + '/' + file_path
+
+    save_path = os.path.join(target_path, file_name + ".part")
+
+    # Chunk 데이터를 추가하여 파일 저장
+    with open(save_path, 'ab') as f:
+      f.write(file.read())
+
+    # 모든 조각이 업로드되면 최종 파일로 저장
+    if chunk_index == total_chunks - 1:
+      os.rename(save_path, os.path.join(target_path, file_name))
+      return jsonify({"message": "Upload complete"}), 200
+
+    return jsonify({"message": "Chunk received"}), 200
+  except Exception as e:
+    print(f"Error Saving File: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/saveUploadedFolderFromChunks/", methods=['POST'])
+@login_required
+def saveUploadedFolderFromChunks():
+  try:
+    file = request.files['file']
+    file_name = request.form['fileName']
+    file_path = request.form['filePath']
+    current_path = request.form['currentPath']
+    chunk_index = int(request.form['chunkIndex'])
+    total_chunks = int(request.form['totalChunks'])
+
+    sub_dir = '/'.join(file_path.split('/')[:-1])
+    target_path = str(root_dir) + '/' + current_path + '/' + sub_dir + '/'
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)  # 폴더 생성
+    
+    save_path = os.path.join(os.path.dirname(target_path), file_name + ".part")
+
+    # Chunk 데이터를 추가하여 파일 저장
+    with open(save_path, 'ab') as f:
+      f.write(file.read())
+
+    # 모든 조각이 업로드되면 최종 파일로 저장
+    if chunk_index == total_chunks - 1:
+      final_path = os.path.join(os.path.dirname(target_path), file_name)            
+      # 기존 파일이 있다면 삭제
+      if os.path.exists(final_path):
+        os.remove(final_path)
+
+      os.rename(save_path, final_path)
+      return jsonify({"message": "Upload complete"}), 200
+    return jsonify({"message": "Chunk received"}), 200
+  except Exception as e:
+    print(f"Error Saving File: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/view/<path:file_path>", methods=['GET'])
+@login_required
+def serveMediaResource(file_path):
+  try:
+    target_path = str(root_dir) + '/' + file_path
+
+    if not os.path.exists(target_path):
+      return jsonify({"error": "File not found"}), 404
+
+    # if file_path.split['.'][-1].lower() == 'pdf':
+    #   return send_file(target_path, mimetype='application/pdf', as_attachment=False)
+    # else:
+     # MIME 타입 자동 추론
+    mime_type, _ = mimetypes.guess_type(target_path)
+    
+    return send_file(target_path, mimetype=mime_type, as_attachment=False)
+  except Exception as e:
+    print(f"Error Serving File: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
