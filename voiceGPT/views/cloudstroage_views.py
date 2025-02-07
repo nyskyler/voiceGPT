@@ -11,6 +11,7 @@ import sys
 import unicodedata
 import mimetypes
 import time
+import zipfile
 from .auth_views import login_required
 from pathlib import Path
 from pdf2image import convert_from_path
@@ -130,7 +131,7 @@ def convert_size(size_bytes):
   while size_bytes >= 1024 and unit_index < len(size_units) - 1:
       size_bytes /= 1024
       unit_index += 1
-  return f"{size_bytes:.2f} {size_units[unit_index]}"
+  return f"{size_bytes:.2f}{size_units[unit_index]}"
 
 def get_folder_info(folder_path):
   current_path = str(folder_path)
@@ -618,6 +619,130 @@ def create_folder_at_path():
   try:
    os.mkdir(target_path)
    return jsonify({"message": f"Successfully created: {data['path']}"}), 200
+  except Exception as e:
+    print(f"Error Createing Directory: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/copyResourcesToDirectory/", methods=['POST'])
+@login_required
+def copy_resources():
+  data = request.get_json()
+  if not data or 'resource_path' not in data or "target_path" not in data:
+    return jsonify({"error": "Invalid request."}), 400
+
+  resource_paths = [os.path.join(root_dir, item[1:]) if item.startswith('/') else os.path.join(root_dir, item) for item in data['resource_path']]
+  target_path = os.path.join(root_dir, data['target_path'])
+
+  if not os.path.exists(target_path):
+    return jsonify({"error": "Target directory does not exist."}), 400
+
+  try:
+    for item in resource_paths:
+      if not os.path.exists(item):
+        return jsonify({"error": f"Resource does not exist: {item}"}), 400
+
+      destination = os.path.join(target_path, os.path.basename(item))
+      if os.path.exists(destination):
+        return jsonify({"error": f"File already exists: {destination}"}), 400
+
+      shutil.copy(item, destination)
+
+    return jsonify({"message": f"Successfully copied to: {target_path}"}), 200
+  except Exception as e:
+    print(f"Error Moving Process: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/moveResourcesToDirectory/", methods=['POST'])
+@login_required
+def move_resources():
+  data = request.get_json()
+  if not data or 'resource_path' not in data or "target_path" not in data:
+    return jsonify({"error": "Invalid request."}), 400
+
+  resource_paths = [os.path.join(root_dir, item[1:]) if item.startswith('/') else os.path.join(root_dir, item) for item in data['resource_path']]
+  target_path = os.path.join(root_dir, data['target_path'])
+
+  if not os.path.exists(target_path):
+    return jsonify({"error": "Target directory does not exist."}), 400
+
+  try:
+    for item in resource_paths:
+      if not os.path.exists(item):
+        return jsonify({"error": f"Resource does not exist: {item}"}), 400
+
+      destination = os.path.join(target_path, os.path.basename(item))
+      if os.path.exists(destination):
+        return jsonify({"error": f"File already exists: {destination}"}), 400
+
+      shutil.move(item, destination)
+
+    return jsonify({"message": f"Successfully moved to: {target_path}"}), 200
+  except Exception as e:
+    print(f"Error Moving Process: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/unzipAndStoreResources/", methods=['POST'])
+@login_required
+def unzip_and_store_resources():
+  data = request.get_json()
+  if not data or 'resource_path' not in data or "current_path" not in data:
+    return jsonify({"error": "Invalid request."}), 400
+  
+  current_path = data['current_path']
+  zipfile_name = os.path.basename(data['resource_path'])
+  full_path = os.path.join(root_dir, current_path, zipfile_name)
+  extract_to = os.path.join(root_dir, current_path)
+  
+  try:
+   with zipfile.ZipFile(full_path, 'r') as zip_ref:
+     zip_ref.extractall(extract_to)
+
+   return jsonify({"message": f"Successfully extracted for: {zipfile_name}"}), 200
+  except Exception as e:
+    print(f"Error Unzipping Process: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/zipAndSaveResources/", methods=['POST'])
+@login_required
+def zip_and_save_resources(): 
+  data = request.get_json()
+  if not data or "resource_paths" not in data or "current_path" not in data:
+    return jsonify({"error": "Invalid request."}), 400
+  
+  current_path = data['current_path']
+  resource_paths = [os.path.join(root_dir, current_path, item) for item in data['resource_paths']]
+  zipfile_name = f"{os.path.basename(resource_paths[0])}.zip" if len(resource_paths) == 1 and os.path.isdir(resource_paths[0]) else "압축_파일.zip"
+  full_path = os.path.join(root_dir, current_path, zipfile_name)
+  
+  try:
+   with zipfile.ZipFile(full_path, 'w', zipfile.ZIP_DEFLATED) as myzip:
+     for item in resource_paths:
+        if os.path.isdir(item):  # 폴더일 경우 내부 파일까지 압축
+          for root, _, files in os.walk(item):
+            for file in files:
+              file_path = os.path.join(root, file)
+              arcname = os.path.relpath(file_path, root_dir)  # 압축 내 상대 경로 지정
+              myzip.write(file_path, arcname)
+        else:  # 단일 파일일 경우 직접 압축
+          myzip.write(item, os.path.basename(item))
+
+   return jsonify({"message": f"Successfully compressed as: {zipfile_name}"}), 200
+  except Exception as e:
+    print(f"Error Zipping Process: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/renameResource/", methods=['POST'])
+@login_required
+def rename_resource(): 
+  data = request.get_json()
+  if not data:
+    return jsonify({"error": "Invalid request."}), 400
+  
+  resource_path = str(root_dir) + '/' + data["resource_path"]
+  rename_path = str(root_dir) + '/' + data["renamed_path"]
+  try:
+   os.rename(resource_path, rename_path)
+   return jsonify({"message": f"Successfully renamed: '{data['resource_path']}' to '{data['renamed_path']}'"}), 200
   except Exception as e:
     print(f"Error Createing Directory: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
