@@ -145,14 +145,23 @@
     font-size: 0.9rem;
   }
   .table thead th {
-    position: sticky;
-    top: 0; /* 테이블 헤더가 스크롤될 때 고정 위치 */
+    position: relative;
+    /* top: 0; 테이블 헤더가 스크롤될 때 고정 위치 */
     background-color: white; /* 헤더 배경색 설정 */
     z-index: 1; /* 다른 콘텐츠보다 위에 표시되도록 설정 */
     font-weight: normal;
     font-size: 0.7rem;
     color: #767780;
   }
+  th .resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    cursor: col-resize;
+    user-select: none;
+  }
+
   .table tr .mobile {
     color: #9398A0;
     font-size: 0.8rem;
@@ -272,19 +281,19 @@
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
     #sidebar {
-      height: 87vh;
+      height: 94vh;
     }
     #nav_dir {
-      height: 79vh;
+      height: 86vh;
     }
     #nav_files {
-      height: 87vh;
+      height: 94vh;
     }
   } 
 
   @media (max-width: 767.98px) and (orientation: portrait) {
     #nav_files {
-      height:79vh; /* 모바일에서는 전체 화면 높이로 설정 */
+      height:92vh; /* 모바일에서는 전체 화면 높이로 설정 */
     }
     .toggle-btn {
       display: none;
@@ -353,10 +362,10 @@
             </ol>
           </nav>
         </div>
-        <form id="searchForm" style="display: flex; align-items: center;">
+        <form id="searchForm" style="display: flex; align-items: center; margin-right: 0.7rem;">
           <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
-            <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px;" maxlength="12" id="searchInput" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1">
-            <button id="searchBtn" class="btn btn-light" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0;" type="submit">
+            <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px; font-size: 0.8rem;" minlength="1" maxlength="12" id="searchInput" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" placeholder="파일, 폴더, 확장자 검색">
+            <button id="searchBtn" class="btn btn-light" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0; font-size: 0.8rem;" type="submit">
               <i class="fa-solid fa-magnifying-glass"></i>
             </button>
           </div>
@@ -575,8 +584,6 @@
 <script type="module">
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
 
-  let toc_flag = true; 
-
   // 'invisible' 클래스를 토글하는 함수
   function toggleVisibility(item, isInvisible) {
     if (isInvisible) {
@@ -674,10 +681,11 @@
     'html': '<i class="fa-solid fa-file-code" style="color: #1DB45B"></i>',
   }
 
-  let toc_click_flag = true;
+  let toc_flag = true;
+  let toc_event_flag = true;
   function TOC() {
-    const state = store.getState();
-    const html_for_toc = state.directoryTree
+    const { directoryTree } = store.getState();
+    const html_for_toc = directoryTree
       .filter(item => item.type === 'directory')
       .map(({ id, path, children, pathForDisplay, subdirectoryDepth }) => `
         <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${path.includes('/') ? 'invisible' : ''}">
@@ -687,18 +695,17 @@
     
     const $toc = document.getElementById('toc');
     $toc.innerHTML = html_for_toc;
-    if (!toc_click_flag) {
+    if (!toc_event_flag) {
       return;
     }
-    $toc.addEventListener('click', function(e) {
+    $toc.addEventListener('click', async function(e) {
       e.preventDefault();
+      e.stopPropagation();
+      allowSubscriptionCall = true;
       const elem = e.target.closest('.list-group-item');
       if (elem) {
         const id = elem.dataset.id;
-        const dir_path = [...store.getState().directoryTree].filter(item => item.id == id)[0]?.path;
-        if (dir_path && toc_flag) {
-          fetchDirectoryDetails(dir_path);
-        }
+        const dir_path = directoryTree.filter(item => item.id == id)[0]?.path;
         const subIds = JSON.parse(elem.dataset.subids);
         if (subIds.length > 0) {
           if (!elem.classList.contains('open')) {
@@ -710,13 +717,17 @@
           }
           displayTagsById(subIds);
         }
+        
+        if (dir_path && toc_flag) {
+          await fetchDirectoryDetails(dir_path);
+        }
       }
     });
-    toc_click_flag = false;
+    toc_event_flag = false;
+    //
   }
 
   function getFileExtensionIcon(_ext) {
-    // console.log(_ext);
     if (_ext) {
       const ext = _ext.split('.')[1].toLowerCase();
       let tag = icons[ext] || `<i class="fa-regular fa-file"></i>`;
@@ -780,7 +791,6 @@
     // fetch를 사용하여 서버에서 이미지를 가져오고, Blob과 URL.createObjectURL을 사용하여 이미지를 웹 페이지에 표시하기
     const state = store.getState();
     const url = `${_URL}/cloudstorage/getThumbnailAndDetails/${item_path}`;
-    
     try {
       const response = await fetch(url, { method: 'GET' });
       if (!response.ok) {
@@ -830,9 +840,9 @@
         $td_for_value.classList.add('td_value');
         $td_for_key.textContent = item[0];
         $td_for_value.textContent = (item[1] == '/Users/yuseung-u/Desktop/pythonLab/voiceGPT' ? '/' : item[1]);
-        if (res.type == 'folder' && item[0] == '위치') {
-          document.getElementById('rp_title').textContent = $td_for_value.textContent;
-        } 
+        // if (res.type == 'folder' && item[0] == '위치') {
+        //   document.getElementById('rp_title').textContent = $td_for_value.textContent;
+        // }
         $tr.appendChild($td_for_key);
         $tr.appendChild($td_for_value);
         $fragment.appendChild($tr);
@@ -941,12 +951,14 @@
     const state = store.getState();
     const { current_path, selectedItems, checkedFilePathsForMove } = state;
     let html_for_article = state.view_contents.map(
-      ({ _type, _name, _size, _modified, _thumbnail }) => {
-        const isChecked = selectedItems.includes(_name); // 선택 여부 확인
+      ({ _type, _name, _size, _loc, _modified, _thumbnail }) => {
+        const selected = selectedItems.map(item => item.split('/').pop());
+        const isChecked = selected.includes(_name); // 선택 여부 확인
+        const popoverContent = _loc ? `data-bs-toggle="popover" data-bs-title="위치" data-bs-content="${_loc}"` : '';
         return `<tr>
-          <td><input class="form-check-input" type="checkbox" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."></td>
-          <td>${generateThumbnailOrIconTag(_type, _thumbnail, 25, false)}</td>
-          <td class="flex-grow ${_type == 'Directory' ? 'directory' : 'file'} style="${checkedFilePathsForMove?.includes(current_path.slice(1) + '/' + _name) ? 'color: #9CA1A8;' : ''}">${_name}</td>
+          <td><input class="form-check-input" type="checkbox" data-loc="${_loc}" data-type="${_type == 'Directory' ? 'directory' : 'file'}"  value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."></td>
+          <td class="${_loc ? 'popover-hover' : ''}" ${popoverContent}">${generateThumbnailOrIconTag(_type, _thumbnail, 25, false)}</td>
+          <td class="flex-grow ${_type == 'Directory' ? 'directory' : 'file'}\" data-loc="${_loc}" style="${checkedFilePathsForMove?.includes(current_path.slice(1) + '/' + _name) ? 'color: #9CA1A8;' : ''}">${_name}</td>
           <td class="mobile">${convertBytesToReadableUnit(_size)}</td>
           <td class="mobile">${_modified}</td>
         </tr>`
@@ -954,13 +966,45 @@
 
     document.getElementById('table_body').innerHTML = html_for_article;
 
+    document.querySelectorAll('#table_body td.popover-hover').forEach(td => {
+      let popover = new bootstrap.Popover(td, {
+        trigger: "manual",
+        placement: "left",
+      });
+
+      let hideTimeout;
+
+      td.addEventListener("mouseenter", () => {
+        clearTimeout(hideTimeout);
+        popover.show();
+      });
+
+      td.addEventListener("mouseleave", () => {
+        hideTimeout = setTimeout(() => {
+          popover.hide();
+        }, 100); // 팝오버가 사라지기 전 100ms 지연
+      });
+
+      td.addEventListener("click", () => {
+        popover.hide(); // 팝오버를 수동으로 숨기기
+      });
+    });
+  
     const dir_tds = document.querySelectorAll('#table_body td.directory');
     dir_tds.forEach(td => {
       td.addEventListener('click', async (e) => {
         e.stopPropagation();
+        allowSubscriptionCall = true;
+        
+        let targetPath = null;
+        const loc = e.target.dataset.loc;
+        if (loc == 'undefined') {
+          targetPath = `${current_path}/${td.textContent}`; 
+        } else {
+          targetPath = loc.slice(1);
+        }
         toc_flag = false;
-        await fetchDirectoryDetails(`${current_path}/${td.textContent}`);
-        await updateAndActivateDirectoryTreeItem();
+        await fetchDirectoryDetails(targetPath);
         toc_flag = true;
       });
     });
@@ -969,7 +1013,12 @@
     file_tds.forEach(td => {
       td.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        let currentPath = null;
+        // allowSubscriptionCall = true;
+        const loc = e.target.dataset.loc;
+        currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        currentPath = loc == 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
+
         const filename = td.textContent;
         const file_ext = filename.includes('.') ? filename.split('.')[1] : undefined;
         const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'];
@@ -996,41 +1045,46 @@
         row.classList.add('table-active');
       }
       checkbox.addEventListener('change', (event) => {
-        if (event.target.checked) { // 체크 상태인 경우에만 실행
-          // 체크박스가 속한 행의 세 번째 <td>의 텍스트 가져오기
-          row.classList.add('table-active');
-          const nameTd = row.querySelector('td:nth-child(3)');
-          // console.log(nameTd.textContent);
-          document.getElementById('rp_title').textContent = nameTd.textContent;
-          fetchItemThumbnailAndDetails(current_path + '/' + nameTd.textContent);
-        } else { // 체크 해제된 경우
-          row.classList.remove('table-active');
+        event.stopPropagation();
+        row.classList.add('table-active');
+        const nameTd = row.querySelector('td:nth-child(3)');
+        let targetFullPath = null;
+
+        if (nameTd.dataset.loc === 'undefined') {
+          targetFullPath = current_path + '/' + nameTd.textContent;
+        } else if (nameTd.dataset.loc.endsWith('/')) {
+          targetFullPath = nameTd.dataset.loc.slice(1) + nameTd.textContent;
+        } else {
+          targetFullPath = nameTd.dataset.loc.slice(1);
         }
 
-        const itemName = event.target.value;
-        if (event.target.checked) {
-          store.dispatch({ type: "ADD_SELECTED_ITEM", payload: itemName });
-        } else {
-          store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: itemName });
+        if (event.target.checked) { // 체크 상태인 경우에만 실행
+          document.getElementById('rp_title').textContent = nameTd.textContent;
+          fetchItemThumbnailAndDetails(targetFullPath);
+          store.dispatch({ type: "ADD_SELECTED_ITEM", payload: targetFullPath });
+        } else { // 체크 해제된 경우
+          row.classList.remove('table-active');
+          store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: targetFullPath });
         }
       });
     });
   }
 
   function grid_article() {
-    const state = store.getState();
-    const current_path = state.current_path;
-    let html_for_article = state.view_contents.map(
-      ({ _type, _name, _size, _thumbnail }) => {
-        const isChecked = state.selectedItems.includes(_name); // 선택 여부 확인
+    const { current_path, selectedItems, view_contents } = store.getState();
+    let html_for_article = view_contents.map(
+      ({ _type, _name, _loc, _size, _thumbnail }) => {
+        const selected = selectedItems.map(item => item.split('/').pop());
+        const isChecked = selected.includes(_name); // 선택 여부 확인
+        const popoverContent = _loc ? `data-bs-toggle="popover" data-bs-title="위치" data-bs-content="${_loc}"` : '';
         return `
-        <div class="card mb-5 text-center ${_type == 'Directory' ? 'directory' : 'file'}" style="width: 150px; height: 150px; position: relative;">
+        <div class="card mb-5 text-center ${_type == 'Directory' ? 'directory' : 'file'}" data-loc="${_loc}" style="width: 150px; height: 150px; position: relative;">
           ${generateThumbnailOrIconTag(_type, _thumbnail, 148, true)}
           <span class="hidden" style="position: absolute; top: 5px; left: 5px;">
-            <input class="form-check-input" type="checkbox" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."> 
+            <input class="form-check-input" type="checkbox" data-loc="${_loc}" data-type="${_type == 'Directory' ? 'directory' : 'file'}" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."> 
           </span>
           <div class="card-body">
-            <p class="card-text" style="font-size: 0.8rem;">${_name}</p>
+            <p class="card-text ${_loc ? 'popover-hover' : ''}" ${popoverContent} style="font-size: 0.8rem;">${_name}</p>
             <p class="card-text" style="font-size: 0.7rem;" class="text-body-secondary">${convertBytesToReadableUnit(_size)}</p>
           </div>
         </div>
@@ -1040,14 +1094,46 @@
     const gridContent = document.getElementById('grid_content');
     gridContent.innerHTML = html_for_article;
 
+    document.querySelectorAll('#grid_content p.popover-hover').forEach(td => {
+      let popover = new bootstrap.Popover(td, {
+        trigger: "manual",
+        placement: "bottom",
+      });
+
+      let hideTimeout;
+
+      td.addEventListener("mouseenter", () => {
+        clearTimeout(hideTimeout);
+        popover.show();
+      });
+
+      td.addEventListener("mouseleave", () => {
+        hideTimeout = setTimeout(() => {
+          popover.hide();
+        }, 100); // 팝오버가 사라지기 전 100ms 지연
+      });
+
+      td.addEventListener("click", () => {
+        popover.hide(); // 팝오버를 수동으로 숨기기
+      });
+    });
+
     const dir_divs = document.querySelectorAll('#grid_content div.directory');
     dir_divs.forEach(dir_div => {
       dir_div.addEventListener('click', async (e) => {
         e.stopPropagation();
-        toc_flag = false;
+        allowSubscriptionCall = true;
         const $file_name = dir_div.querySelector('input').getAttribute('value');
-        await fetchDirectoryDetails(`${current_path}/${$file_name}`);
-        await updateAndActivateDirectoryTreeItem();
+        let targetPath = null;
+        const loc = e.target.closest('div').dataset.loc;
+        if (loc === 'undefined') {
+          targetPath = `${current_path}/${$file_name}`; 
+        } else {
+          targetPath = loc.slice(1);
+        }
+
+        toc_flag = false;
+        await fetchDirectoryDetails(targetPath);
         toc_flag = true;
       });
     });  
@@ -1056,20 +1142,27 @@
     file_divs.forEach(file_div => {
       file_div.addEventListener('dblclick', async (e) => {
         e.stopPropagation();
-        const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        let currentPath = null;
+        const loc = e.target.closest('div').dataset.loc;
+        currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        currentPath = loc === 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
+        
+        // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
         const file_name = file_div.querySelector('input').getAttribute('value');
         const file_ext = file_name.includes('.') ? file_name.split('.')[1] : undefined;
-        const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp', 'heic'];
+        const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'];
         const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
-        // console.log(file_ext);
-        if (image_exts.includes(file_ext)) {
-          openFile(`${currentPath}/${file_name}`, false);
-        } else if (video_exts.includes(file_ext)) {
-          openFile(`${currentPath}/${file_name}`, true);
-        } else {
-          return
-        }
-       });
+        const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
+        const code_exts = ['html', 'css', 'js', 'py'];
+        const office_exts = ['hwp', 'hwpx', 'pdf'];
+        if (video_exts.includes(file_ext)) {
+          openFile(`${currentPath}/${file_name}`, true, false);
+        } else if (audio_exts.includes(file_ext)) {
+          openFile(`${currentPath}/${file_name}`, false, true);  // 비디오 파일
+        } else if (image_exts.includes(file_ext) || code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
+          openFile(`${currentPath}/${file_name}`);
+        } 
+      });
     });  
 
     const $inputs = gridContent.querySelectorAll('input');
@@ -1113,18 +1206,31 @@
       });
       checkbox.addEventListener('change', (event) => {
         const itemValue = checkbox.getAttribute('value'); // checkbox 자체에서 속성을 가져옴
+        const loc = event.target.closest('div').dataset.loc;
+
+        let targetFullPath = null;
+        if (loc === 'undefined') {
+          targetFullPath = current_path + '/' + itemValue;
+        } else if (loc.endsWith('/')) {
+          targetFullPath = loc.slice(1) + itemValue;
+        } else {
+          targetFullPath = loc.slice(1);
+        }
+
         if (event.target.checked) { // 체크 상태인 경우에만 실행
           document.getElementById('rp_title').textContent = itemValue;
-          fetchItemThumbnailAndDetails(current_path + '/' + itemValue);
-          store.dispatch({ type: "ADD_SELECTED_ITEM", payload: itemValue });
+          fetchItemThumbnailAndDetails(targetFullPath);
+          store.dispatch({ type: "ADD_SELECTED_ITEM", payload: targetFullPath });
         } else { // 체크 해제된 경우
-          store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: itemValue });
+          store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: targetFullPath });
         }
       });
     });
   }
 
-  function generateBreadcrumbFromPath() {
+  let search_word = null;
+  let allowSubscriptionCall = true;
+  async function generateBreadcrumbFromPath() {
     const current_path = store.getState().current_path;
     const $breadcrumb = document.getElementById('breadcrumb');
     const splited_path = current_path.split('/').filter(path => path);
@@ -1139,14 +1245,18 @@
       `;
     }).join('');
 
-    $breadcrumb.innerHTML = '<li data-path="" id="home" class="breadcrumb-item fw-light" >Home</li>' + html_for_crumb;
+    if (!allowSubscriptionCall) {
+      $breadcrumb.innerHTML = `<li data-path="" id="home" class="breadcrumb-item fw-semibold" >파일 검색 결과 <span style="color: #4078FF;">${search_word}</span></li>`
+    } else {
+      $breadcrumb.innerHTML = '<li data-path="" id="home" class="breadcrumb-item fw-light" >Home</li>' + html_for_crumb;
+      await updateAndActivateDirectoryTreeItem();
+    }
     const $breadcrumbs = document.querySelectorAll('#breadcrumb li');
     $breadcrumbs.forEach(li => {
       li.addEventListener('click', async (e) => {
         e.stopPropagation();
         toc_flag = false;
         await fetchDirectoryDetails(li.dataset.path);
-        await updateAndActivateDirectoryTreeItem();
         toc_flag = true;
       });
     });
@@ -1158,17 +1268,18 @@
       ? state.current_path.substring(1) 
       : state.current_path;
       
-    const directoryItem = state.directoryTree.find(item => item.path === currentPath);
-    const id = directoryItem?.id;
-
-    if (id) {
-      const $elem = document.querySelector(`#toc a[data-id="${id}"]`);
+    const splitedPath = currentPath.split('/');
+    const onWayPaths = splitedPath.map((item, idx) => splitedPath.slice(0, idx + 1).join('/'));
+    
+    const directoryItemIds = state.directoryTree.filter(item => onWayPaths.includes(item.path)).map(item => item.id);
+    
+    directoryItemIds.forEach(el => {
+      const $elem = document.querySelector(`#toc a[data-id="${el}"]`);
       const $icon = $elem.querySelector('.fa-solid');
-
-      if (!$icon.classList.contains('fa-folder-open')) {
+      if ((!$icon.classList.contains('fa-folder-open')) && (JSON.parse($elem.dataset.subids).length > 0)) {
         $elem.click();
       }
-    }
+    });
   }
 
   function reducer(state, action) {
@@ -1457,11 +1568,11 @@
     });
 
     document.getElementById('toggleAllCheckboxId').addEventListener('click', (e) => {
-      const { selectedItems, view_contents } = store.getState();
+      const { selectedItems, view_contents, current_path } = store.getState();
       const $checkboxes = document.querySelectorAll('#my_table td input');
       let itemName = [];
       $checkboxes.forEach(checkbox => {
-        itemName.push(checkbox.value);
+        itemName.push(checkbox.dataset.loc === 'undefined' ? `${current_path}/${checkbox.value}` : checkbox.dataset.type === 'directory' ? checkbox.dataset.loc : `${checkbox.dataset.loc}${checkbox.value}`);
       });
       if (selectedItems.length == 0) { // 모든 요소 선택 후, 체크박스 아이콘으로 변경
         store.dispatch({ type: "ADD_SELECTED_ITEMS", payload: itemName });
@@ -1486,8 +1597,8 @@
       try {
         for (const file_name of selectedItems) {
           idx += 1;
-          const file_path = current_path + '/' + file_name;
-          $p.textContent = file_name;
+          const file_path = file_name;
+          $p.textContent = file_name.split('/').pop();
           
           const url = `${_URL}/cloudstorage/sendFileResponse/${file_path}`;
           
@@ -1525,7 +1636,7 @@
           const blob = new Blob(chunks);
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = file_name;
+          a.download = file_name.split('/').pop();
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -1561,8 +1672,8 @@
         const url = `${_URL}/cloudstorage/deleteResource/`;
         // Promise.all을 사용하여 여러 개의 삭제 요청을 병렬로 처리
         const responses = await Promise.all(selectedItems.map(async (file_name) => {
-          const file_path = currentPath ? `${currentPath}/${file_name}` : file_name;
-          const data = { path: file_path };
+          // const file_path = currentPath ? `${currentPath}/${file_name}` : file_name;
+          const data = { path: file_name };
 
           const options = {
             method: 'POST',
@@ -1661,16 +1772,16 @@
     document.getElementById('transferFilesBtn').addEventListener('click', () => {
       const { current_path, selectedItems, directoryTree } = store.getState();
       const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
-      store.dispatch({ type: 'RENEW_TRANSFER_ITEMS', payload: fileFullPathForTransfer });
+      // const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
+      store.dispatch({ type: 'RENEW_TRANSFER_ITEMS', payload: selectedItems });
       $('#toggleAllCheckboxId').click();
     });
 
     document.getElementById('copyFilesBtn').addEventListener('click', () => {
       const { current_path, selectedItems, directoryTree } = store.getState();
       const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
-      store.dispatch({ type: 'RENEW_COPY_ITEMS', payload: fileFullPathForTransfer });
+      // const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
+      store.dispatch({ type: 'RENEW_COPY_ITEMS', payload: selectedItems });
       $('#toggleAllCheckboxId').click();      
     });
 
@@ -1685,8 +1796,8 @@
     document.getElementById('toc_modal_confirm').addEventListener('click', async(e) => {
       const { current_path, selectedItems, directoryTree } = store.getState();
       const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
-      store.dispatch({ type: 'RENEW_TRANSFER_ITEMS', payload: fileFullPathForTransfer });
+      // const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
+      store.dispatch({ type: 'RENEW_TRANSFER_ITEMS', payload: selectedItems });
       $('#toggleAllCheckboxId').click();
 
       const { checkedFilePathsForMove } = store.getState();
@@ -1694,7 +1805,6 @@
       const url = `${_URL}/cloudstorage/moveResourcesToDirectory/`;
       const _resource_path = checkedFilePathsForMove;
       const target_dir = directoryTree.find(item => item.id == clickedElemId)?.path;
-      // console.log(target_dir);
 
       try {
         const data = { 
@@ -1734,7 +1844,7 @@
         const modalTitle = $changeNameModal.querySelector('.modal-title')
         const modalBodyInput = $changeNameModal.querySelector('.modal-body input')
         modalTitle.textContent = `이름 바꾸기`;
-        modalBodyInput.value = `${selectedItems[0]}`;
+        modalBodyInput.value = `${selectedItems[0].split('/').pop()}`;
       });
     }
 
@@ -1783,7 +1893,6 @@
           const elem = e.target.closest('.list-group-item');
           if (elem) {
             clickedElemId = elem.dataset.id;
-            // console.log(clickedElemId);
             elem.querySelector('i').style.color = "#4078FF";
             elem.style.color = "#4078FF";
             elem.style.fontWeight = "bold";
@@ -1808,8 +1917,8 @@
       const { current_path, selectedItems, directoryTree } = store.getState();
       // console.log(selectedItems);
       const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      const temp = selectedItems[0].split('.');
-      const ext = selectedItems[0].split('.')[temp.length - 1];
+      // const temp = selectedItems[0].split('.');
+      const ext = selectedItems[0].split('.').pop();
       const idx = selectedItems.length;
 
       if (idx !== 1 || ext !== 'zip') {
@@ -1833,7 +1942,7 @@
 
         const response = await fetch(url, options);
         if (!response.ok) {
-          throw new Error(`Failed to extrct ${data['resource_paths']}: ${response.statusText}`);
+          throw new Error(`Failed to extrct ${data['resource_path']}: ${response.statusText}`);
         }
         const msg = await response.json();
         console.log(msg.message);
@@ -1885,13 +1994,14 @@
         return
       }
       const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-
+      const selectedItem = selectedItems[0].startsWith('/') ? selectedItems[0].slice(1) : selectedItems[0];
+      const pathArray = selectedItem.split('/');
+      
       try {
         const url = `${_URL}/cloudstorage/renameResource/`;
-
         const data = { 
-          resource_path: `${currentPath}/${selectedItems[0]}`,
-          renamed_path: `${currentPath}/${name}`,
+          resource_path: selectedItem,
+          renamed_path: `${pathArray.slice(0, pathArray.length - 1).join('/')}/${name}`,
         };
 
         const options = {
@@ -2135,6 +2245,71 @@
         }
       });
     }
+
+    document.getElementById('searchForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const searchWord = e.target.querySelector('input').value;
+      if (searchWord.length < 2) {
+        alert('두 글자 이상의 검색어를 입력해 주세요.');
+        return
+      }
+      e.target.querySelector('input').value = '';
+
+      const { current_path } = store.getState();
+      let dir_path = current_path.startsWith('/') ? current_path.slice(1) : current_path; 
+      
+      const $target = document.getElementById('my_table').classList.contains('invisible') ? document.getElementById('my_grid') : document.getElementById('my_table');
+      $target.classList.add('invisible');
+      document.getElementById('placeholder').classList.add('d-flex');
+      document.getElementById('placeholder').classList.remove('invisible');
+
+      const url = `${_URL}/cloudstorage/searchResourcesInfoList/${searchWord}`;
+      try {
+        const response = await fetch(url, { method: 'GET' });
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        if (response.status === 204) {
+          console.log('No Content');
+          return;
+        }
+        const res = await response.json();
+
+        $target.classList.remove('invisible');
+        document.getElementById('placeholder').classList.add('invisible');
+        document.getElementById('placeholder').classList.remove('d-flex');
+        if (res.message.length > 0) {
+          store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: '' });
+          initializeTableHeader();
+        } else {
+          const $table_header = document.getElementById('table_header');
+          const $table_body = document.getElementById('table_body');
+          const $ths = $table_header.querySelectorAll('th');
+          const $grid_table = document.getElementById('grid_content');
+          $ths.forEach(th => {
+            th.remove();
+          });
+          $table_body.innerHTML = `<p class="mt-5" style="text-align: center;"><span class="fw-semibold" style="color: #4078FF">${searchWord}</span>에 대한 파일 및 폴더 검색 결과가 없습니다.</p>`;
+          $grid_table.innerHTML = `<p class="mt-2" style="text-align: center; margin-left: 26.5rem;"><span class="fw-semibold" style="color: #4078FF">${searchWord} </span>에 대한 파일 및 폴더 검색 결과가 없습니다.</p>`;
+        }
+        
+        search_word = searchWord;
+        allowSubscriptionCall = false;
+        generateBreadcrumbFromPath();
+        document.getElementById('right_panel').innerHTML = `
+          <div id="rp_header" class="fs-5">
+            <span id="rp_title" class="fw-semibold"></span>
+          </div>
+          <div id="rp_thumb"></div>
+          <table class="table">
+            <tbody id="rp_text_info">
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
   }
 </script>
 {% endblock %}

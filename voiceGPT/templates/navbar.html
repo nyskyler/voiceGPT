@@ -1,6 +1,6 @@
 <nav class="navbar fixed-top navbar-expand-lg bg-body-tertiary bg-dark border-bottom border-body" data-bs-theme="dark">
     <div class="container-fluid">
-      <a class="navbar-brand" href="{{ url_for('main.index') }}">voiceGPT</a>
+      <a class="navbar-brand" href="{{ url_for('main.index') }}">君子不器</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -14,23 +14,23 @@
             <a class="nav-link" href="{{ url_for('auth.modify', user_id=g.user.id) }}">회원정보 수정</a>
           </li>
           <li class="nav-item me-5">
-            <a class="nav-link" href="{{ url_for('main.index') }}">질문과 대답</a>
+            <a class="nav-link" href="{{ url_for('main.index') }}">VoiceGPT</a>
           </li>
-          <li class="nav-item me-5">
+          <!-- <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('topic._list') }}">주제별 대화</a>
           </li>
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('userImage.upload_image') }}">사진 올리기</a>
-          </li>
+          </li> -->
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('textgpt.test') }}">ChatGPT</a>
           </li>
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('cloudstorage.main') }}">Cloud Storage</a>
           </li>
-          <li class="nav-item me-5">
+          <!-- <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('chatgpt.modify', device_id=1) }}">Settings</a>
-          </li>
+          </li> -->
         </ul>
         {% else %}
         <ul class="navbar-nav">
@@ -41,14 +41,14 @@
             <a class="nav-link" href="{{ url_for('auth.login') }}">로그인</a>
           </li>
           <li class="nav-item me-5">
-            <a class="nav-link" href="{{ url_for('main.index') }}">질문과 대답</a>
+            <a class="nav-link" href="{{ url_for('main.index') }}">VoiceGPT</a>
           </li>
-          <li class="nav-item me-5">
+          <!-- <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('topic._list') }}">주제별 대화</a>
           </li>
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('userImage.upload_image') }}">사진 올리기</a>
-          </li>
+          </li> -->
         </ul>
         {% endif %}
       </div>

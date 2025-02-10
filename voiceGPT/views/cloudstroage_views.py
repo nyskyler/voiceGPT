@@ -8,6 +8,7 @@ import datetime
 import configparser
 import stat
 import sys
+import glob
 import unicodedata
 import mimetypes
 import time
@@ -590,7 +591,8 @@ def deleteResponse():
   if not data or "path" not in data:
     return jsonify({"error": "Invalid request. 'path' is required."}), 400
 
-  resource_path = os.path.abspath(os.path.join(str(root_dir), data["path"]))
+  resource_path = normalize_path(str(root_dir) + '/' + data["path"], "NFD")
+  print(resource_path)
 
   # ✅ 존재 여부 확인
   if not os.path.exists(resource_path):
@@ -690,8 +692,8 @@ def unzip_and_store_resources():
   
   current_path = data['current_path']
   zipfile_name = os.path.basename(data['resource_path'])
-  full_path = os.path.join(root_dir, current_path, zipfile_name)
-  extract_to = os.path.join(root_dir, current_path)
+  full_path = str(root_dir) + data['resource_path']
+  extract_to = str(root_dir) + current_path
   
   try:
    with zipfile.ZipFile(full_path, 'r') as zip_ref:
@@ -710,7 +712,7 @@ def zip_and_save_resources():
     return jsonify({"error": "Invalid request."}), 400
   
   current_path = data['current_path']
-  resource_paths = [os.path.join(root_dir, current_path, item) for item in data['resource_paths']]
+  resource_paths = [str(root_dir) + '/' + normalize_path(item, "NFD") for item in data['resource_paths']]
   zipfile_name = f"{os.path.basename(resource_paths[0])}.zip" if len(resource_paths) == 1 and os.path.isdir(resource_paths[0]) else "압축_파일.zip"
   full_path = os.path.join(root_dir, current_path, zipfile_name)
   
@@ -828,4 +830,76 @@ def serveMediaResource(file_path):
     return send_file(target_path, mimetype=mime_type, as_attachment=False)
   except Exception as e:
     print(f"Error Serving File: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/searchResourcesInfoList/<string:search_word>", methods=["GET"])
+@login_required
+def searchResourcesInfoList(search_word):
+  infoList = []
+  print(f"Search word: {search_word}")
+  print(f"Root dir: {root_dir}")
+
+  try:
+    search_word = search_word.lower()
+    search_word = normalize_path(search_word, "NFD")
+    for filename in glob.glob(f"{root_dir}/**/*{search_word}*", recursive=True):
+      infoList.append(filename)
+    # print(infoList)
+    # return jsonify({"message": infoList}), 200
+    directory_info = []
+    
+    for file_path in infoList:
+      if not os.path.exists(file_path):
+        continue  # 존재하지 않는 파일/디렉토리는 스킵
+
+      name, ext = os.path.splitext(os.path.basename(file_path))
+      ext = ext.lower()
+      image = None
+
+      if name.startswith(('.', '$')) or name == 'System Volume Information':
+        continue
+
+      # 디렉토리인지 파일인지 판별
+      if os.path.isdir(file_path):
+        type_ = 'Directory'
+        loc = file_path.split(str(root_dir))[-1]
+        size_bytes = calculate_directory_size(file_path)  # 디렉토리 크기 계산
+      else:
+        type_ = ext
+        loc = file_path.split(str(root_dir))[-1].split(os.path.basename(file_path))[0]
+        size_bytes = os.stat(file_path).st_size
+
+      modification_time = datetime.datetime.fromtimestamp(os.stat(file_path).st_mtime)
+      hour = modification_time.hour
+      period = "오전" if hour < 12 else "오후"
+      hour_12 = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
+      modified_time_str = modification_time.strftime(f"%Y. %m. %d. {period} {hour_12}:%M")
+      
+      entry_info = {
+        "_name": name + ext,
+        "_type": type_,
+        "_loc": loc,
+        "_size": size_bytes,
+        "_modified": modified_time_str,
+      }
+      
+      # 썸네일 생성 로직
+      if ext in ('.png', '.jpeg', '.jpg', '.gif', '.bmp', '.tiff', '.webp', '.heic'):
+        try:
+          entry_info['_thumbnail'] = encodeImageToBase64(file_path, 146, (255, 255, 255, 0))
+        except Exception as e:
+          print(f"Error processing {file_path}: {e}")
+          continue
+      elif ext in ('.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'):
+        try:
+          entry_info['_thumbnail'] = encodeVideoToBase64(file_path, 146, (255, 255, 255, 0))
+        except Exception as e:
+          entry_info['_thumbnail'] = ''
+      else:
+        entry_info['_thumbnail'] = ''
+      
+      directory_info.append(entry_info)
+    return jsonify({"message": directory_info}), 200
+  except Exception as e:
+    print(f"Error Seaching File: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500

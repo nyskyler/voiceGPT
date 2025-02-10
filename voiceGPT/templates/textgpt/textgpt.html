@@ -212,13 +212,13 @@
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
     #sidebar {
-      height: 87vh;
+      height: 94vh;
     }
     .sideItem {
-      height: 79vh;
+      height: 86vh;
     }
     .chat-window {
-      height: 87vh;
+      height: 94vh;
     }
     .input-area {
       padding-right: 1rem;
@@ -227,7 +227,7 @@
 
   @media (max-width: 767.98px) and (orientation: portrait) {
     .chat-window {
-      height:79vh; /* 모바일에서는 전체 화면 높이로 설정 */
+      height:92vh; /* 모바일에서는 전체 화면 높이로 설정 */
     }
     .toggle-btn {
       display: none;
@@ -1311,10 +1311,10 @@
       event.preventDefault();
       if (!!store.getState().subject) {
         const _author = 'user';
-        const desc = event.target.message.value;
-        const _desc = desc
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+        const _desc = event.target.message.value;
+        // const _desc = desc
+        //   .replace(/</g, "&lt;")
+        //   .replace(/>/g, "&gt;");
         // console.log(_desc);
         
         const currentModel = document.getElementById('currentModel').textContent.toLowerCase();
