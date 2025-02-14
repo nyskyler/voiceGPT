@@ -10,6 +10,9 @@ import stat
 import sys
 import glob
 import unicodedata
+import uuid
+import shelve
+import pyshorteners
 import mimetypes
 import time
 import zipfile
@@ -282,7 +285,7 @@ def main():
   return render_template('cloudStorage/cloudStorage.html')
 
 @bp.route("/directoryContents/", methods=['GET'])
-@login_required
+# @login_required
 def listDirectoryContents():
   try:
     current_loc = root_dir
@@ -304,7 +307,7 @@ def listDirectoryContents():
 
 @bp.route("/listDirectoryDetails/", defaults={'dir_path': ''}, methods=['GET'])
 @bp.route("/listDirectoryDetails/<path:dir_path>", methods=['GET'])
-@login_required
+# @login_required
 def listDirectoryDetails(dir_path):
   try:
     current_loc = root_dir / dir_path if dir_path != '' else root_dir
@@ -320,6 +323,7 @@ def listDirectoryDetails(dir_path):
         name, ext = os.path.splitext(entry)
         name = name.split('/')[-1]
         ext = ext.lower()
+        shared_link = None
         image = None
 
         if name.startswith(('.', '$')) or name == 'System Volume Information':
@@ -327,8 +331,12 @@ def listDirectoryDetails(dir_path):
 
         # 디렉토리인지 파일인지 판별
         if entry.is_dir():
+          print('file_path:', file_path)
           type_ = 'Directory'
           size_bytes = calculate_directory_size(file_path)  # 디렉토리 크기 계산
+          with shelve.open('path_short_url.dat') as d:
+            shared_link = d.get(file_path)
+            # print("link:", link)
         else:
           type_ = ext
           size_bytes = entry.stat().st_size
@@ -343,6 +351,7 @@ def listDirectoryDetails(dir_path):
           "_type": type_,
           "_size": size_bytes,
           "_modified": modified_time_str,
+          "_link": shared_link,
         })
 
         if ext in ('.png', '.jpeg', '.jpg', '.gif', '.bmp', '.tiff', '.webp', '.heic'):
@@ -389,7 +398,7 @@ def get_drive_usage():
   
 @bp.route("/getThumbnailAndDetails//", defaults={'item_path': ''}, methods=['GET'])
 @bp.route("/getThumbnailAndDetails/<path:item_path>", methods=['GET'])
-@login_required
+# @login_required
 def getThumbnailAndDetails(item_path):
   try:
     print('item_path:', item_path)
@@ -484,7 +493,7 @@ def determineSendMethod(file_path, file_name):
   return send_large_file(file_path, chunk_size, file_name)
 
 @bp.route("/sendFileResponse/<path:item_path>", methods=['GET'])
-@login_required
+# @login_required
 def sendFileResponse(item_path):
   try: 
     file_path = str(root_dir / item_path)
@@ -750,7 +759,7 @@ def rename_resource():
     return jsonify({"message": "An unexpected error occurred"}), 500
 
 @bp.route("/saveUploadedFileFromChunks/", methods=['POST'])
-@login_required
+# @login_required
 def saveUploadedFileFromChunks():
   try:
     file = request.files['file']
@@ -778,7 +787,7 @@ def saveUploadedFileFromChunks():
     return jsonify({"message": "An unexpected error occurred"}), 500
 
 @bp.route("/saveUploadedFolderFromChunks/", methods=['POST'])
-@login_required
+# @login_required
 def saveUploadedFolderFromChunks():
   try:
     file = request.files['file']
@@ -813,7 +822,7 @@ def saveUploadedFolderFromChunks():
     return jsonify({"message": "An unexpected error occurred"}), 500
 
 @bp.route("/view/<path:file_path>", methods=['GET'])
-@login_required
+# @login_required
 def serveMediaResource(file_path):
   try:
     target_path = str(root_dir) + '/' + file_path
@@ -902,4 +911,126 @@ def searchResourcesInfoList(search_word):
     return jsonify({"message": directory_info}), 200
   except Exception as e:
     print(f"Error Seaching File: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/generateShortUrlForDirectoryPath/", methods=['POST'])
+@login_required
+def generateShortUrlForDirectoryPath():
+  try:
+    data = request.get_json()
+    if not data or "dir_for_share" not in data:
+      return jsonify({"error": "Invalid request."}), 400
+    
+    target_path = str(root_dir) + data["dir_for_share"]
+    # print(target_path)
+
+    if not(os.path.isdir(target_path) and os.path.exists(target_path)):
+      return jsonify({"error": "The specified folder does not exist."}), 404
+
+    shortenURL = None
+    with shelve.open('path_short_url.dat') as d:
+      shortenURL = d.get(target_path)
+
+    if shortenURL is not None:
+      return jsonify({"message": shortenURL}), 200
+
+    _uuid = uuid.uuid4().hex
+    s = pyshorteners.Shortener()
+    shortenURL = s.tinyurl.short(f"http://121.189.157.152:8080/cloudstorage/renderSharedDirectoryContents/{_uuid}")
+
+    with shelve.open('uuid_shared_folder.dat') as d:
+      d[_uuid] = target_path
+
+    temp = dict(zip(['shareLink', 'edit', 'password'], [shortenURL, '', '']))
+    print(temp)
+    with shelve.open('path_short_url.dat') as d:
+      d[target_path] = temp
+
+    return jsonify({"message": temp}), 200
+      
+  except Exception as e:
+    print(f"Error Createing URL: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/removeSharedFolderPath/", methods=["POST"])
+@login_required
+def removeSharedFolderPath():
+  try:
+    data = request.get_json()
+    if not data or "shareLink" not in data:
+      return jsonify({"error": "Invalid request."}), 400
+    
+    target = None
+    flag_1 = False 
+    flag_2 = False
+
+    try:
+      with shelve.open('path_short_url.dat') as d:
+        for key, value in d.items():
+          if value.get('shareLink') == data['shareLink']:
+            target = key
+            del d[key]
+            flag_1 = True
+
+      with shelve.open('uuid_shared_folder.dat') as d:
+        for key, value in d.items():
+          if value == target:
+            del d[key]
+            flag_2 = True
+
+      if not flag_1 or not flag_2:
+         return jsonify({"message": f"Directory not found: flag_1 {flag_1}, flag_2 {flag_2}"}), 404
+      return jsonify({"message": f"Successfully updated for {data['shareLink']}"}), 200
+        
+      
+    except Exception as e:
+      print(f"Error Rendering URL: {e}")
+      return jsonify({"message": "An unexpected error occurred"}), 500
+    
+    # return jsonify({"message": f"Successfully created URL: {shortenURL}"}), 200
+      
+  except Exception as e:
+    print(f"Error Removing URL: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/renderSharedDirectoryContents/<path:_uuid>", methods=["GET"])
+def renderSharedDirectoryContents(_uuid):
+  data = None
+  try:
+    with shelve.open('uuid_shared_folder.dat') as d:
+      if d.get(_uuid):
+        basePath = d.get(_uuid).split(str(root_dir))[1]
+        print(basePath)
+
+        with shelve.open('path_short_url.dat') as k:
+          for key, value in k.items():
+            if key == d.get(_uuid):
+              data = k[key]
+        
+        print(data)
+        return render_template('cloudStorage/cloudStorageForShare.html', base_path = basePath, edit = data.get('edit'), password = data.get('password'))
+      else:
+        return jsonify({"error": "The specified file or directory does not exist."}), 404
+  except Exception as e:
+    print(f"Error Rendering URL: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
+@bp.route("/updateSharedFolderSettings/", methods=["POST"])
+@login_required
+def updateSharedFolderSettings():
+  try:
+    data = request.get_json()
+    if not data or "shareLink" not in data:
+      return jsonify({"error": "Invalid request. 'shareLink' is required."}), 400
+    
+    with shelve.open('path_short_url.dat') as d:
+      for key, value in d.items():
+        if value.get('shareLink') == data['shareLink']:
+          d[key] = dict(zip(['shareLink', 'edit', 'password'], [data['shareLink'], data['edit'], data['password']]))
+          print(f"d[key] - {key} : {d[key]}")
+          return jsonify({"message": f"Successfully updated for {data['shareLink']}"}), 200
+      return jsonify({"message": "Directory not found"}), 404
+
+  except Exception as e:
+    print(f"Error updating shared folder: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
