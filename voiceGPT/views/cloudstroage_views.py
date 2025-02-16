@@ -296,7 +296,7 @@ def listDirectoryContents():
     directory_tree = listSubdirectoryPaths(current_loc)
     directory_tree.sort()
     # root_dir 경로를 제거하고 상대 경로로 변환
-    directory_tree = [str(Path(dir).relative_to(root_dir)) for dir in directory_tree]
+    directory_tree = ['/' + str(Path(dir).relative_to(root_dir)) for dir in directory_tree]
     #directory_tree = [dir.split(str(root_dir), 1)[-1] for dir in directory_tree]
 
     # print(directory_tree)
@@ -331,7 +331,6 @@ def listDirectoryDetails(dir_path):
 
         # 디렉토리인지 파일인지 판별
         if entry.is_dir():
-          print('file_path:', file_path)
           type_ = 'Directory'
           size_bytes = calculate_directory_size(file_path)  # 디렉토리 크기 계산
           with shelve.open('path_short_url.dat') as d:
@@ -626,7 +625,7 @@ def create_folder_at_path():
   if not data or "path" not in data:
     return jsonify({"error": "Invalid request. 'path' is required."}), 400
   
-  target_path = str(root_dir) + '/' + data["path"]
+  target_path = str(root_dir) + data["path"]
   try:
    os.mkdir(target_path)
    return jsonify({"message": f"Successfully created: {data['path']}"}), 200
@@ -642,7 +641,7 @@ def copy_resources():
     return jsonify({"error": "Invalid request."}), 400
 
   resource_paths = [os.path.join(root_dir, item[1:]) if item.startswith('/') else os.path.join(root_dir, item) for item in data['resource_path']]
-  target_path = os.path.join(root_dir, data['target_path'])
+  target_path = str(root_dir) + data['target_path']
 
   if not os.path.exists(target_path):
     return jsonify({"error": "Target directory does not exist."}), 400
@@ -671,7 +670,7 @@ def move_resources():
     return jsonify({"error": "Invalid request."}), 400
 
   resource_paths = [os.path.join(root_dir, item[1:]) if item.startswith('/') else os.path.join(root_dir, item) for item in data['resource_path']]
-  target_path = os.path.join(root_dir, data['target_path'])
+  target_path = str(root_dir) + data['target_path']
 
   if not os.path.exists(target_path):
     return jsonify({"error": "Target directory does not exist."}), 400
@@ -749,8 +748,8 @@ def rename_resource():
   if not data:
     return jsonify({"error": "Invalid request."}), 400
   
-  resource_path = str(root_dir) + '/' + data["resource_path"]
-  rename_path = str(root_dir) + '/' + data["renamed_path"]
+  resource_path = str(root_dir) + data["resource_path"]
+  rename_path = str(root_dir) + data["renamed_path"]
   try:
    os.rename(resource_path, rename_path)
    return jsonify({"message": f"Successfully renamed: '{data['resource_path']}' to '{data['renamed_path']}'"}), 200
@@ -845,8 +844,8 @@ def serveMediaResource(file_path):
 @login_required
 def searchResourcesInfoList(search_word):
   infoList = []
-  print(f"Search word: {search_word}")
-  print(f"Root dir: {root_dir}")
+  # print(f"Search word: {search_word}")
+  # print(f"Root dir: {root_dir}")
 
   try:
     search_word = search_word.lower()
@@ -942,7 +941,7 @@ def generateShortUrlForDirectoryPath():
       d[_uuid] = target_path
 
     temp = dict(zip(['shareLink', 'edit', 'password'], [shortenURL, '', '']))
-    print(temp)
+    # print(temp)
     with shelve.open('path_short_url.dat') as d:
       d[target_path] = temp
 
@@ -980,9 +979,7 @@ def removeSharedFolderPath():
 
       if not flag_1 or not flag_2:
          return jsonify({"message": f"Directory not found: flag_1 {flag_1}, flag_2 {flag_2}"}), 404
-      return jsonify({"message": f"Successfully updated for {data['shareLink']}"}), 200
-        
-      
+      return jsonify({"message": f"Successfully deleted for {data['shareLink']}"}), 200
     except Exception as e:
       print(f"Error Rendering URL: {e}")
       return jsonify({"message": "An unexpected error occurred"}), 500
@@ -1000,14 +997,12 @@ def renderSharedDirectoryContents(_uuid):
     with shelve.open('uuid_shared_folder.dat') as d:
       if d.get(_uuid):
         basePath = d.get(_uuid).split(str(root_dir))[1]
-        print(basePath)
 
         with shelve.open('path_short_url.dat') as k:
           for key, value in k.items():
             if key == d.get(_uuid):
               data = k[key]
         
-        print(data)
         return render_template('cloudStorage/cloudStorageForShare.html', base_path = basePath, edit = data.get('edit'), password = data.get('password'))
       else:
         return jsonify({"error": "The specified file or directory does not exist."}), 404
@@ -1027,7 +1022,7 @@ def updateSharedFolderSettings():
       for key, value in d.items():
         if value.get('shareLink') == data['shareLink']:
           d[key] = dict(zip(['shareLink', 'edit', 'password'], [data['shareLink'], data['edit'], data['password']]))
-          print(f"d[key] - {key} : {d[key]}")
+          # print(f"d[key] - {key} : {d[key]}")
           return jsonify({"message": f"Successfully updated for {data['shareLink']}"}), 200
       return jsonify({"message": "Directory not found"}), 404
 

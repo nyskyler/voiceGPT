@@ -44,9 +44,6 @@
     /* 기본 높이만 차지 */
     /* flex-shrink: 0; */
   }
-  #breadcrumb {
-    padding-left: 0.8rem;
-  }
 
   #storage_info span {
     font-size: 0.8rem;
@@ -156,7 +153,6 @@
     font-size: 0.7rem;
     color: #767780;
   }
-
   .table tr .mobile {
     color: #9398A0;
     font-size: 0.8rem;
@@ -242,6 +238,9 @@
   .cursor-pointer {
     cursor: pointer; /* 포인터 모양으로 변경 */
   }
+  #toggleButton {
+    display: none;
+  }
   /* Toggle Button */
   .toggle-btn {
     border: none;
@@ -311,6 +310,9 @@
     form#searchForm {
       display: none !important;
     }
+    #toggleButton {
+      display: inline-block;
+    }
     #home {
       margin-left: 0rem;
     }
@@ -364,7 +366,7 @@
             </span>
             {% endif %}
             <span id="btnFiles" class="invisible">
-              <button id="downloadBtn" class="btn btn-file"><span>내려받기</span></button>              
+              <button id="downloadBtn" class="btn btn-file"><span>내려받기</span></button>
               </span>
             </span>
             <span>
@@ -619,7 +621,7 @@
   const fetchItemThumbnailAndDetails = async (item_path) => {
     // fetch를 사용하여 서버에서 이미지를 가져오고, Blob과 URL.createObjectURL을 사용하여 이미지를 웹 페이지에 표시하기
     const state = store.getState();
-    const url = `${_URL}/cloudstorage/getThumbnailAndDetails/${item_path.trim()}`;
+    const url = `${_URL}/cloudstorage/getThumbnailAndDetails/${item_path.slice(1).trim()}`;
     try {
       const response = await fetch(url, { method: 'GET' });
       if (!response.ok) {
@@ -707,6 +709,11 @@
     const state = store.getState();
     const { view_contents, selectedItems, directoryTree, checkedFilePathsForMove, checkedFilePathsForCopy } = state;
     const $toggleAllCheckboxId = document.getElementById('toggleAllCheckboxId');
+    const $compressBtn = document.getElementById('compressBtn');
+    const $extractBtn = document.getElementById('extractBtn');
+    const $pasteBtn = document.getElementById('pasteBtn');
+    const $shareLinkBtn = document.getElementById('shareLinkBtn');
+    const $divider = document.getElementById('_divider');
 
     if (selectedItems.length == 0) {
       $toggleAllCheckboxId.innerHTML = '<i class="fa-regular fa-square" style="color: #DEE2E6;"></i>';
@@ -722,7 +729,7 @@
       toggleElementVisibilityById('#newfolderBtn', true);
     }
 
-    const showPasteBtn = (checkedFilePathsForMove.length > 0 && selectedItems.length == 0) || (checkedFilePathsForCopy.length > 0 && selectedItems.length == 0)? false : true;
+    const showPasteBtn = (checkedFilePathsForMove.length > 0 && selectedItems.length == 0) || (checkedFilePathsForCopy.length > 0 && selectedItems.length == 0)? false : true;    
   }
 
   function openFile(filename, isVideo = false, isAudio = false) {
@@ -767,7 +774,7 @@
       window.open(url, '_blank');
     }
   }
- 
+
   function article() {
     const state = store.getState();
     const { current_path, selectedItems, checkedFilePathsForMove } = state;
@@ -819,9 +826,9 @@
         let targetPath = null;
         const loc = e.target.dataset.loc;
         if (loc == 'undefined') {
-          targetPath = `${current_path}/${td.textContent.trim()}`; 
+          targetPath = `${current_path == '/' ? '' : current_path}/${td.textContent.trim()}`; 
         } else {
-          targetPath = loc?.slice(1);
+          targetPath = loc || '';
         }
         await fetchDirectoryDetails(targetPath);
       });
@@ -833,7 +840,7 @@
         e.stopPropagation();
         let currentPath = null;
         const loc = e.target.dataset.loc;
-        currentPath = current_path;
+        currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
         currentPath = loc == 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
 
         const filename = td.textContent;
@@ -868,12 +875,14 @@
         let targetFullPath = null;
 
         if (nameTd.dataset.loc === 'undefined') {
-          targetFullPath = current_path + '/' + nameTd.textContent.trim();
+          targetFullPath = (current_path === '/' ? '' : current_path) + '/' + nameTd.textContent.trim();
         } else if (nameTd.dataset.loc.endsWith('/')) {
-          targetFullPath = nameTd.dataset.loc.slice(1) + nameTd.textContent.trim();
+          targetFullPath = '/' + nameTd.dataset.loc + nameTd.textContent.trim();
         } else {
-          targetFullPath = nameTd.dataset.loc.slice(1).trim();
+          targetFullPath = '/' + nameTd.dataset.loc.trim();
         }
+
+        targetFullPath = targetFullPath.startsWith('/') ? targetFullPath : '/' + targetFullPath;
 
         if (event.target.checked) { // 체크 상태인 경우에만 실행
           document.getElementById('rp_title').textContent = nameTd.textContent;
@@ -901,7 +910,7 @@
             <input class="form-check-input" type="checkbox" data-loc="${_loc}" data-type="${_type == 'Directory' ? 'directory' : 'file'}" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."> 
           </span>
           <span style="position: absolute; top: 5px; right: 5px;">
-            ${_link ? '<button class="btn btn-sm btn-outline-secondary shareLink" style="padding: 0px 3px 0px 3px;"><i class="fa-solid fa-link" style="font-size: 0.7rem; padding: 0px;"></i></button>' : ''}
+            ${_link ? '<button class="btn btn-sm btn-outline-secondary shareLink_grid" style="padding: 0px 3px 0px 3px;"><i class="fa-solid fa-link" style="font-size: 0.7rem; padding: 0px;"></i></button>' : ''}
           </span>
           <div class="card-body">
             <p class="card-text ${_loc ? 'popover-hover' : ''}" ${popoverContent} style="font-size: 0.8rem;">${_name}</p>
@@ -946,9 +955,9 @@
         let targetPath = null;
         const loc = e.target.closest('div').dataset.loc;
         if (loc === 'undefined') {
-          targetPath = `${current_path}/${$file_name}`; 
+          targetPath = `${current_path == '/' ? '' : current_path}/${$file_name}`; 
         } else {
-          targetPath = loc?.slice(1);
+          targetPath = loc || '';
         }
         await fetchDirectoryDetails(targetPath);
       });
@@ -960,7 +969,7 @@
         e.stopPropagation();
         let currentPath = null;
         const loc = e.target.closest('div').dataset.loc;
-        currentPath = current_path;
+        currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
         currentPath = loc === 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
         
         // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
@@ -1026,12 +1035,15 @@
 
         let targetFullPath = null;
         if (loc === 'undefined') {
-          targetFullPath = current_path + '/' + itemValue;
+          targetFullPath = (current_path === '/' ? '' : current_path) + '/' + itemValue;
+          // targetFullPath = current_path + '/' + itemValue;
         } else if (loc.endsWith('/')) {
           targetFullPath = loc.slice(1) + itemValue;
         } else {
           targetFullPath = loc.slice(1);
         }
+
+        targetFullPath = targetFullPath.startsWith('/') ? targetFullPath : '/' + targetFullPath;
 
         if (event.target.checked) { // 체크 상태인 경우에만 실행
           document.getElementById('rp_title').textContent = itemValue;
@@ -1045,17 +1057,17 @@
   }
 
   async function generateBreadcrumbFromPath() {
-    const current_path = store.getState().current_path;
+    const { current_path, directoryTree } = store.getState();
     const $breadcrumb = document.getElementById('breadcrumb');
-    const splited_path = current_path.split('/').filter(path => path);
+    const splited_path = current_path.split("{{ base_path }}")[1].split('/').filter(path => path);
  
     const html_for_crumb = splited_path.map((_, index) => {
-      const path = splited_path.slice(0, index + 1).join('/');
+      const path = "{{ base_path }}" + '/' + splited_path.slice(0, index + 1).join('/');
       const dir_name = splited_path[index];
       const isActive = index === splited_path.length - 1;
       
       return `
-        <li data-path="${path.startsWith('/') ? path.slice(1) : path }" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
+        <li data-path="${path}" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
       `;
     }).join('');
 
@@ -1065,6 +1077,10 @@
     $breadcrumbs.forEach(li => {
       li.addEventListener('click', async (e) => {
         e.stopPropagation();
+        if (!li.dataset.path.includes("{{ base_path }}")) {
+          alert('잘못된 접근입니다.');
+          return
+        }
         await fetchDirectoryDetails(li.dataset.path);
       });
     });
@@ -1203,7 +1219,7 @@
   }
 
   const fetchDirectoryContents = async () => {
-    const { current_path } = store.getState();
+    const state = store.getState();
     const url = `${_URL}/cloudstorage/directoryContents/`;
     
     try {
@@ -1217,8 +1233,7 @@
       }
 
       const res = await response.json();
-      console.log(res.message);
-      const directoryTree = res.message.filter(item => item.startsWith(current_path.slice(1))).map((item, idx) => {
+      const directoryTree = res.message.map((item, idx) => {
         const isFile = item.includes('.');
         const num = item.split('/').length - 1; 
         const _path = item.split('/').pop();
@@ -1249,12 +1264,13 @@
 
   const fetchDirectoryDetails = async (dir_path) => {
     const $target = document.getElementById('my_table').classList.contains('invisible') ? document.getElementById('my_grid') : document.getElementById('my_table');
-    $target.classList.add('invisible');
-    document.getElementById('placeholder').classList.add('d-flex');
-    document.getElementById('placeholder').classList.remove('invisible');
+    $target.classList.toggle('invisible', true);
+    document.getElementById('placeholder').classList.toggle('d-flex', true);
+    document.getElementById('placeholder').classList.toggle('invisible', false);
     
     const state = store.getState();
-    const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_path}`;
+    const dir_to_pass = dir_path.startsWith('/') ? dir_path.slice(1) : dir_path;
+    const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_to_pass}`;
     
     try {
       const response = await fetch(url, { method: 'GET' });
@@ -1267,9 +1283,9 @@
       }
 
       const res = await response.json();
-      $target.classList.remove('invisible');
-      document.getElementById('placeholder').classList.add('invisible');
-      document.getElementById('placeholder').classList.remove('d-flex');
+      document.getElementById('placeholder').classList.toggle('invisible', true);
+      document.getElementById('placeholder').classList.toggle('d-flex', false);
+      $target.classList.toggle('invisible', false);
       store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: dir_path });
       initializeTableHeader();
       document.getElementById('rp_title').textContent = dir_path;
@@ -1281,6 +1297,7 @@
 
   const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
   window.store = store;
+  // store.subscribe(TOC);
   store.subscribe(article);
   store.subscribe(grid_article);
   store.subscribe(updateButtonIconBasedOnCheckboxes);
@@ -1290,8 +1307,6 @@
     fetchDirectoryDetails(document.getElementById('basePath')?.textContent);
     await fetchDirectoryContents();
     
-    let shared_dir_link = null;
-
     const rightPanel = document.getElementById('right_panel');
     document.getElementById('infoToggleBtn').addEventListener('click', () => {
       rightPanel.classList.toggle('hidden'); // .hidden 클래스 추가
@@ -1328,7 +1343,7 @@
       const $checkboxes = document.querySelectorAll('#my_table td input');
       let itemName = [];
       $checkboxes.forEach(checkbox => {
-        itemName.push(checkbox.dataset.loc === 'undefined' ? `${current_path}/${checkbox.value}` : checkbox.dataset.type === 'directory' ? checkbox.dataset.loc : `${checkbox.dataset.loc}${checkbox.value}`);
+        itemName.push(checkbox.dataset.loc === 'undefined' ? `${current_path === '/' ? '' : current_path}/${checkbox.value}` : checkbox.dataset.type === 'directory' ? checkbox.dataset.loc : `${checkbox.dataset.loc}${checkbox.value}`);
       });
       if (selectedItems.length == 0) { // 모든 요소 선택 후, 체크박스 아이콘으로 변경
         store.dispatch({ type: "ADD_SELECTED_ITEMS", payload: itemName });
@@ -1472,7 +1487,7 @@
 
       const { current_path, directoryTree } = store.getState();
       const chunkSize = 1 * 1024 * 1024;
-      const currentPath = current_path;
+      const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
       const progressBar = document.getElementById('downloadProgress');
       const progressBar2 = document.getElementById('downloadProgress2');
       const progressDiv = document.getElementById('progressDiv');
@@ -1534,11 +1549,11 @@
       }
 
       progressDiv.classList.add('invisible');
-      updateUI(currentPath, directoryTree);
+      updateUI(current_path, directoryTree);
     }
 
-    async function updateUI(currentPath, directoryTree) {
-      await fetchDirectoryDetails(currentPath);
+    async function updateUI(current_path, directoryTree, target_dir=undefined) {
+      await fetchDirectoryDetails(current_path);
       await fetchDirectoryContents();
     }
 

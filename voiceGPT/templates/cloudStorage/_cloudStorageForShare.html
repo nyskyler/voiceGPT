@@ -1,4 +1,4 @@
-{% extends "base2.html" %}
+{% extends "base3.html" %}
 {% block content %}
 <style>
   #myRow {
@@ -43,6 +43,9 @@
     background-color: #F6F7FA;
     /* 기본 높이만 차지 */
     /* flex-shrink: 0; */
+  }
+  #breadcrumb {
+    padding-left: 0.8rem;
   }
 
   #storage_info span {
@@ -153,6 +156,7 @@
     font-size: 0.7rem;
     color: #767780;
   }
+
   .table tr .mobile {
     color: #9398A0;
     font-size: 0.8rem;
@@ -238,9 +242,6 @@
   .cursor-pointer {
     cursor: pointer; /* 포인터 모양으로 변경 */
   }
-  #toggleButton {
-    display: none;
-  }
   /* Toggle Button */
   .toggle-btn {
     border: none;
@@ -310,9 +311,6 @@
     form#searchForm {
       display: none !important;
     }
-    #toggleButton {
-      display: inline-block;
-    }
     #home {
       margin-left: 0rem;
     }
@@ -321,168 +319,40 @@
   }
   }
 </style>
-<span id="shared_dir_link" style="display: none;"></span>
-<div class="modal fade" id="moveResourcesModal" tabindex="-1" aria-labelledby="moveResourcesModalLabel">
-  <div class="modal-dialog modal-dialog-centered">
+<!-- Password Modal -->
+<div class="modal" id="passwordModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
     <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="moveResourcesModalLabel"></h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div id="nav_dir_modal">
-          <ul id="toc_modal" class="list-group list-group-flush"></ul>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-        <button type="button" id="toc_modal_confirm" class="btn btn-primary">확인</button>
-      </div>
+    <div class="modal-header">
+      <h5 id="modalTitle" class="modal-title fs-2" style="color: #4078FF;"><i class="fa-solid fa-lock"></i></h5>
+    </div>
+    <div class="modal-body" style="text-align: center;">
+      <p>공유 링크가 암호로 보호되어 있습니다.<br> 확인하려면 암호를 입력하세요.</p>
+      <input type="password" id="passwordInput" class="form-control">
+    </div>
+    <div class="modal-footer">
+      <button type="button" id="submitPassword" class="btn btn-primary">확인</button>
+    </div>
     </div>
   </div>
 </div>
-<div class="modal fade" id="changeNameModal" tabindex="-1" aria-labelledby="changeNameModalLabel">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="changeNameModalLabel"></h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="changeNameForm">
-          <div class="mb-3">
-            <label for="target_name" class="col-form-label"></label>
-            <input type="text" class="form-control inputField" id="target_name" minlength="1" maxlength="50" placeholder="" autocomplete="off">
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-        <button type="submit" class="btn btn-primary" form="changeNameForm">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="modal fade" id="createFolderModal" tabindex="-1" aria-labelledby="createFolderModalLabel">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="createFolderModalLabel"></h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="createFolderForm">
-          <div class="mb-3">
-            <label for="folder_name" class="col-form-label"></label>
-            <input type="text" class="form-control inputField" id="folder_name" minlength="1" maxlength="30" placeholder="새 폴더" autocomplete="off">
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-        <button type="submit" class="btn btn-primary" form="createFolderForm">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="deleteModalLabel"></h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>공유 중이거나 즐겨 찾는 파일도 함께 삭제됩니다.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-        <button type="button" id="confirmDeleteBtn" class="btn btn-primary">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
-<button type="button" id="createLinkBtnForModal" style="font-size: 0.9rem; text-align: center; display: none;" data-bs-toggle="modal" data-bs-target="#createLinkModal" data-bs-whatever="{{ g.user.username }}"></button>
-<!-- 선택한 폴더를 공유하기 위해 필요한 세부 설정을 하는 모달창 -->
-<div class="modal fade" id="createLinkModal" tabindex="-1" aria-labelledby="createLinkModalLabel">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="createLinkModalLabel"></h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="createLinkForm">
-          <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
-            <input id="shareLink" type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px; font-size: 0.8rem;" name="shareLink" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" readonly>
-            <button id="copyLink" class="btn btn-primary" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0; font-size: 0.8rem;" type="button">
-              링크 복사
-            </button>
-          </div>
-          <div class="mt-3 form-check form-switch" style="display: flex; justify-content: space-between; padding: 0px;">
-            <label class="form-check-label" for="allowEditSwitch"">편집 허용</label>
-            <input class="form-check-input" type="checkbox" role="switch" id="allowEditSwitch">
-          </div>
-          <div class="mt-3 form-check form-switch" style="display: flex; justify-content: space-between; padding: 0px;">
-            <label class="form-check-label" for="setPasswordSwitch">암호 설정</label>
-            <input id="passwordInput" class="invisible" type="text" style="width: 50%; border: 1px solid #767780; border-radius: 4px 0 0 4px; font-size: 0.8rem;" autocomplete="off" placeholder="4~8자 사이의 영문 또는 숫자" pattern="[A-Za-z0-9]{4,8}" minlength="4" maxlength="8" oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 8);" title="4~8자의 영문 또는 숫자만 입력 가능합니다.">
-            <!-- <input id="passwordInput" class="invisible" type="text" style="width: 50%; border: 1px solid #767780; border-radius: 4px 0 0 4px; font-size: 0.8rem;" autocomplete="off" rows="1" placeholder="4~8자 사이의 영문 또는 숫자"> -->
-            <input class="form-check-input" type="checkbox" role="switch" id="setPasswordSwitch">
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" id="removeLink_confirm" class="btn btn-outline-danger" data-bs-dismiss="modal">링크 삭제</button>
-        <button type="submit" id="createLink_confirm" class="btn btn-outline-secondary">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="basePath" style="display: none;">{{ base_path }}</div>
 <div class="container-fluid">
   <div id="myRow" class="row">
-    <div id="sidebar" class="col-12 col-md-2">
-      <div id="nav_dir">
-        <ul id="toc" class="list-group list-group-flush"></ul>
-      </div>
-      <div id="storage_info">
-        <div style="margin-bottom: 0.5rem;">
-          <span style="margin-right: 0.3rem;"><i class="fa-regular fa-hard-drive"></i></span>
-          <span id="used" style="font-weight: bold; color: #4078FF;"></span>
-          <span> / </span>
-          <span id="total"></span>
-        </div>
-        <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
-          <div id="storage_bar" class="progress-bar"></div>
-        </div>
-      </div>
-    </div>
     <div id="nav_files" class="col-12 col-md-10 p-0">
       <div id="top_banner" style="display: flex; align-items: center;">
         <div style="display: inline-block;">
-          <span>
-            <button id="toggleButton" class="toggle-btn btn btn-transparent">
-              <!-- <i class="fa-regular fa-square-caret-left"></i>FontAwesome icon -->
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
-          </span>
           <nav class="fs-5" style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;); display: inline-block;" aria-label="breadcrumb">
             <ol id="breadcrumb" class="breadcrumb">
             </ol>
           </nav>
         </div>
-        <form id="searchForm" style="display: flex; align-items: center; margin-right: 0.7rem;">
-          <div class="input-group" style="display: flex; align-items: center; border: none; outline: none;">
-            <input type="text" style="border: 1px solid black; border-right: 0; border-radius: 4px 0 0 4px; font-size: 0.8rem;" minlength="1" maxlength="12" id="searchInput" name="serachInput" class="form-control" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" placeholder="파일, 폴더, 확장자 검색">
-            <button id="searchBtn" class="btn btn-light" style="margin-left: 0; border: 1px solid black; border-left: 0; border-radius: 0 4px 4px 0; font-size: 0.8rem;" type="submit">
-              <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-          </div>
-        </form>
       </div>
       <div id="banner">
         <div class="header">
           <span>
             <button id="toggleAllCheckboxId" class="btn btn-transparent"><i class="fa-regular fa-square" style="color: #DEE2E6;"></i></button>
+            {% if edit %}
             <span class="dropdown">
               <button id="uploadBtn" class="btn btn-transparent" data-bs-toggle="dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #4078FF; padding: 0.2rem 0.6rem 0.3rem 0.6rem;"><i class="fa-solid fa-arrow-up-from-bracket" style="font-size: 0.9rem;  color: white;"></i><span style="color: white;"> 올리기</span></button>
               <ul class="dropdown-menu">
@@ -492,32 +362,9 @@
                 <input id="inputFolder" type="file" webkitdirectory directory multiple style="display: none;">
               </ul>
             </span>
-            <!-- 새 폴더의 이름을 입력받는 모달창 -->
-            <button type="button" id="newfolderBtn" class="btn btn-folder" data-bs-toggle="modal" data-bs-target="#createFolderModal" data-bs-whatever="{{ g.user.username }}"><span>새 폴더</span></button>
-            <button id="pasteBtn" class="btn btn-file invisible"><span>붙여넣기</span></button>
+            {% endif %}
             <span id="btnFiles" class="invisible">
-              <button id="downloadBtn" class="btn btn-file"><span>내려받기</span></button>
-              <!-- 삭제 확인 모달창 -->
-              <button type="button" id="deleteBtn" class="btn btn-file" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-whatever="{{ g.user.username }}"><span>삭제</span></button>              
-              <button type="button" id="changeNameBtnForModal" style="font-size: 0.9rem; text-align: center; display: none;" data-bs-toggle="modal" data-bs-target="#changeNameModal" data-bs-whatever="{{ g.user.username }}"></button>
-              <!-- 폴더 또는 파일의 새 이름을 입력받는 모달창 -->
-              <button type="button" id="moveResourcesBtnForModal" style="font-size: 0.9rem; text-align: center; display: none;" data-bs-toggle="modal" data-bs-target="#moveResourcesModal" data-bs-whatever="{{ g.user.username }}"></button>
-              <!-- 선택한 파일 또는 폴더를 위치시킬 경로를 선택하는 모달창 -->              
-              <span class="dropdown">
-                <button id="uploadBtn" class="btn btn-file" data-bs-toggle="dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <i class="fa-solid fa-ellipsis"></i></button>
-                <ul class="dropdown-menu">
-                  <li><button id="transferFilesBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">잘라내기</button></li>
-                  <li><button id="copyFilesBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">복사</button></li>
-                  <li><button id="moveFilesBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">이동</button></li>
-                  <li><button id="compressBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">압축하기</button></li>
-                  <li><button id="extractBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">압축 풀기</button></li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li><button type="button" id="changeNameBtn" class="dropdown-item" style="font-size: 0.9rem; text-align: center;">이름 바꾸기</button></li>
-                  <li><hr id="_divider" class="dropdown-divider"></li>
-                  <li><button id="shareLinkBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">링크 공유</button></li>
-                </ul>
-              </span>
+              <button id="downloadBtn" class="btn btn-file"><span>내려받기</span></button>              
               </span>
             </span>
             <span>
@@ -608,6 +455,35 @@
 {% endblock %}
 {% block script %}
 <script type="module">
+  document.addEventListener("DOMContentLoaded", function() {
+    var password = "{{ password }}"; // This is passed from Flask
+
+    if (!password) {
+      return
+    }
+    // Show the password modal on page load
+    var modal = new bootstrap.Modal(document.getElementById('passwordModal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+    modal.show();
+
+    document.getElementById("submitPassword").addEventListener("click", function() {
+      var inputPassword = document.getElementById("passwordInput").value;
+
+      if (inputPassword === password) {
+        // If password matches, close the modal and allow access
+        // modalTitle
+        document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-lock-open"></i>`;
+        setTimeout(() => {
+          modal.hide();
+        }, 1000);
+      } else {
+        // Wrong password, show an error message
+        alert("비밀번호가 틀렸습니다. 다시 시도해 주세요.");
+      }
+    });
+  });
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
 
   // 'invisible' 클래스를 토글하는 함수
@@ -654,33 +530,6 @@
     });
   }
 
-  // 특정 ID들의 항목을 표시하는 함수
-  function displayTagsById(subids, modal=undefined) {
-    let listItems = null;
-    if (modal) {
-      listItems = document.querySelectorAll('#toc_modal .list-group-item');
-    } else {
-      listItems = document.querySelectorAll('#toc .list-group-item');
-    }
-    
-    listItems.forEach(item => {
-      const itemId = parseInt(item.dataset.id, 10);
-      
-      // 클릭된 ID가 포함된 아이템만 처리
-      if (subids.includes(itemId)) {
-        const isCurrentlyInvisible = item.classList.contains('invisible');
-        const shouldDisplay = !isCurrentlyInvisible;  // 서브 요소가 가려져 있을 경우, shouldDisplay에 false가 담김
-        
-        toggleVisibility(item, shouldDisplay);
-        
-        // 하위 항목을 표시하려면, 하위 아이템이 보이도록 처리
-        if (shouldDisplay) {
-          handleSubItems(item, shouldDisplay);
-        }
-      }
-    });
-  }
-
   function getStyledDirectoryName(d_path, depth, path) {
     return '&emsp;'.repeat(depth) + '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>' + '&emsp;' + d_path; 
   }
@@ -705,57 +554,6 @@
     'wav': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
     'flac': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
     'html': '<i class="fa-solid fa-file-code" style="color: #1DB45B"></i>',
-  }
-
-  let toc_flag = true;
-  let toc_event_flag = true;
-  
-  function TOC() {
-    let state = store.getState();
-    let directoryTree = state.directoryTree;
-    const html_for_toc = directoryTree
-      .filter(item => item.type === 'directory')
-      .map(({ id, path, children, pathForDisplay, subdirectoryDepth }) => `
-        <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${subdirectoryDepth > 1 ? 'invisible' : ''}">
-          ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth, path)}
-        </a>
-      `).join('');
-    
-    const $toc = document.getElementById('toc');
-    $toc.innerHTML = html_for_toc;
-    if (!toc_event_flag) {
-      return;
-    }
-    $toc.addEventListener('click', async function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      allowSubscriptionCall = true;
-      const elem = e.target.closest('.list-group-item');
-      if (elem) {
-        let openFlag = true;
-        const id = elem.dataset.id;
-        // console.log('id: ', id);
-        state = store.getState();
-        const dir_path = state.directoryTree.filter(item => item.id == id)[0]?.path;
-        // console.log('dir_path: ', dir_path);
-        const subIds = JSON.parse(elem.dataset.subids);
-        if (subIds.length > 0) {
-          if (!elem.classList.contains('open')) {
-            toggleFolderIcon(elem, true);
-            elem.classList.add('open');
-          } else {
-            toggleFolderIcon(elem, false);
-            elem.classList.remove('open');
-            openFlag = false;
-          }
-          displayTagsById(subIds);
-        }
-        if (dir_path && toc_flag && openFlag) {
-          await fetchDirectoryDetails(dir_path);
-        }
-      }
-    });
-    toc_event_flag = false;
   }
 
   function getFileExtensionIcon(_ext) {
@@ -821,7 +619,7 @@
   const fetchItemThumbnailAndDetails = async (item_path) => {
     // fetch를 사용하여 서버에서 이미지를 가져오고, Blob과 URL.createObjectURL을 사용하여 이미지를 웹 페이지에 표시하기
     const state = store.getState();
-    const url = `${_URL}/cloudstorage/getThumbnailAndDetails/${item_path.slice(1).trim()}`;
+    const url = `${_URL}/cloudstorage/getThumbnailAndDetails/${item_path.trim()}`;
     try {
       const response = await fetch(url, { method: 'GET' });
       if (!response.ok) {
@@ -909,11 +707,6 @@
     const state = store.getState();
     const { view_contents, selectedItems, directoryTree, checkedFilePathsForMove, checkedFilePathsForCopy } = state;
     const $toggleAllCheckboxId = document.getElementById('toggleAllCheckboxId');
-    const $compressBtn = document.getElementById('compressBtn');
-    const $extractBtn = document.getElementById('extractBtn');
-    const $pasteBtn = document.getElementById('pasteBtn');
-    const $shareLinkBtn = document.getElementById('shareLinkBtn');
-    const $divider = document.getElementById('_divider');
 
     if (selectedItems.length == 0) {
       $toggleAllCheckboxId.innerHTML = '<i class="fa-regular fa-square" style="color: #DEE2E6;"></i>';
@@ -929,16 +722,7 @@
       toggleElementVisibilityById('#newfolderBtn', true);
     }
 
-    const isFolder = selectedItems?.length == 1 && directoryTree.filter(item => item.path == selectedItems[0]).map(item => item.type)[0] === 'directory';
-    $shareLinkBtn.classList.toggle('invisible', !isFolder);
-    $divider.classList.toggle('invisible', !isFolder);
-
-    const isZipFile = selectedItems?.length === 1 && selectedItems[0].endsWith('.zip');
-    $compressBtn.classList.toggle('invisible', isZipFile);
-    $extractBtn.classList.toggle('invisible', !isZipFile);
-
     const showPasteBtn = (checkedFilePathsForMove.length > 0 && selectedItems.length == 0) || (checkedFilePathsForCopy.length > 0 && selectedItems.length == 0)? false : true;
-    $pasteBtn.classList.toggle('invisible', showPasteBtn);
   }
 
   function openFile(filename, isVideo = false, isAudio = false) {
@@ -983,7 +767,7 @@
       window.open(url, '_blank');
     }
   }
-
+ 
   function article() {
     const state = store.getState();
     const { current_path, selectedItems, checkedFilePathsForMove } = state;
@@ -1031,18 +815,15 @@
     dir_tds.forEach(td => {
       td.addEventListener('click', async (e) => {
         e.stopPropagation();
-        allowSubscriptionCall = true;
         
         let targetPath = null;
         const loc = e.target.dataset.loc;
         if (loc == 'undefined') {
-          targetPath = `${current_path == '/' ? '' : current_path}/${td.textContent.trim()}`; 
+          targetPath = `${current_path}/${td.textContent.trim()}`; 
         } else {
-          targetPath = loc || '';
+          targetPath = loc?.slice(1);
         }
-        toc_flag = false;
         await fetchDirectoryDetails(targetPath);
-        toc_flag = true;
       });
     });
 
@@ -1051,9 +832,8 @@
       td.addEventListener('click', async (e) => {
         e.stopPropagation();
         let currentPath = null;
-        // allowSubscriptionCall = true;
         const loc = e.target.dataset.loc;
-        currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        currentPath = current_path;
         currentPath = loc == 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
 
         const filename = td.textContent;
@@ -1088,14 +868,12 @@
         let targetFullPath = null;
 
         if (nameTd.dataset.loc === 'undefined') {
-          targetFullPath = (current_path === '/' ? '' : current_path) + '/' + nameTd.textContent.trim();
+          targetFullPath = current_path + '/' + nameTd.textContent.trim();
         } else if (nameTd.dataset.loc.endsWith('/')) {
-          targetFullPath = '/' + nameTd.dataset.loc + nameTd.textContent.trim();
+          targetFullPath = nameTd.dataset.loc.slice(1) + nameTd.textContent.trim();
         } else {
-          targetFullPath = '/' + nameTd.dataset.loc.trim();
+          targetFullPath = nameTd.dataset.loc.slice(1).trim();
         }
-
-        targetFullPath = targetFullPath.startsWith('/') ? targetFullPath : '/' + targetFullPath;
 
         if (event.target.checked) { // 체크 상태인 경우에만 실행
           document.getElementById('rp_title').textContent = nameTd.textContent;
@@ -1105,15 +883,6 @@
           row.classList.remove('table-active');
           store.dispatch({ type: "REMOVE_SELECTED_ITEM", payload: targetFullPath });
         }
-      });
-    });
-
-    document.querySelectorAll('button.shareLink').forEach(link => {
-      link.addEventListener('click', (e) => {
-        event.stopPropagation();
-        const { current_path } = store.getState();
-        $('#shared_dir_link').text(current_path + '/' + event.target.closest('td').textContent.trim());
-        $('#createLinkBtnForModal').click();
       });
     });
   }
@@ -1132,7 +901,7 @@
             <input class="form-check-input" type="checkbox" data-loc="${_loc}" data-type="${_type == 'Directory' ? 'directory' : 'file'}" value="${_name}" ${isChecked ? "checked" : ""} aria-label="..."> 
           </span>
           <span style="position: absolute; top: 5px; right: 5px;">
-            ${_link ? '<button class="btn btn-sm btn-outline-secondary shareLink_grid" style="padding: 0px 3px 0px 3px;"><i class="fa-solid fa-link" style="font-size: 0.7rem; padding: 0px;"></i></button>' : ''}
+            ${_link ? '<button class="btn btn-sm btn-outline-secondary shareLink" style="padding: 0px 3px 0px 3px;"><i class="fa-solid fa-link" style="font-size: 0.7rem; padding: 0px;"></i></button>' : ''}
           </span>
           <div class="card-body">
             <p class="card-text ${_loc ? 'popover-hover' : ''}" ${popoverContent} style="font-size: 0.8rem;">${_name}</p>
@@ -1173,19 +942,15 @@
     dir_divs.forEach(dir_div => {
       dir_div.addEventListener('click', async (e) => {
         e.stopPropagation();
-        allowSubscriptionCall = true;
         const $file_name = dir_div.querySelector('input').getAttribute('value').trim();
         let targetPath = null;
         const loc = e.target.closest('div').dataset.loc;
         if (loc === 'undefined') {
-          targetPath = `${current_path == '/' ? '' : current_path}/${$file_name}`; 
+          targetPath = `${current_path}/${$file_name}`; 
         } else {
-          targetPath = loc || '';
+          targetPath = loc?.slice(1);
         }
-
-        toc_flag = false;
         await fetchDirectoryDetails(targetPath);
-        toc_flag = true;
       });
     });  
 
@@ -1195,7 +960,7 @@
         e.stopPropagation();
         let currentPath = null;
         const loc = e.target.closest('div').dataset.loc;
-        currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+        currentPath = current_path;
         currentPath = loc === 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
         
         // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
@@ -1261,15 +1026,12 @@
 
         let targetFullPath = null;
         if (loc === 'undefined') {
-          targetFullPath = (current_path === '/' ? '' : current_path) + '/' + itemValue;
-          // targetFullPath = current_path + '/' + itemValue;
+          targetFullPath = current_path + '/' + itemValue;
         } else if (loc.endsWith('/')) {
           targetFullPath = loc.slice(1) + itemValue;
         } else {
           targetFullPath = loc.slice(1);
         }
-
-        targetFullPath = targetFullPath.startsWith('/') ? targetFullPath : '/' + targetFullPath;
 
         if (event.target.checked) { // 체크 상태인 경우에만 실행
           document.getElementById('rp_title').textContent = itemValue;
@@ -1280,71 +1042,31 @@
         }
       });
     });
-
-    document.querySelectorAll('button.shareLink_grid').forEach(link => {
-      link.addEventListener('click', (e) => {
-        event.stopPropagation();
-        const { current_path } = store.getState();
-        $('#shared_dir_link').text(current_path + '/' + event.target.closest('div').querySelector('p.card-text').textContent.trim());
-        $('#createLinkBtnForModal').click();
-      });
-    });
   }
 
-  let search_word = null;
-  let allowSubscriptionCall = true;
   async function generateBreadcrumbFromPath() {
-    const { current_path, directoryTree } = store.getState();
+    const current_path = store.getState().current_path;
     const $breadcrumb = document.getElementById('breadcrumb');
     const splited_path = current_path.split('/').filter(path => path);
  
     const html_for_crumb = splited_path.map((_, index) => {
-      const path = '/' + splited_path.slice(0, index + 1).join('/');
+      const path = splited_path.slice(0, index + 1).join('/');
       const dir_name = splited_path[index];
       const isActive = index === splited_path.length - 1;
       
       return `
-        <li data-path="${path}" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
+        <li data-path="${path.startsWith('/') ? path.slice(1) : path }" class="breadcrumb-item ${isActive ? 'active fw-semibold' : 'fw-light mobile'}" ${isActive ? 'aria-current="page"' : ''}>${dir_name}</li>
       `;
     }).join('');
 
-    if (!allowSubscriptionCall) {
-      $breadcrumb.innerHTML = `<li data-path="/" id="home" class="breadcrumb-item fw-semibold" >파일 검색 결과 <span style="color: #4078FF;">${search_word}</span></li>`
-    } else {
-      $breadcrumb.innerHTML = '<li data-path="/" id="home" class="breadcrumb-item fw-light" >Home</li>' + html_for_crumb;
-      await updateAndActivateDirectoryTreeItem();
-    }
+    $breadcrumb.innerHTML = '<li data-path="{{ base_path }}" id="home" class="breadcrumb-item fw-light" >Home</li>' + html_for_crumb;
+
     const $breadcrumbs = document.querySelectorAll('#breadcrumb li');
     $breadcrumbs.forEach(li => {
       li.addEventListener('click', async (e) => {
         e.stopPropagation();
-        // toc_flag = false;
         await fetchDirectoryDetails(li.dataset.path);
-        // toc_flag = true;
-        // const targetId = directoryTree.filter(item => item.path === li.dataset.path).map(item => item.id)[0];
-        // console.log(targetId);
-        // const $elem = document.querySelector(`#toc a[data-id="${targetId}"]`);
-        // console.log($elem);
-        // $elem.click();
       });
-    });
-  }
-
-  async function updateAndActivateDirectoryTreeItem() {
-    const state = store.getState();
-    const currentPath = state.current_path;
-      
-    const splitedPath = currentPath.split('/');
-    const onWayPaths = splitedPath.map((item, idx) => splitedPath.slice(0, idx + 1).join('/'));
-    
-    const directoryItemIds = state.directoryTree.filter(item => onWayPaths.includes(item.path)).map(item => item.id);
-    
-    directoryItemIds.forEach(el => {
-      const $elem = document.querySelector(`#toc a[data-id="${el}"]`);
-      const $icon = $elem.querySelector('.fa-solid');
-      if ((!$icon.classList.contains('fa-folder-open')) && (JSON.parse($elem.dataset.subids).length > 0)) {
-        $elem.click();
-      }
     });
   }
 
@@ -1353,7 +1075,7 @@
       return {
         directoryTree: [],
         view_contents: [],
-        current_path: '/',
+        current_path: document.getElementById('basePath')?.textContent,
         selectedItems: [], // 선택된 항목들
         checkedFilePathsForMove: [],
         checkedFilePathsForCopy: [],
@@ -1481,7 +1203,7 @@
   }
 
   const fetchDirectoryContents = async () => {
-    const state = store.getState();
+    const { current_path } = store.getState();
     const url = `${_URL}/cloudstorage/directoryContents/`;
     
     try {
@@ -1495,7 +1217,8 @@
       }
 
       const res = await response.json();
-      const directoryTree = res.message.map((item, idx) => {
+      console.log(res.message);
+      const directoryTree = res.message.filter(item => item.startsWith(current_path.slice(1))).map((item, idx) => {
         const isFile = item.includes('.');
         const num = item.split('/').length - 1; 
         const _path = item.split('/').pop();
@@ -1526,13 +1249,12 @@
 
   const fetchDirectoryDetails = async (dir_path) => {
     const $target = document.getElementById('my_table').classList.contains('invisible') ? document.getElementById('my_grid') : document.getElementById('my_table');
-    $target.classList.toggle('invisible', true);
-    document.getElementById('placeholder').classList.toggle('d-flex', true);
-    document.getElementById('placeholder').classList.toggle('invisible', false);
+    $target.classList.add('invisible');
+    document.getElementById('placeholder').classList.add('d-flex');
+    document.getElementById('placeholder').classList.remove('invisible');
     
     const state = store.getState();
-    const dir_to_pass = dir_path.startsWith('/') ? dir_path.slice(1) : dir_path;
-    const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_to_pass}`;
+    const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_path}`;
     
     try {
       const response = await fetch(url, { method: 'GET' });
@@ -1545,9 +1267,9 @@
       }
 
       const res = await response.json();
-      document.getElementById('placeholder').classList.toggle('invisible', true);
-      document.getElementById('placeholder').classList.toggle('d-flex', false);
-      $target.classList.toggle('invisible', false);
+      $target.classList.remove('invisible');
+      document.getElementById('placeholder').classList.add('invisible');
+      document.getElementById('placeholder').classList.remove('d-flex');
       store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: dir_path });
       initializeTableHeader();
       document.getElementById('rp_title').textContent = dir_path;
@@ -1557,50 +1279,18 @@
     }
   };
 
-  const fetchDriveStorageInfo = async () => {
-    const state = store.getState();
-    const url = `${_URL}/cloudstorage/getDriveUsage/`;
-    
-    try {
-      const response = await fetch(url, { method: 'GET' });
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-      if (response.status === 204) {
-        console.log('No Content');
-        return;
-      }
-
-      const res = await response.json();
-      // used, total, storage_bar
-      const used_percentage = parseInt(parseFloat(res.message.used_gb) / parseFloat(res.message.total_gb) * 100);
-      document.getElementById('used').textContent = res.message.used_gb.toFixed(2) + 'GB';
-      document.getElementById('total').textContent = res.message.total_gb.toFixed(2) + 'GB';
-      document.getElementById('storage_bar').style.width = used_percentage + '%';
-      document.getElementById('storage_bar').textContent = used_percentage + '%';
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  }
-
   const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
   window.store = store;
-  // store.subscribe(TOC);
   store.subscribe(article);
   store.subscribe(grid_article);
   store.subscribe(updateButtonIconBasedOnCheckboxes);
   store.subscribe(generateBreadcrumbFromPath);
 
   window.onload = async function(){
-    fetchDriveStorageInfo();
-    fetchDirectoryDetails('/');
+    fetchDirectoryDetails(document.getElementById('basePath')?.textContent);
     await fetchDirectoryContents();
-    TOC();
     
-    document.getElementById('toggleButton').addEventListener('click', () => {
-      store.dispatch({ type: 'UPDATE', target: 'breadcrumb'});
-      fetchDirectoryDetails(store.getState().current_path);
-    });
+    let shared_dir_link = null;
 
     const rightPanel = document.getElementById('right_panel');
     document.getElementById('infoToggleBtn').addEventListener('click', () => {
@@ -1638,7 +1328,7 @@
       const $checkboxes = document.querySelectorAll('#my_table td input');
       let itemName = [];
       $checkboxes.forEach(checkbox => {
-        itemName.push(checkbox.dataset.loc === 'undefined' ? `${current_path === '/' ? '' : current_path}/${checkbox.value}` : checkbox.dataset.type === 'directory' ? checkbox.dataset.loc : `${checkbox.dataset.loc}${checkbox.value}`);
+        itemName.push(checkbox.dataset.loc === 'undefined' ? `${current_path}/${checkbox.value}` : checkbox.dataset.type === 'directory' ? checkbox.dataset.loc : `${checkbox.dataset.loc}${checkbox.value}`);
       });
       if (selectedItems.length == 0) { // 모든 요소 선택 후, 체크박스 아이콘으로 변경
         store.dispatch({ type: "ADD_SELECTED_ITEMS", payload: itemName });
@@ -1722,479 +1412,6 @@
       }
     });
 
-    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
-      const state = store.getState();
-      const { selectedItems, current_path, directoryTree } = state;
-
-      if (selectedItems.length === 0) {
-        console.warn("No items selected for deletion.");
-        return;  // 선택된 항목이 없으면 실행하지 않음
-      }
-
-      // $('#toggleAllCheckboxId').click();
-
-      try {
-        const url = `${_URL}/cloudstorage/deleteResource/`;
-        // Promise.all을 사용하여 여러 개의 삭제 요청을 병렬로 처리
-        const responses = await Promise.all(selectedItems.map(async (file_name) => {
-          // const file_path = currentPath ? `${currentPath}/${file_name}` : file_name;
-          const data = { path: file_name };
-
-          const options = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          };
-
-          const response = await fetch(url, options);
-          if (!response.ok) {
-            throw new Error(`Failed to delete ${file_name}: ${response.statusText}`);
-          }
-          return response.json();  // JSON 응답 반환
-        }));
-
-        updateUI(current_path, directoryTree);
-      } catch (error) {
-        console.error('Error deleting files:', error);
-      } finally {
-        $('#deleteModal').modal('hide');
-      }
-    });
-
-    // '새 폴더' 모달창의 세부 항목의 내용 지정하기
-    const $createFolderModal = document.getElementById('createFolderModal')
-    if ($createFolderModal) {
-      $createFolderModal.addEventListener('show.bs.modal', event => {
-        // Button that triggered the modal
-        const button = event.relatedTarget
-        // Extract info from data-bs-* attributes
-        const recipient = button.getAttribute('data-bs-whatever')
-        const modalTitle = $createFolderModal.querySelector('.modal-title')
-        const modalBodyInput = $createFolderModal.querySelector('.modal-body input')
-        modalTitle.textContent = `새 폴더 만들기`;
-        modalBodyInput.value = '';
-      })
-    }
-
-    const $createLinkModal = document.getElementById('createLinkModal')
-    if ($createLinkModal) {
-      $createLinkModal.addEventListener('show.bs.modal', async (event) => {
-        // Button that triggered the modal
-        const button = event.relatedTarget
-        // Extract info from data-bs-* attributes
-        const recipient = button.getAttribute('data-bs-whatever')
-        const modalTitle = $createLinkModal.querySelector('.modal-title')
-        const modalBodyInput = $createLinkModal.querySelector('.modal-body input')
-        modalTitle.textContent = `링크 공유`;
-
-        const { current_path, directoryTree, selectedItems } = store.getState();
-        // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-        const url = `${_URL}/cloudstorage/generateShortUrlForDirectoryPath/`;
-
-        try {
-          const data = { 
-            dir_for_share: $('#shared_dir_link').text() || selectedItems[0],
-          };
-          const options = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          };
-
-          const response = await fetch(url, options);
-          if (!response.ok) {
-            throw new Error(`Failed to get link for ${data['dir_for_share']}: ${response.statusText}`);
-          }
-          const msg = await response.json();
-          // console.log("message: ", msg.message);
-          const { shareLink, edit, password } = msg.message;
-          modalBodyInput.value = shareLink;
-          $('#shared_dir_link').text('');
-          document.getElementById('allowEditSwitch').checked = edit || false;
-          document.getElementById('setPasswordSwitch').checked = password || false;
-          const $pwInput = document.getElementById('passwordInput');
-          $pwInput.classList.toggle('invisible', !password);
-          $pwInput.classList.contains('invisible') ? $pwInput.value = '' : $pwInput.value = password;
-        } catch (error) {
-          console.error('Error transfering:', error);
-        }
-      });
-    }
-
-    // '삭제' 모달창의 세부 항목의 내용 지정하기
-    const $deleteModal = document.getElementById('deleteModal');
-    if ($deleteModal) {
-      $deleteModal.addEventListener('show.bs.modal', event => {
-        const button = event.relatedTarget;
-        const recipient = button.getAttribute('data-bs-whatever');
-        const state = store.getState();
-        const { selectedItems, current_path } = state;
-        
-        if (selectedItems.length == 1 && !selectedItems[0].includes('.')) {
-          $('#deleteModalLabel').html(`<i class="fa-solid fa-triangle-exclamation" style="color: red;"></i>&nbsp;${JSON.stringify(selectedItems).slice(1, -1)}과(와) 모든 하위폴더를 삭제하시겠습니까?`);
-        } else {
-          $('#deleteModalLabel').html(`<i class="fa-solid fa-triangle-exclamation" style="color: red;"></i>&nbsp;${selectedItems.length}개의 항목을 삭제합니다.`);
-        }
-      });
-    }
-
-    document.getElementById('pasteBtn').addEventListener('click', async () => {
-      const { current_path, checkedFilePathsForMove, checkedFilePathsForCopy, directoryTree } = store.getState();
-      
-      let url = null;
-      let _resource_path = null;
-      if (checkedFilePathsForCopy.length > 0 && checkedFilePathsForMove.length == 0) {
-        url = `${_URL}/cloudstorage/copyResourcesToDirectory/`;
-        _resource_path = checkedFilePathsForCopy;
-      } else if (checkedFilePathsForCopy.length == 0 && checkedFilePathsForMove.length > 0) {
-        url = `${_URL}/cloudstorage/moveResourcesToDirectory/`;
-        _resource_path = checkedFilePathsForMove;
-      } else {
-        alert('선택된 파일이 없습니다.');
-        return
-      }
-
-      try {
-        const data = { 
-          resource_path: _resource_path,
-          target_path: current_path,
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to transfer ${data['resource_path']} to ${current_path}: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        console.log(msg.message);
-        store.dispatch({ type: 'COMPLETE_TRANSFER_ITEMS' });
-        updateUI(current_path, directoryTree, current_path);
-      } catch (error) {
-        console.error('Error transfering:', error);
-      }
-    });
-
-    document.getElementById('transferFilesBtn').addEventListener('click', () => {
-      const { current_path, selectedItems, directoryTree } = store.getState();
-      const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      // const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
-      store.dispatch({ type: 'RENEW_TRANSFER_ITEMS', payload: selectedItems });
-      // $('#toggleAllCheckboxId').click();
-    });
-
-    document.getElementById('copyFilesBtn').addEventListener('click', () => {
-      const { current_path, selectedItems, directoryTree } = store.getState();
-      // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      // const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
-      store.dispatch({ type: 'RENEW_COPY_ITEMS', payload: selectedItems });
-      // $('#toggleAllCheckboxId').click();      
-    });
-
-    document.getElementById('moveFilesBtn').addEventListener('click', () => {
-      $('#moveResourcesBtnForModal').click();
-    });
-
-    document.getElementById('changeNameBtn').addEventListener('click', () => {
-      $('#changeNameBtnForModal').click();
-    });
-
-    document.getElementById('shareLinkBtn').addEventListener('click', () => {
-      $('#createLinkBtnForModal').click();
-    });
-
-    document.getElementById('toc_modal_confirm').addEventListener('click', async(e) => {
-      const { current_path, selectedItems, directoryTree } = store.getState();
-      // const fileFullPathForTransfer = selectedItems.map(item => `${currentPath}/${item}`);
-      store.dispatch({ type: 'RENEW_TRANSFER_ITEMS', payload: selectedItems });
-      // $('#toggleAllCheckboxId').click();
-
-      const { checkedFilePathsForMove } = store.getState();
-      
-      const url = `${_URL}/cloudstorage/moveResourcesToDirectory/`;
-      const _resource_path = checkedFilePathsForMove;
-      const target_dir = directoryTree.find(item => item.id == clickedElemId)?.path;
-
-      try {
-        const data = { 
-          resource_path: _resource_path,
-          target_path: target_dir,
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to transfer ${data['resource_path']} to ${target_dir}: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        console.log(msg.message);
-        store.dispatch({ type: 'COMPLETE_TRANSFER_ITEMS' });
-        $('#moveResourcesModal').modal('hide');
-        updateUI(current_path, directoryTree, target_dir);
-      } catch (error) {
-        console.error('Error transfering:', error);
-      }
-    });
-
-    // '이름 바꾸기' 모달창의 세부 항목의 내용 지정하기
-    const $changeNameModal = document.getElementById('changeNameModal');
-    if ($changeNameModal) {
-      $changeNameModal.addEventListener('show.bs.modal', event => {
-        const { selectedItems } = store.getState();
-        // Button that triggered the modal
-        const button = event.relatedTarget
-        // Extract info from data-bs-* attributes
-        const recipient = button.getAttribute('data-bs-whatever')
-        const modalTitle = $changeNameModal.querySelector('.modal-title')
-        const modalBodyInput = $changeNameModal.querySelector('.modal-body input')
-        modalTitle.textContent = `이름 바꾸기`;
-        modalBodyInput.value = `${selectedItems[0].split('/').pop()}`;
-      });
-    }
-
-    let toc_modal_flag = true;
-    let clickedElemId = null;
-    const $moveResourcesModal = document.getElementById('moveResourcesModal');
-    if ($moveResourcesModal) {
-      $moveResourcesModal.addEventListener('show.bs.modal', event => {
-        // Button that triggered the modal
-        const button = event.relatedTarget
-        // Extract info from data-bs-* attributes
-        const recipient = button.getAttribute('data-bs-whatever')
-        const modalTitle = $moveResourcesModal.querySelector('.modal-title')
-        const modalBody = $moveResourcesModal.querySelector('.modal-body')
-        modalTitle.textContent = `위치 선택`;
-
-        const { directoryTree } = store.getState();
-        const html_for_toc = directoryTree
-          .filter(item => item.type === 'directory')
-          .map(({ id, path, children, pathForDisplay, subdirectoryDepth }) => `
-            <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${subdirectoryDepth > 1 ? 'invisible' : ''}">
-              ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth, path)}
-            </a>
-          `).join('');
-
-        const $toc_modal = document.getElementById('toc_modal');   
-        $toc_modal.innerHTML = html_for_toc;
-
-        $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
-            el.style.color = '#9A9FA8';
-            el.parentElement.style.color = 'black';
-            el.parentElement.style.fontWeight = "400";
-          });
-
-        if (!toc_modal_flag) {
-          return
-        }   
-        
-        $toc_modal.addEventListener('click', function(e) {
-          e.preventDefault();
-          $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
-            el.style.color = '#9A9FA8';
-            el.parentElement.style.color = 'black';
-            el.parentElement.style.fontWeight = "400";
-          });
-          const elem = e.target.closest('.list-group-item');
-          if (elem) {
-            clickedElemId = elem.dataset.id;
-            elem.querySelector('i').style.color = "#4078FF";
-            elem.style.color = "#4078FF";
-            elem.style.fontWeight = "bold";
-            const subIds = JSON.parse(elem.dataset.subids);
-            if (subIds.length > 0) {
-              if (!elem.classList.contains('open')) {
-                toggleFolderIcon(elem, true);
-                elem.classList.add('open');
-              } else {
-                toggleFolderIcon(elem, false);
-                elem.classList.remove('open');
-              }
-              displayTagsById(subIds, true);
-            }
-          }
-        });
-        toc_modal_flag = false;
-      });
-    } 
-
-    document.getElementById('extractBtn').addEventListener('click', async(e) => {
-      const { current_path, selectedItems, directoryTree } = store.getState();
-      // console.log(selectedItems);
-      // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      // const temp = selectedItems[0].split('.');
-      const ext = selectedItems[0].split('.').pop();
-      const idx = selectedItems.length;
-
-      if (idx !== 1 || ext !== 'zip') {
-        alert('압축 풀기는 한 개의 zip 형식의 파일을 대상으로만 가능합니다.');
-        return
-      }
-
-      try {
-        const url = `${_URL}/cloudstorage/unzipAndStoreResources/`;
-
-        const data = { 
-          resource_path: selectedItems[0],
-          current_path: current_path,
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to extrct ${data['resource_path']}: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        // console.log(msg.message);
-        updateUI(current_path, directoryTree);
-      } catch (error) {
-        console.error('Error extracting:', error);
-      }
-    });
-
-    document.getElementById('compressBtn').addEventListener('click', async(e) => {
-      const { current_path, selectedItems, directoryTree } = store.getState();
-      // console.log(selectedItems);
-      const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
-      // const resource_paths = selectedItems.map(item => `${currentPath}/${item}`);
-      try {
-        // console.log(resource_paths);
-        const url = `${_URL}/cloudstorage/zipAndSaveResources/`;
-
-        const data = { 
-          resource_paths: selectedItems,
-          current_path: currentPath,
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to compress ${data['resource_paths']}: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        // console.log(msg.message);
-        updateUI(current_path, directoryTree);
-      } catch (error) {
-        console.error('Error compressing:', error);
-      }
-    });
-
-    // '이름 바꾸기' 모달창에서 '정하기'를 클릭했을 시, 사용자가 입력한 이름으로 폴더 또는 파일의 이름이 바뀌게 할 것
-    document.getElementById('changeNameForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = e.target.querySelector('input').value;
-      const { current_path, directoryTree, selectedItems } = store.getState();
-      if (selectedItems.length !== 1) {
-        alert('한 개의 폴더 또는 파일의 이름만을 바꿀 수 있습니다.')
-        return
-      }
-    
-      const pathArray = selectedItems[0].split('/');
-      
-      try {
-        const url = `${_URL}/cloudstorage/renameResource/`;
-        const data = { 
-          resource_path: selectedItems[0],
-          renamed_path: `${pathArray.slice(0, pathArray.length - 1).join('/')}/${name}`,
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to rename ${data['resource_path']}: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        // console.log(msg.message);
-        updateUI(current_path, directoryTree, current_path);
-        $('#changeNameModal').modal('hide');
-      } catch (error) {
-        console.error('Error renaming:', error);
-      }
-    });
-
-    // '새 폴더 만들기' 모달창에서 '정하기'를 클릭했을 시, 입력한 이릉의 폴더가 current_path 하위에 생성되도록 서버에 요청하기
-    document.getElementById('createFolderForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const dir_name = e.target.querySelector('input').value;
-      const { current_path, directoryTree } = store.getState();
-
-      try {
-        const url = `${_URL}/cloudstorage/createFolderAtPath/`;
-        const dir_path = `${current_path}/${dir_name}`;
-        const data = { path: dir_path };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to create ${dir_path}: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        // const id = directoryTree.filter(item => item.path === current_path).map(item => item.id)[0];
-        // console.log('id: ', id);
-        // document.querySelector(`#toc > a[data-id="${id}"]`).querySelector('i').classList.replace('fa-folder', 'fa-folder-open');
-        updateUI(current_path, directoryTree, current_path);
-        $('#createFolderModal').modal('hide');
-      } catch (error) {
-        console.error('Error creating new folder:', error);
-      }
-    });
-
-    let isComposing = false; // IME 입력 중 여부를 저장
-
-    // 모든 입력 필드에 대해 이벤트 리스너 추가
-    document.querySelectorAll('.inputField').forEach(input => {
-      input.addEventListener('compositionstart', () => {
-        isComposing = true;
-      });
-
-      input.addEventListener('compositionend', (event) => {
-        isComposing = false;
-        event.target.value = event.target.value.replace(/[^a-zA-Z0-9가-힣\s._-]/g, ''); // 최종 검증
-      });
-
-      input.addEventListener('input', (event) => {
-        if (!isComposing) {
-          event.target.value = event.target.value.replace(/[^a-zA-Z0-9가-힣\s._-]/g, '');
-        }
-      });
-    });
-
-    // 파일 크기에 따른 청크 크기 설정 (사이즈: 청크 크기)
-    // CHUNK_SIZES = {
-    //   1 * 1024 * 1024: 1024 * 64,   # 1MB 이상 100MB 미만 → 64KB
-    //   100 * 1024 * 1024: 1024 * 128,  # 100MB 이상 500MB 이하 → 128KB
-    //   500 * 1024 * 1024: 1024 * 512,  # 500MB 이상 1GB 미만 → 512KB
-    //   1 * 1024 * 1024 * 1024: 1024 * 1024  # 1GB 이상 → 1MB
-    // }
-
     // 📂 폴더 선택 시 이벤트
     document.getElementById('inputFolder').addEventListener('change', async function (event) {
       const fileList = Array.from(event.target.files).map(file => ({
@@ -2255,7 +1472,7 @@
 
       const { current_path, directoryTree } = store.getState();
       const chunkSize = 1 * 1024 * 1024;
-      const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
+      const currentPath = current_path;
       const progressBar = document.getElementById('downloadProgress');
       const progressBar2 = document.getElementById('downloadProgress2');
       const progressDiv = document.getElementById('progressDiv');
@@ -2317,41 +1534,12 @@
       }
 
       progressDiv.classList.add('invisible');
-      updateUI(current_path, directoryTree);
+      updateUI(currentPath, directoryTree);
     }
 
-    async function updateUI(current_path, directoryTree, target_dir=undefined) {
-      toc_flag = false;
-      const links = document.querySelectorAll('#toc > a:not(.invisible)');
-      const openedLinks = document.querySelectorAll('#toc > a:not(.invisible).open');
-      const dataIds = Array.from(links, link => link.getAttribute('data-id'));
-      const openDataIds = Array.from(openedLinks, link => link.getAttribute('data-id'));
-      const pathForDisplay = directoryTree.filter(item => dataIds.includes(item.id.toString())).map(item => item.path);
-      const openedPathForDisplay = directoryTree.filter(item => openDataIds.includes(item.id.toString())).map(item => item.path);
-      
-      await fetchDirectoryDetails(current_path);
-      await fetchDriveStorageInfo();
+    async function updateUI(currentPath, directoryTree) {
+      await fetchDirectoryDetails(currentPath);
       await fetchDirectoryContents();
-      TOC();
-
-      const state = store.getState();
-      const newDirTree = state.directoryTree;
-      const pathFromDirTree = directoryTree.map(item => item.path);
-      const pathFromNewDirTree = newDirTree.map(item => item.path);
-      const addedItems = pathFromNewDirTree.filter(item => !pathFromDirTree.includes(item));
-      const openRenewedIds = newDirTree.filter(item => openedPathForDisplay.includes(item.path)).map(item => item.id.toString());
-      const renewedIds = (target_dir && openedPathForDisplay.includes(target_dir)) ? newDirTree.filter(item => pathForDisplay.includes(item.path) || addedItems[0] === item.path).map(item => item.id.toString()) : newDirTree.filter(item => pathForDisplay.includes(item.path)).map(item => item.id.toString());
-      
-      document.querySelectorAll('#toc > a').forEach(link => {
-        renewedIds.includes(link.dataset.id) ? link.classList.toggle("invisible", false) : link.classList.toggle("invisible", true);
-        if (openRenewedIds.includes(link.dataset.id) && link.dataset.subids !== "[]") {
-          link.classList.toggle("open", true);
-          link.querySelector('i').classList.replace('fa-folder', 'fa-folder-open');
-        } 
-      });
-      
-      await updateAndActivateDirectoryTreeItem();
-      toc_flag = true;
     }
 
     async function getAllFilesFromDirectory(entry, fileList, path = "") {
@@ -2371,158 +1559,6 @@
         }
       });
     }
-
-    document.getElementById('searchForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const searchWord = e.target.querySelector('input').value;
-      if (searchWord.length < 2) {
-        alert('두 글자 이상의 검색어를 입력해 주세요.');
-        return
-      }
-      e.target.querySelector('input').value = '';
-
-      const { current_path } = store.getState();
-      let dir_path = current_path.startsWith('/') ? current_path.slice(1) : current_path; 
-      
-      const $target = document.getElementById('my_table').classList.contains('invisible') ? document.getElementById('my_grid') : document.getElementById('my_table');
-      $target.classList.add('invisible');
-      document.getElementById('placeholder').classList.add('d-flex');
-      document.getElementById('placeholder').classList.remove('invisible');
-
-      const url = `${_URL}/cloudstorage/searchResourcesInfoList/${searchWord}`;
-      try {
-        const response = await fetch(url, { method: 'GET' });
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-        if (response.status === 204) {
-          console.log('No Content');
-          return;
-        }
-        const res = await response.json();
-
-        $target.classList.remove('invisible');
-        document.getElementById('placeholder').classList.add('invisible');
-        document.getElementById('placeholder').classList.remove('d-flex');
-        if (res.message.length > 0) {
-          store.dispatch({ type: 'UPDATE', target: 'file_list', content: res.message, dir: '' });
-          initializeTableHeader();
-        } else {
-          const $table_header = document.getElementById('table_header');
-          const $table_body = document.getElementById('table_body');
-          const $ths = $table_header.querySelectorAll('th');
-          const $grid_table = document.getElementById('grid_content');
-          $ths.forEach(th => {
-            th.remove();
-          });
-          $table_body.innerHTML = `<p class="mt-5" style="text-align: center;"><span class="fw-semibold" style="color: #4078FF">${searchWord}</span>에 대한 파일 및 폴더 검색 결과가 없습니다.</p>`;
-          $grid_table.innerHTML = `<p class="mt-2" style="text-align: center; margin-left: 26.5rem;"><span class="fw-semibold" style="color: #4078FF">${searchWord} </span>에 대한 파일 및 폴더 검색 결과가 없습니다.</p>`;
-        }
-        
-        search_word = searchWord;
-        allowSubscriptionCall = false;
-        generateBreadcrumbFromPath();
-        document.getElementById('right_panel').innerHTML = `
-          <div id="rp_header" class="fs-5">
-            <span id="rp_title" class="fw-semibold"></span>
-          </div>
-          <div id="rp_thumb"></div>
-          <table class="table">
-            <tbody id="rp_text_info">
-            </tbody>
-          </table>
-        `;
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    });
-    
-    document.getElementById('copyLink').addEventListener('click', () => {
-      // 선택할 input 요소
-      const $copyText = document.getElementById("shareLink");
-
-      // input 내용을 모두 선택
-      $copyText.select();
-      $copyText.setSelectionRange(0, 99999); // 모바일 호환성
-
-      // 클립보드에 복사
-      navigator.clipboard.writeText($copyText.value).then(() => {
-        alert("다음의 링크를 클립보드에 복사했습니다: " + $copyText.value);
-      }).catch(err => {
-        console.error('Error in copying text: ', err);
-      });
-    });
-
-    document.getElementById('setPasswordSwitch').addEventListener('change', (e) => {
-      const checked = e.target.checked;
-      const $pwInput = document.getElementById('passwordInput');
-      $pwInput.classList.toggle('invisible', !checked);
-      if (!checked) {
-        $pwInput.value = '';
-      }
-    });
-
-    document.getElementById('createLink_confirm').addEventListener('click', async (e) => {
-      // 공유 링크에 대한 '편집 허용'과 '암호 설정'에 관한 옵션 내용을 저장하는 요청을 수행
-      const { selectedItems, current_path, directoryTree } = store.getState();
-
-      try {
-        const url = `${_URL}/cloudstorage/updateSharedFolderSettings/`;
-        const data = { 
-          shareLink: document.getElementById('shareLink').value.trim(),
-          edit: document.getElementById('allowEditSwitch').checked,
-          password: document.getElementById('passwordInput').value, 
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to update shared folder settings: ${response.statusText}`);
-        }
-        const msg = await response.json();
-      } catch (error) {
-        console.error('Error updating shared folder:', error);
-      } finally {
-        fetchDirectoryDetails(current_path);
-        $('#createLinkModal').modal('hide');
-      }
-    });
-
-    document.getElementById('removeLink_confirm').addEventListener('click', async () => {
-      const state = store.getState();
-      const { selectedItems, current_path, directoryTree } = state;
-      // 공유 링크를 서버에서 삭제하고 해당 폴더에 붙은 링크 아이콘을 없애기 위해 UI를 업데이트함.
-      try {
-        const url = `${_URL}/cloudstorage/removeSharedFolderPath/`;
-        const data = { 
-          shareLink: document.getElementById('shareLink').value.trim(),
-        };
-
-        const options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        };
-
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`Failed to remove shared folder link: ${response.statusText}`);
-        }
-        const msg = await response.json();
-        console.log(msg.message);
-        // updateUI(current_path, directoryTree);
-      } catch (error) {
-        console.error('Error removing shared folder:', error);
-      } finally {
-        fetchDirectoryDetails(current_path);
-        $('#createLinkModal').modal('hide');
-      }
-    });
   }
 </script>
 {% endblock %}
