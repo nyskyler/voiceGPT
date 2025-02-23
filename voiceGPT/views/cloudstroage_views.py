@@ -355,15 +355,17 @@ def listDirectoryDetails(dir_path):
 
         if ext in ('.png', '.jpeg', '.jpg', '.gif', '.bmp', '.tiff', '.webp', '.heic'):
           try:
-            thumbnail_base64 = encodeImageToBase64(file_path, 146, (255, 255, 255, 0))
-            directory_info[-1]['_thumbnail'] = thumbnail_base64
+            # thumbnail_base64 = encodeImageToBase64(file_path, 146, (255, 255, 255, 0))
+            # directory_info[-1]['_thumbnail'] = thumbnail_base64
+            directory_info[-1]['_thumbnail'] = 'image'
           except Exception as e:
             print(f"Error processing {entry}: {e}")
             continue
         elif ext in ('.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'):
           try:
-            thumbnail_base64 = encodeVideoToBase64(file_path, 146, (255, 255, 255, 0))
-            directory_info[-1]['_thumbnail'] = thumbnail_base64
+            # thumbnail_base64 = encodeVideoToBase64(file_path, 146, (255, 255, 255, 0))
+            # directory_info[-1]['_thumbnail'] = thumbnail_base64
+            directory_info[-1]['_thumbnail'] = 'video'
           except Exception as e:
             pass
         else:
@@ -374,7 +376,26 @@ def listDirectoryDetails(dir_path):
   except Exception as e:
     print(f"An unexpected error occurred: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/generateThumbnail/", methods=['POST'])
+def generateThumbnail():
+  data = request.get_json()
+  if not data or any(key not in data for key in ("path", "type", "size")):
+    return jsonify({"error": "Invalid request. 'path', 'size' and 'type' is required."}), 400
 
+  try:
+    thumbnail_base64 = None
+    resource_path = str(root_dir) + data['path']
+    if data["type"] == 'image':
+      thumbnail_base64 = encodeImageToBase64(resource_path, int(data["size"]), (255, 255, 255, 0))
+    elif data["type"] == "video":
+      thumbnail_base64 = encodeVideoToBase64(resource_path, int(data["size"]), (255, 255, 255, 0))
+
+    return jsonify({"message": thumbnail_base64}), 200
+  except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+    
 @bp.route("/getDriveUsage/", methods=['GET'])
 @login_required  
 def get_drive_usage():
@@ -840,17 +861,25 @@ def serveMediaResource(file_path):
     print(f"Error Serving File: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
 
-@bp.route("/searchResourcesInfoList/<string:search_word>", methods=["GET"])
+@bp.route("/searchResourcesInfoList/", methods=["POST"])
 @login_required
-def searchResourcesInfoList(search_word):
+def searchResourcesInfoList():
   infoList = []
-  # print(f"Search word: {search_word}")
-  # print(f"Root dir: {root_dir}")
+
+  data = request.get_json()
+  if not data or "dir_path" not in data or "search_word" not in data:
+    return jsonify({"error": "Invalid request."}), 400
+  
+  target_path = str(root_dir) + data["dir_path"]
+  # print(target_path)
+
+  if not(os.path.isdir(target_path) and os.path.exists(target_path)):
+    return jsonify({"error": "The specified folder does not exist."}), 404
 
   try:
-    search_word = search_word.lower()
+    search_word = data["search_word"].lower()
     search_word = normalize_path(search_word, "NFD")
-    for filename in glob.glob(f"{root_dir}/**/*{search_word}*", recursive=True):
+    for filename in glob.glob(f"{target_path}/**/*{search_word}*", recursive=True):
       infoList.append(filename)
     # print(infoList)
     # return jsonify({"message": infoList}), 200
@@ -894,13 +923,15 @@ def searchResourcesInfoList(search_word):
       # 썸네일 생성 로직
       if ext in ('.png', '.jpeg', '.jpg', '.gif', '.bmp', '.tiff', '.webp', '.heic'):
         try:
-          entry_info['_thumbnail'] = encodeImageToBase64(file_path, 146, (255, 255, 255, 0))
+          # entry_info['_thumbnail'] = encodeImageToBase64(file_path, 146, (255, 255, 255, 0))
+          entry_info['_thumbnail'] = 'image'
         except Exception as e:
           print(f"Error processing {file_path}: {e}")
           continue
       elif ext in ('.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'):
         try:
-          entry_info['_thumbnail'] = encodeVideoToBase64(file_path, 146, (255, 255, 255, 0))
+          # entry_info['_thumbnail'] = encodeVideoToBase64(file_path, 146, (255, 255, 255, 0))
+          entry_info['_thumbnail'] = 'video'
         except Exception as e:
           entry_info['_thumbnail'] = ''
       else:
