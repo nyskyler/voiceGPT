@@ -2449,17 +2449,20 @@
       const pathFromNewDirTree = newDirTree.map(item => item.path);
       const addedItems = pathFromNewDirTree.filter(item => !pathFromDirTree.includes(item));
       const openRenewedIds = newDirTree.filter(item => openedPathForDisplay.includes(item.path)).map(item => item.id.toString());
-      const renewedIds = (target_dir && openedPathForDisplay.includes(target_dir)) || changeName ? newDirTree.filter(item => pathForDisplay.includes(item.path) || addedItems[0] === item.path).map(item => item.id.toString()) : newDirTree.filter(item => pathForDisplay.includes(item.path)).map(item => item.id.toString());
+      const renewedIds = (target_dir && openedPathForDisplay.includes(target_dir)) || changeName || addedItems ? newDirTree.filter(item => pathForDisplay.includes(item.path) || addedItems[0] === item.path).map(item => item.id.toString()) : newDirTree.filter(item => pathForDisplay.includes(item.path)).map(item => item.id.toString());
       
       document.querySelectorAll('#toc > a').forEach(link => {
-        renewedIds.includes(link.dataset.id) ? link.classList.toggle("invisible", false) : link.classList.toggle("invisible", true);
+        renewedIds.includes(link.dataset.id) ? link.classList.toggle("invisible", false) : link.classList.toggle("invisible", true); 
         if (openRenewedIds.includes(link.dataset.id) && link.dataset.subids !== "[]") {
           link.classList.toggle("open", true);
           link.querySelector('i').classList.replace('fa-folder', 'fa-folder-open');
-        } 
+        }
       });
 
       await updateAndActivateDirectoryTreeItem();
+      document.querySelectorAll('#toc > a').forEach(link => {
+        renewedIds.includes(link.dataset.id) ? link.classList.toggle("invisible", false) : link.classList.toggle("invisible", true); 
+      });
       toc_flag = true;
     }
 
