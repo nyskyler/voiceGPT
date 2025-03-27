@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort
+from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from openai import OpenAI
@@ -9,6 +9,7 @@ import copy
 import uuid
 import base64
 import io
+import base64
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
@@ -28,6 +29,11 @@ user_list = [user.strip() for user in authorized_users.split(',') if user.strip(
 client = OpenAI()
 bp = Blueprint('textgpt', __name__, url_prefix='/textgpt')
 timeLeft = 10
+
+# Function to encode the image
+def encode_image(image_path):
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode("utf-8")
 
 def subject_to_dict(subject):
   return {
@@ -108,17 +114,25 @@ def question():
     content.append({"type": "text", "text": _content})
     for _image in _images:
       # url에 '127.0.0.1' 또는 '172.30.1.25'가 포함돼 있다면 '121.189.157.152' 수정할 것
-      _image = _image.replace("127.0.0.1", "121.189.157.152")
-      _image = _image.replace("172.30.1.25", "121.189.157.152")
-      content.append({"type": "image_url", "image_url": {"url": _image},})
+      # _image = _image.replace("127.0.0.1", "121.189.157.152")
+      # _image = _image.replace("172.30.1.25", "121.189.157.152")
+      image_path = Path(current_app.config["UPLOAD_FOLDER"]) / Path(_image.split('/t_')[1])
+      # print('image: ', image_path)
+      # Getting the Base64 string
+      base64_image = encode_image(image_path)
+      content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},})
+      # content.append({"type": "image_url", "image_url": {"url": _image},})
     _messages.append({"role": "user", "content": content})
     
   try:
+    print("model: ", _model)
+    print("messages: ", _messages)
     completion = client.chat.completions.create(
       model=_model,
       messages=_messages,
     )
   except Exception as e:
+    print("error: ", e)
     return jsonify({"error": str(e)}), 500
   
   response = completion.choices[0].message.content
@@ -796,10 +810,18 @@ def get_thumbnail(filename):
 @bp.route("/get_image/<string:filename>", methods=["GET"])
 def get_image(filename):
   originalFile = filename.split('t_')[1]
-  # print(originalFile)
+  # filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], originalFile)
+
+  # if not os.path.exists(filepath):
+  #   print(f"File not found: {filepath}")
+  #   abort(404)
+
+  # return send_file(filepath, mimetype="image/jpeg", as_attachment=False)
+  print("originalFile: ", originalFile)
   try:
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], originalFile)
   except FileNotFoundError:
+    print("FileNotFound!")
     abort(404)
 
 @bp.route("/deleteImage/<string:filename>", methods=["DELETE"])

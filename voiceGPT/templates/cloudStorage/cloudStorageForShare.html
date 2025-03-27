@@ -880,7 +880,6 @@
     dir_tds.forEach(td => {
       td.addEventListener('click', async (e) => {
         e.stopPropagation();
-        allowSubscriptionCall = true;
         
         let targetPath = null;
         const loc = e.target.dataset.loc;
@@ -889,9 +888,7 @@
         } else {
           targetPath = loc || '';
         }
-        toc_flag = false;
         await fetchDirectoryDetails(targetPath);
-        toc_flag = true;
       });
     });
 
@@ -900,7 +897,6 @@
       td.addEventListener('click', async (e) => {
         e.stopPropagation();
         let currentPath = null;
-        // allowSubscriptionCall = true;
         const loc = e.target.dataset.loc;
         currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
         currentPath = loc == 'undefined' ? current_path : `${loc.endsWith('/') ? loc.substring(0, loc.length - 1) : loc}`;
@@ -1070,7 +1066,6 @@
     dir_divs.forEach(dir_div => {
       dir_div.addEventListener('click', async (e) => {
         e.stopPropagation();
-        allowSubscriptionCall = true;
         const $file_name = dir_div.querySelector('input').getAttribute('value').trim();
         let targetPath = null;
         const loc = e.target.closest('div').parentElement.dataset.loc;
@@ -1079,9 +1074,9 @@
         } else {
           targetPath = loc || '';
         }
-        toc_flag = false;
+        // toc_flag = false;
         await fetchDirectoryDetails(targetPath);
-        toc_flag = true;
+        // toc_flag = true;
       });
     });  
 
