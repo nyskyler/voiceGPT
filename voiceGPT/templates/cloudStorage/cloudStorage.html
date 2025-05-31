@@ -490,6 +490,8 @@
                 <input id="inputFiles" type="file" accept="*/*" style="display:none" multiple>
                 <li><button id="folderUploadBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;"><label id="folder-label" for="inputFolder">폴더 올리기</label></button></li>
                 <input id="inputFolder" type="file" webkitdirectory directory multiple style="display: none;">
+                <li><button id="imageUploadBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;"><label id="image-label" for="inputImages">문서 올리기</label></button></li>
+                <input id="inputImages" type="file" accept="image/*" style="display:none" multiple>
               </ul>
             </span>
             <!-- 새 폴더의 이름을 입력받는 모달창 -->
@@ -999,12 +1001,14 @@
       videoWindow.document.write(videoPage);
     } else if (isAudio) {
       // 오디오 플레이어 창 열기
+      const temp = filename.split('.').pop();
+      const ext = temp === 'm4a' ? 'mp4' : temp;
       const audioPage = `
         <html>
           <head><title>오디오 플레이어</title></head>
           <body>
             <audio controls autoplay style="width: 100%;">
-              <source src="${url}" type="audio/${filename.split('.').pop()}">
+              <source src="${url}" type="audio/${ext}">
               브라우저가 오디오 태그를 지원하지 않습니다.
             </audio>
           </body>
@@ -1120,7 +1124,7 @@
         const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
         const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
         const code_exts = ['html', 'css', 'js', 'py'];
-        const office_exts = ['hwp', 'hwpx', 'pdf'];
+        const office_exts = ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx'];
         // console.log(file_ext);
         if (video_exts.includes(file_ext)) {
           openFile(`${currentPath}/${filename}`, true, false);
@@ -1310,7 +1314,7 @@
         const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
         const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
         const code_exts = ['html', 'css', 'js', 'py'];
-        const office_exts = ['hwp', 'hwpx', 'pdf'];
+        const office_exts = ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx'];
         if (video_exts.includes(file_ext)) {
           openFile(`${currentPath}/${file_name}`, true, false);
         } else if (audio_exts.includes(file_ext)) {
@@ -2313,6 +2317,12 @@
     document.getElementById('inputFiles').addEventListener('change', async function (event) {
       const fileList = Array.from(event.target.files).map(file => ({ file })); // 파일도 동일한 구조로 맞춤
       await handleFileUpload(fileList, _URL + '/cloudstorage/saveUploadedFileFromChunks/');
+      this.value = '';
+    });
+
+    document.getElementById('inputImages').addEventListener('change', async function (event) {
+      const fileList = Array.from(event.target.files).map(file => ({ file })); // 파일도 동일한 구조로 맞춤
+      await handleFileUpload(fileList, _URL + '/cloudstorage/saveUploadedImageFromChunks/');
       this.value = '';
     });
 

@@ -1,0 +1,1854 @@
+{% extends "base2.html" %}
+{% block content %}
+<style>
+  #mainRow {
+    display: flex;
+    flex-direction: row;
+    height: 94vh;
+  }
+  .sideBar {
+    display: flex;
+    flex-direction: column;
+    flex: auto;
+    border-right: 2px solid #cecfd1;
+    overflow-y: auto;
+  }
+  .sideBar-hidden {
+    display: none;
+    padding: 0px;
+  }
+  .contentWindow {
+    display: flex;
+    flex-direction: column;
+    flex: auto;
+    /* border-left: 1px solid #cecfd1; */
+    transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
+  }
+  .contentWindow-expanded {
+    flex-grow: 1; /* 부모 너비를 기준으로 남은 공간 채우기 */
+    transition: flex-grow 0.5s ease;
+  }
+  #content_header {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    padding: 1rem 0.5rem 0.2rem 0;
+  }
+  #select_form {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: baseline;
+    justify-content: start;
+    background-color: #f3f4f8;
+    padding: 0.5rem 1rem 0.5rem 2rem;
+    position: relative;
+    margin-left: 0.3rem;
+    margin-right: 1rem;
+  }
+  #content_wrapper {
+    padding: 0.5rem 1rem 0.5rem 0.3rem;
+    flex-grow: 1;
+  }
+  .achievementStandardsAndAssessment {
+    display: flex;
+    flex-direction: row;
+    font-size: 0.75rem;
+    color: #3a5877;
+    margin-top: 0.3rem;
+  }
+  .achievementStandardsAndAssessment > div{
+    padding: 1rem 0 1rem 0;
+    border-top: 1.5px solid #74787d;
+    border-bottom: 1px solid #e7e8e8;
+  }
+  .achievementStandardsAndAssessment > div:nth-child(2n+1) {
+    background-color: #eff0f5;
+    text-align: center;
+  }
+  .toggleAllcheckboxes {
+    padding: 0px;
+    border: none;
+  }
+  .inputField, .inputField:focus {
+    border: 1px solid #bb395a;
+    box-shadow: none;
+  }
+  #menu_e2_content, #menu_k_content, #menu_m_content, #menu_n_content {
+    display: flex;
+    flex-flow: row wrap;
+    height: 100%;
+  }
+  #menu_e2_content_left, #menu_k_content_left, #menu_m_content_left, #menu_n_content_left, #menu_b_content_table1, #menu_b_content_table2 {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    /* padding-right: 0.4rem; */
+  }
+  #menu_e2_content_right, #menu_k_content_right, #menu_m_content_right, #menu_n_content_right {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-left: 0.8rem;
+  }
+  #menu_e1_content, #menu_g_content, #menu_h_content, #menu_i_content, #menu_j_content, #menu_b_content, #menu_c_content, #menu_d_content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  #menu_g_table {
+    margin-top: 0.5rem;
+  }
+  #menu_e1_table, #menu_e2_table_1, #menu_e2_table_2, #menu_g_table, #menu_h_table, #menu_i_table, #menu_j_table, #menu_k_table_1, #menu_k_table_2, #menu_m_table_1, #menu_n_table_1, #menu_n_table_2, #menu_b_table, #menu_c_table, #menu_d_table {
+    flex-grow: 1;
+  }
+  .accordion-body {
+    padding: 0.3rem 0rem 0.3rem 0.6rem;
+    border-top: 0.5px solid #cecfd1;
+  }
+  .list-group-item:hover, .accordion-button:hover {
+    color: #3d64dc;
+  }
+  .list-group-item {
+    font-size: 0.8rem;
+    color: #68758E;
+    padding: 0.3rem 0rem 0.3rem 0.5rem;
+    border: none;
+    cursor: pointer;
+  }
+  .accordion-button {
+    color: #393372;
+    padding: 0.5rem 1rem 0.5rem 0.6rem;
+  }
+  .list-group-item.active {
+    color: #3d64dc;
+    background-color: transparent;
+  }
+  #toggle-button {
+    /* position: absolute; */
+    position: relative;
+    top: 45%;
+    border: none;
+    /* left: 16.669%; */
+  }
+  #toggle-button button {
+    color: #ffffff;
+    background-color: #263574;
+    border-radius: 0% 13% 13% 0%;
+    height: 3.5rem;
+    padding: 1.5px;
+  }
+  .form-select-sm {
+    font-size: 0.8rem;
+    padding: 0;
+    padding-left: 1rem;
+  }
+  .select-width-sm {
+    width: 6.5rem;
+    height: 1.4rem;
+  }
+  .select-width-md {
+    width: 7.9rem;
+    height: 1.4rem;
+  }
+  .select-width-lg {
+    width: 9.3rem;
+    height: 1.4rem;
+  }
+  .select-width-xl {
+    width: 10.7rem;
+    height: 1.4rem;
+  }
+  .select-width-xxl {
+    width: 12.1rem;
+    height: 1.4rem;
+  }
+  .form-label {
+    color: #bb395a;
+    font-size: 0.8rem;
+  }
+  .form-select, .form-select:focus {
+    border: 1px solid #bb395a;
+    outline: none;
+    box-shadow: none;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  #submitBtn {
+    position: absolute;
+    width: 3.5rem;
+    padding: 0.1rem;
+    bottom: 0.7rem;
+    right: 0.7rem;
+    font-size: 0.8rem;
+  }
+  .fixed-label {
+    display: inline-block;
+    width: 100px; /* 원하는 너비 */
+  }
+  #subselection {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    margin-left: 0.3rem;
+    margin-right: 1rem;
+  }
+  .subselectionBtn {
+    flex: auto;
+    height: 3rem;
+    background-color: transparent;        
+    border: 1px solid #8a8e98;               
+    color: #8a8e98;                      
+    border-radius: 8px;         
+    margin-top: 0.4rem;        
+    padding: 0.5rem 0.8rem;                
+    font-weight: normal;     
+    font-size: 0.9rem;         
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;   
+  }
+  /* 클릭되었을 때 스타일 (예: .active 클래스 추가 시) */
+  .subselectionBtn.active {
+    border: 2px solid #3772ff;                 
+    color: black;                        
+    font-weight: bold;                  
+  }
+  .btn {
+    margin-left: 0.4rem;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.4rem;
+  }
+  .table-banner {
+    display: inline-block;
+    position: absolute;
+    right: 0rem;
+  }
+  .table_caption {
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: #3a5877;
+  }
+  .table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #eff0f5; /* 헤더 배경색 설정 */
+    z-index: 1; /* 다른 콘텐츠보다 위에 표시되도록 설정 */
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: #3a5877;
+  }
+  .table tbody td {
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: #3a5877;
+  }
+  input[type="text"], input[type="number"] {
+    font-size: 0.8rem;
+  }
+  .form-check-input:focus {
+    box-shadow: none;
+  }
+</style>
+<div class="container-fluid" style="padding: 0px;">
+  <div id="mainRow">
+    <div id="nav" class="sideBar col-12 col-sm-3 col-xl-2">
+      <div class="accordion accordion-flush" id="accordionFlushExample">
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseOne" aria-expanded="true" aria-controls="panelsStayOpen-collapseOne">
+              학교정보
+            </button>
+          </h2>
+          <div id="panelsStayOpen-collapseOne" class="accordion-collapse collapse">
+            <div class="accordion-body">
+              <ul class="list-group fw-semibold">
+                <li class="list-group-item">기준년도/학기관리</li>
+                <li class="list-group-item">학년/반정보관리</li>
+                <li class="list-group-item">학생개별자료삭제</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseTwo" aria-expanded="false" aria-controls="panelsStayOpen-collapseTwo">
+              평가계획
+            </button>
+          </h2>
+          <div id="panelsStayOpen-collapseTwo" class="accordion-collapse collapse">
+            <div class="accordion-body">
+              <ul class="list-group fw-semibold">
+                <li class="list-group-item">평가계획(안)관리</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseThree" aria-expanded="false" aria-controls="panelsStayOpen-collapseThree">
+              학생평가
+            </button>
+          </h2>
+          <div id="panelsStayOpen-collapseThree" class="accordion-collapse collapse">
+            <div class="accordion-body">
+              <ul class="list-group fw-semibold">
+                <li class="list-group-item">성취기준별 평가</li>
+                <li class="list-group-item">영역별 평가</li>
+                <li class="list-group-item">교과별 평가</li>
+                <li class="list-group-item">학기말종합의견</li>
+                <li class="list-group-item">교과학습발달상황</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseFour" aria-expanded="false" aria-controls="panelsStayOpen-collapseFour">
+              성적조회
+            </button>
+          </h2>
+          <div id="panelsStayOpen-collapseFour" class="accordion-collapse collapse">
+            <div class="accordion-body">
+              <ul class="list-group fw-semibold">
+                <li class="list-group-item">교과별 성적조회</li>
+                <li class="list-group-item">개인별 성적조회</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseFive" aria-expanded="false" aria-controls="panelsStayOpen-collapseFive">
+              관찰기록관리
+            </button>
+          </h2>
+          <div id="panelsStayOpen-collapseFive" class="accordion-collapse collapse">
+            <div class="accordion-body">
+              <ul class="list-group fw-semibold">
+                <li class="list-group-item">관찰내용관리</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="toggle-button">
+      <button><i id="btnIcon" class="fa-solid fa-caret-left fs-6"></i></button>
+    </div>
+    <div id="content_window" class="contentWindow col-12 col-sm-9 col-xl-10">
+      <div id="content_header"></div>
+      <div id="subselection" class="mb-2" ></div>
+      <form id="select_form">
+        <div class="d-flex col col-xl-11">
+          <div id="select_wrapper" style="flex-grow: 1;" class="row row-cols-xxl-5"></div>
+        </div>
+        <div class="col col-xl-1">
+          <button id="submitBtn" type="sumbit" class="btn btn-primary fw-semibold" form="select_form"><i class="fa-solid fa-magnifying-glass"></i>&ensp;조회</button>
+        </div>
+      </form>
+      <div id="content_wrapper"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script type="module">
+  import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
+
+  const MENU = {
+    B: '기준년도/학기관리',
+    C: '학년/반정보관리',
+    D: '학생개별자료삭제',
+    E: '평가계획(안)관리',
+    G: '성취기준별 평가',
+    H: '영역별 평가',
+    I: '교과별 평가',
+    J: '학기말종합의견',
+    K: '교과학습발달상황',
+    L: '교과별 성적조회',
+    M: '개인별 성적조회',
+    N: '관찰내용관리'
+  };
+
+  const productionURL = 'http://121.189.157.152:8080';
+  const testURL = 'http://127.0.0.1:8080';
+  const localURL = 'http://172.30.1.25:8080';
+  let _URL = null;
+  if (window.location.href.split('/')[2] === '127.0.0.1:8080'){
+    _URL = testURL;
+  } else if (window.location.href.split('/')[2] === '172.30.1.25:8080'){
+    _URL = localURL;
+  } else {
+    _URL = productionURL;
+  }
+
+  function removeActiveClassFromListItems(target) {
+    // list-group-item 클래스를 가진 모든 li 태그를 대상으로 active 클래스을 갖고 있다면 모두 제거
+    const $elem = document.querySelector('li.list-group-item.active');
+    if ($elem === target) {
+      return
+    }
+    $elem?.classList.remove('active');
+    target?.classList.add('active');
+  }
+
+  function updateAccordionCssOnClick(target) {
+    // 클릭한 부트스트랩 아코디언 컴포넌트의 css를 변경
+    const $btns = document.querySelectorAll('.accordion-button'); 
+    $btns.forEach(btn => {
+      const flag = (btn === target) && (btn.getAttribute('aria-expanded') === 'true')
+      const background_color = flag  ? '#EFF3FB' : 'transparent';
+      const font_color = flag ? '#3B4ED9' : '#433D79';
+      btn.style.backgroundColor = background_color;
+      btn.style.color = font_color;
+    });
+  }
+
+  function toggleAccordionButtonCss(target) { 
+    // 클릭한 list-group-item에서 가장 가까운(closest) accordion-button 요소를 찾아 css를 추가하며, 그 대신 다른 accord-button 요소의 css는 초기화
+    const $btns = document.querySelectorAll('.accordion-button');
+    const $elem = target.closest('.accordion-item')?.querySelector('button'); 
+    $btns.forEach(btn => {
+      const flag = (btn === $elem)
+      const background_color = flag  ? '#EFF3FB' : 'transparent';
+      const font_color = flag ? '#3B4ED9' : '#433D79';
+      btn.style.backgroundColor = background_color;
+      btn.style.color = font_color;
+    });
+  }
+
+  function renderHeaderSection(menu) {
+    // 웹페이지에서 header(각 페이지의 맨 윗부분에 자동으로 붙는 부분)를 렌더링
+    const html = `
+      <span class="fw-bold fs-5" style="color: #2b4065;">
+        <button style="border: none; color: #263574; background-color: #ffffff;">
+          <i class="fa-solid fa-cube"></i>    
+        </button>
+        ${menu}</span>
+      <span>temp</span>
+    `;
+    return html;
+  }
+
+  function renderSubselectionMenu(menu) {
+    // 평가계획과 관련한 메뉴 선택 시에만 활성화되는 id가 'subselection'인 div 태그를 렌더링
+    return `
+      <button type="button" class="subselectionBtn active"><i class="fa-solid fa-rotate fs-6"></i>&ensp;성취기준관리</button>
+      <i class="fa-solid fa-caret-right" style="padding: 0.2rem; color: #777c87;"></i>
+      <button type="button" class="subselectionBtn"><i class="fa-regular fa-file-lines fs-6"></i>&ensp;성취기준(평가기준)관리</button>
+    `;
+  }
+
+  function createLabeledSelectSpan(label, id, width) {
+    // 이름과 아이디 값을 인자로 받아 label과 select 태그가 포함된 일정한 형식의 span 태그를 반환
+    if (label === undefined) {
+      return `<span></span>`;
+    }
+    return `
+      <span class="d-flex">
+        <label for="${id}" class="form-label fw-bold me-3 text-end fixed-label">*${label}</label>
+        <select id="${id}" class="form-select form-select-sm select-width-${width}">
+        </select>
+      </span>
+    `;
+  }
+
+  function renderSelectFormForGETRequest(menu) {
+    // 서버측에 GET 요청을 하기에 앞서 원하는 항목을 지정하기 위해 필요한 여러 개의 select 태그로 구성된 form을 렌더링
+    let html = null;
+    let arrayForHTML = null;
+    document.getElementById('select_form').style.display = 'block';
+    switch (menu) {
+      case MENU.B:
+      case MENU.C:
+        document.getElementById('select_form').style.display = 'none';
+        return
+      case MENU.D:
+        return `
+          <span class="d-flex">
+            <label for="name" class="form-label fw-bold me-3 text-end fixed-label">*성명</label>
+            <input type="text" class="form-control inputField select-width-lg" id="name" minlength="2" maxlength="50" placeholder="" autocomplete="off">
+          </span>
+          <span class="d-flex">
+            <label for="doa" class="form-label fw-bold me-3 text-end fixed-label">*생년월일</label>
+            <input type="text" class="form-control inputField select-width-lg" id="doa" minlength="2" maxlength="50" placeholder="" autocomplete="off">
+          </span>
+        `;
+      case MENU.E:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['교과(목)', 'subject', 'sm'], ['영역', 'field', 'md']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      case MENU.G:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm'], 
+        ['영역', 'field', 'md'], ['성취기준', 'standard', 'md']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      case MENU.H:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm'],
+        ['영역', 'field', 'md']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      case MENU.I:
+      case MENU.J:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      case MENU.K:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      case MENU.L:
+      case MENU.M:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['영역', 'field', 'lg']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      case MENU.N:
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm']];
+        html = arrayForHTML.map(arr => {
+          return createLabeledSelectSpan(...arr);
+        });
+        return html.join('');
+      default:
+        return
+    }
+  }
+
+  function renderSelectAllCheckboxButton(width) {
+    // 테이블의 header에 위치한 checkbox 요소로 체크할 시, tbody에 있는 모든 행을 전체 선택하는 데 쓰이는 버튼을 렌더링
+    return `
+      <th scope="col" style="width: ${width}%;"><button class="toggleAllcheckboxes"><i class="fa-regular fa-square fs-6" style="color: #979aa4; background-color: white; padding: 0px;"></i></button></th>
+    `;
+  }
+
+  function renderEmptyTbodyWithMessage(colspan) {
+    // 데이터를 조회하기 전 테이블 tbody의 빈 공간에 '데이터를 조회해 주십시오.'라는 디폴트 문구가 나타나는 화면을 렌더링
+    return `
+      <tr>
+        <td colspan="${colspan}" class="text-center text-muted" style="vertical-align: middle;">
+          <div>
+            <svg xmlns="http://www.w3.org/2000/svg" 
+                fill="none" viewBox="0 0 24 24" stroke-width="1.5" 
+                stroke="currentColor" class="mb-2" style="width: 48px; height: 48px; color: #6c757d;">
+              <path stroke-linecap="round" stroke-linejoin="round" 
+                    d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+            </svg>
+            <br />
+            데이터를 조회해 주십시오.
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  const VISIBLE_STATUS_MAP = { // 데이터베이스 상의 데이터(true, false)를 화면에 보여지는 데이터('O', 'X')로 전환하기 위해, 화면 상의 데이터를 키로 전달하면 화면에 보여지는 데이터(값)으로 전환해주는 자바스크립트 객체 상수
+    'true' : 'O',
+    'false' : 'X',
+  };
+
+  const updateButtonStatesWithStyles = (...btnArr) => {
+    // [[$btn, true], [$btn2, false]]와 같이 버튼 태그의 선택자와 boolean 값을 요소로 하는 2차원 배열을 인자로 받아 각각의 버튼 태그의 활성화 여부 및 css 스타일을 변화시키는 자바스크립트 함수
+    btnArr.forEach(arr => {
+      if (arr[1] == true) {
+        arr[0].classList.replace('btn-primary', 'btn-secondary');
+        arr[0].disabled = true;
+      } else {
+        arr[0].classList.replace('btn-secondary', 'btn-primary');
+        arr[0].disabled = false;
+      }
+    });
+  }
+
+  function toggleAllTableCheckboxes(tableSelector, sideEffect=undefined) {
+    // 테이블의 선택자를 인자로 받아 해당 테이블 내부에 있는 체크박스를 일괄로 선택하거나 해제하는 toogleAllCheckboxes 토글 버튼의 조작을 정의
+    const $tbody = document.querySelector(`${tableSelector} tbody`);
+    const $toggleBtn = document.querySelector(`${tableSelector} button.toggleAllcheckboxes`);
+    $tbody.addEventListener('click', event => {
+      if (event.target.classList.contains('form-check-input')) {
+        const totalRowCnt = $tbody.rows.length;
+        const checkedNum = $tbody.querySelectorAll('input.form-check-input:checked').length;
+        if (checkedNum == 0) {
+          $toggleBtn.innerHTML = `<i class="fa-regular fa-square fs-6" style="color: #979aa4; background-color: white;"></i>`;
+        } else if (checkedNum == totalRowCnt) {
+          $toggleBtn.innerHTML = `<i class="fa-solid fa-square-check fs-6" style="color: #4078FF;"></i>`;
+        } else {
+          $toggleBtn.innerHTML = `<i class="fa-solid fa-square-minus fs-6" style="color: #4078FF;"></i>`; 
+        }
+      }
+    });
+    $toggleBtn.addEventListener('click', event => {
+      const classList = Array.from(event.target.classList);
+      const checkboxes = $tbody.querySelectorAll('input.form-check-input');
+      if (classList.includes('fa-square')) { 
+        checkboxes.forEach(cb => {
+          cb.checked = true;
+        });
+        $toggleBtn.innerHTML = `<i class="fa-solid fa-square-check fs-6" style="color: #4078FF;"></i>`;
+      } else {
+        checkboxes.forEach(cb => {
+          cb.checked = false;
+        });
+        $toggleBtn.innerHTML = `<i class="fa-regular fa-square fs-6" style="color: #979aa4; background-color: white;"></i>`;  
+      }
+      if (sideEffect) {
+        sideEffect($tbody);
+      }
+    });
+  }
+
+  function sortArray(arr, ...keys) {
+    return arr.sort(function(a, b) {
+      for (let key of keys) {
+        let aValue = a[key];
+        let bValue = b[key];
+        // console.log(aValue, bValue);
+
+        // 불리언 비교 시 false < true로 정렬하려면 아래와 같이 처리
+        if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+          if (aValue !== bValue) {
+            return aValue > bValue ? 1 : -1;
+          }
+        } else if ((aValue !== bValue)) {
+          // 문자열 등 비교 처리
+          return aValue.localeCompare(bValue);
+        }
+        // 같으면 다음 우선순위로 넘어감
+      }
+      return 0; // 전 항목 동일 시
+    });
+  }
+
+  function renderAcademicYearSemesterTable() { // 애플리케이션이 현재 사용하고 있거나 과거에 사용한 기준년도 및 학기에 관한 기록을 데이터베이스로부터 조회를 통해 얻어낸 후, 이를 테이블 형태로 렌더링 --> MENU.B
+    let html = null;
+    html = `
+      <div id="menu_b_content">
+        <form>
+          <div class="achievementStandardsAndAssessment fw-semibold mb-3">
+            <div class="col col-12 col-xl-1">학교명</div>
+            <div class="col col-12 col-xl-1 d-flex justify-content-evenly">
+              <input name="school" type="text" class="form-control inputField select-width-sm" minlength="2" maxlength="50" placeholder="" autocomplete="off">
+            </div>
+            <div class="col col-12 col-xl-1">학년도</div>
+            <div class="col col-12 col-xl-1 d-flex justify-content-evenly">            
+              <input name="year" type="number" class="form-control inputField select-width-sm" min="2025" max="2050" placeholder="" autocomplete="off">
+            </div>
+            <div class="col col-12 col-xl-1">학기</div>
+            <div class="col col-12 col-xl-2 d-flex justify-content-evenly">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input semester" type="radio" name="semester" value="1" id="first_semester">
+                <label class="form-check-label" for="first_semester">
+                  1학기
+                </label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input semester" type="radio" name="semester" value="2" id="second_semester">
+                <label class="form-check-label" for="second_semester">
+                  2학기
+                </label>
+              </div>
+            </div>
+            <div class="col col-12 col-xl-1">학년</div>
+            <div class="col col-12 col-xl-1 d-flex justify-content-evenly">
+              <select name="grade" class="form-select form-select-sm select-width-sm">
+                <option value="" selected disabled hidden></option>
+                <option value="1학년">1학년</option>
+                <option value="2학년">2학년</option>
+                <option value="3학년">3학년</option>
+                <option value="4학년">4학년</option>
+                <option value="5학년">5학년</option>
+                <option value="6학년">6학년</option>
+              </select>
+            </div>
+            <div class="col col-12 col-xl-1">교과</div>
+            <div class="col col-12 col-xl-1 d-flex justify-content-evenly">
+              <select name="subject" class="form-select form-select-sm select-width-sm">
+              </select>
+            </div>
+            <div class="col col-xl-1">
+              <button id="enroll" type="sumbit" class="btn btn-primary fw-semibold" form="select_form">등록하기</button>
+            </div>
+          </div>
+        </form>
+        <section style="height: 73vh; overflow-y: auto;">
+          <div id="menu_b_content_table1">
+            <div class="table-banner mt-1">
+              <button id="btnB1" type="button" class="btn btn-sm btn-secondary" disabled>DB 생성하기</button>
+              <button id="btnB2" type="button" class="btn btn-sm btn-secondary" disabled>DB 활성화하기</button>
+            </div>
+            <table id="menu_b_table1" class="table table-hover caption-top table-bordered">
+              <caption class="table_caption">등록완료</caption>
+              <thead>
+                <tr>
+                  ${renderSelectAllCheckboxButton(3)}
+                  <th scope="col style="width: 12%;">순번</th>
+                  <th scope="col" style="width: 15%;">학교명</th>
+                  <th scope="col" style="width: 15%;">학년도</th>
+                  <th scope="col" style="width: 13%;">학기</th>
+                  <th scope="col" style="width: 15%;">학년</th>
+                  <th scope="col" style="width: 15%;">교과</th>
+                  <th scope="col style="width: 12%;">반영여부</th>
+                </tr>
+              </thead>
+              <tbody id="menu_b_tbody1" class="text-center">
+              </tbody>
+            </table>
+          </div>
+          <div id="menu_b_content_table2">
+            <div class="table-banner mt-1">
+              <button id="btnB3" type="button" class="btn btn-sm btn-secondary" disabled>DB 비활성화</button>
+            </div>
+            <table id="menu_b_table2" class="table table-hover caption-top table-bordered">
+              <caption class="table_caption">활성화 중인 데이터베이스</caption>
+              <thead>
+                <tr>
+                  ${renderSelectAllCheckboxButton(3)}
+                  <th scope="col style="width: 16%;">순번</th>
+                  <th scope="col" style="width: 17%;">학교명</th>
+                  <th scope="col" style="width: 16%;">학년도</th>
+                  <th scope="col" style="width: 16%;">학기</th>
+                  <th scope="col" style="width: 16%;">학년</th>
+                  <th scope="col" style="width: 16%;">교과</th>
+                </tr>
+              </thead>
+              <tbody id="menu_b_tbody2" class="text-center">
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    `;
+    return html;
+  }
+
+  async function script_renderAcademicYearSemesterTable() { 
+    let tbody1_arr = [];
+    let tbody2_arr = [];
+    let tbody1_checked_arr = [];
+    let tbody2_checked_arr = [];
+    let checkedIdx_tbody1 = [];
+    let checkedIdx_tbody2 = [];
+    const $tbody1 = document.getElementById('menu_b_tbody1');
+    const $tbody2 = document.getElementById('menu_b_tbody2');
+    const $selects = document.getElementById('menu_b_content').querySelectorAll('select');
+
+    const updateDbButtonsBasedOnSelection = () => { // tbody1에서 체크된 항목을 분석하고, 두 개의 버튼 (btnB1, btnB2)의 활성화 상태를 제어함. 또한 특정 조건 하에 다른 테이블 데이터(tbody2_arr)와 비교도 수행
+      const $btn1 = document.getElementById('btnB1');
+      const $btn2 = document.getElementById('btnB2');
+      const checked = $tbody1.querySelectorAll('input:checked');
+      checkedIdx_tbody1 = Array.from(checked).map(el => el.parentElement.nextElementSibling.textContent - 1);
+      tbody1_checked_arr = tbody1_arr.filter((_, idx) => checkedIdx_tbody1.includes(idx));
+      if (tbody1_checked_arr.length !== 0 && tbody1_checked_arr.every(record => !record.isRecordSavedToDb)) {
+        // 'DB 생성하기' 버튼 활성화
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, true]);
+      } else if (tbody1_checked_arr.length !== 0 && tbody1_checked_arr.every(record => record.isRecordSavedToDb)) {
+        // 활성화 중인 항목과 비교하여 활성화 여부 검증하기
+        const serialize = ({ school, year, semester }) => `${school}-${year}-${semester}`;
+        const s = new Set(tbody1_checked_arr.map(serialize));
+        const s2 = new Set(tbody2_arr.map(serialize));
+        const [key1] = s;
+        const [key2] = s2;
+        const btn_flag = (s.size === 1 && (tbody2_arr.length === 0 || (s2.size === 1 && key1 === key2)));
+        if (btn_flag) {
+          // 'DB 활성화하기' 버튼 활성화
+          updateButtonStatesWithStyles([$btn2, true], [$btn2, false]);
+        } else {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, true]);
+        }
+      } else {
+        // 'DB 생성하기' 버튼 비활성화, 'DB 활성화하기' 버튼 비활성화
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true]);
+      }
+    }
+    
+    const updateDeactivateButtonState = () => { // tbody2에서 체크된 항목이 있는지 확인하고, 그에 따라 ‘DB 비활성화’ 버튼 (btnB3)의 활성화 상태를 설정
+      const $btn3 = document.getElementById('btnB3');
+      const checked = $tbody2.querySelectorAll('input:checked');
+      checkedIdx_tbody2 = Array.from(checked).map(el => el.parentElement.nextElementSibling.textContent - 1);
+      tbody2_checked_arr = tbody2_arr.filter((_, idx) => checkedIdx_tbody2.includes(idx));
+      if (tbody2_checked_arr.length > 0) {
+        // 'DB 비활성화' 버튼 활성화
+        updateButtonStatesWithStyles([$btn3, false]);
+      } else {
+        // 'DB 비활성화' 버튼 비활성화
+        updateButtonStatesWithStyles([$btn3, true]);
+      }
+    };
+    
+    const renderTableFromData = (tbody1_arr, tbody2_arr) => { // 테이블의 컬럼명과 값을 담은 객체들의 배열 내용에 따라 tbody의 innerHTML을 바꾸어 테이블을 리렌더링
+      $tbody1.innerHTML = '';
+      const tbody1_arr_sorted = sortArray(tbody1_arr, 'school', 'year', 'semester', 'grade', 'subject', 'isRecordSavedToDb');
+      tbody1_arr_sorted.forEach((obj, idx) => {
+        const rowHtml = `
+          <tr>
+            <td scope="row" data-id="${idx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+            <td>${idx + 1}</td>
+        `;
+        // const tds = Object.entries(obj).map(el => `<td>${VISIBLE_STATUS_MAP[el[1]] || el[1]}</td>`).join('');
+        const tds = ['school', 'year', 'semester', 'grade', 'subject', 'isRecordSavedToDb'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el]}</td>`).join('');
+        $tbody1.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
+      });
+      $tbody1.querySelectorAll('td:nth-child(1)').forEach(el => {
+        el.addEventListener('click', event => {
+          if (event.target.tagName !== 'INPUT') return;
+          updateDbButtonsBasedOnSelection();
+        });
+      });
+      $tbody2.innerHTML = '';
+      const tbody2_arr_sorted = sortArray(tbody2_arr, 'school', 'year', 'semester', 'grade', 'subject');
+      tbody2_arr_sorted.forEach((obj, idx) => {
+        const rowHtml = `
+          <tr>
+            <td scope="row" data-id="${idx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+            <td>${idx + 1}</td>
+        `;
+        // const tds = Object.entries(obj).map(el => `<td>${VISIBLE_STATUS_MAP[el[1]] || el[1]}</td>`).join('');
+        const tds = ['school', 'year', 'semester', 'grade', 'subject'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el]}</td>`).join('');    
+        $tbody2.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
+      });
+      $tbody2.querySelectorAll('td:nth-child(1)').forEach(el => {
+        el.addEventListener('click', event => {
+          if (event.target.tagName !== 'INPUT') return;
+          updateDeactivateButtonState();
+        });
+      });  
+    }
+
+    $selects[0].addEventListener('change', event => {
+      let options = null;
+      const selected = event.target.value;
+      switch(selected) {
+        case '1학년':
+        case '2학년':
+          options = `
+            <option value="담임">담임</option>
+            <option value="국어">국어</option>
+            <option value="수학">수학</option>
+            <option value="바른 생활">바른 생활</option>
+            <option value="슬기로운 생활">슬기로운 생활</option>
+            <option value="즐거운 생활">즐거운 생활</option>
+          `;
+          break;
+        case '3학년':
+        case '4학년':
+          options = `
+            <option value="담임">담임</option>
+            <option value="국어">국어</option>
+            <option value="도덕">도덕</option>
+            <option value="사회">사회</option>
+            <option value="수학">수학</option>
+            <option value="과학">과학</option>
+            <option value="체육">체육</option>
+            <option value="음악">음악</option>
+            <option value="미술">미술</option>
+            <option value="영어">영어</option>
+      `;
+          break;
+        case '5학년':
+        case '6학년':
+          options = `
+            <option value="담임">담임</option>
+            <option value="국어">국어</option>
+            <option value="도덕">도덕</option>
+            <option value="사회">사회</option>
+            <option value="수학">수학</option>
+            <option value="과학">과학</option>
+            <option value="실과">실과</option>
+            <option value="체육">체육</option>
+            <option value="음악">음악</option>
+            <option value="미술">미술</option>
+            <option value="영어">영어</option>
+          `;
+          break;
+        default:
+          break;
+      }
+      $selects[1].innerHTML = options;
+    });
+
+    document.getElementById('enroll').addEventListener('click', event => {
+      event.preventDefault();
+      const myForm = event.target.closest('form');
+      const { school, year, grade, subject } = myForm.elements;
+      const semester = myForm.querySelector('input.semester:checked');      
+      const is_validate = [school, year, semester, grade, subject].every(el => el?.value || false);
+      if (!is_validate) {
+        alert('누락된 입력값이 있거나 형식이 올바르지 않습니다.');
+        return
+      }
+      const exists = [...tbody1_arr, ...tbody2_arr].some(obj => obj.school === school.value.trim() && obj.year == year.value &&
+        obj.semester == semester.value && obj.grade == grade.value && obj.subject == subject.value); 
+      if (exists) {
+        alert('같은 내용으로 등록된 항목이 있습니다.');
+        return
+      }
+      tbody1_arr = [...tbody1_arr, {
+        'school': school.value.trim(),
+        'year': year.value,
+        'semester': semester.value,
+        'grade': grade.value,
+        'subject': subject.value,
+        'isRecordSavedToDb': false,
+      }];
+      renderTableFromData(tbody1_arr, tbody2_arr);
+      school.value = '';
+      year.value = '';
+      semester.checked = false;
+      grade.value = '';
+      subject.value = '';
+    });
+
+    const sideEffect = tbody => {
+      updateDbButtonsBasedOnSelection();
+    };
+
+    const sideEffect2 = tbody => {
+      updateDeactivateButtonState();
+    }
+
+    toggleAllTableCheckboxes('#menu_b_table1', sideEffect);
+    toggleAllTableCheckboxes('#menu_b_table2', sideEffect2);
+
+    document.querySelector('#btnB1').addEventListener('click', async (event) => {
+      // 서버에 DB 반영하기 요청
+      try {
+        const url = `${_URL}/neis/createNewAcademicRecords/`;
+        const data = tbody1_checked_arr;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(res.message);
+        // console.log("success: ", res.successful_indices);
+        // console.log("failed: ", res.failed_indices);
+        // console.log("invalid: ", res.invalid_subjects);
+
+        // 요청 성공 시 아래 코드 실행
+        tbody1_arr.forEach((el, idx) => {
+          if (checkedIdx_tbody1.includes(idx)) { el.isRecordSavedToDb = true; }
+        });
+        tbody1_checked_arr = [];
+        renderTableFromData(tbody1_arr, tbody2_arr);
+        document.querySelector('#menu_b_table1 button.toggleAllcheckboxes').click();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    document.querySelector('#btnB2').addEventListener('click', async (event) => {
+      // 서버에 DB 활성화하기 요청
+      try {
+        // console.log(tbody1_checked_arr);
+        const active = { 'is_active' : true };
+        const data = tbody1_checked_arr.map(el => ({ ...el, ...active }));
+        // console.log(data);
+        const options = {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        };
+        const response = await fetch(`${_URL}/neis/updateSubjectActivation/`, options);
+        if(!response.ok){
+          throw new Error(response.status);
+        }
+        const answer = await response.json();
+        console.log(answer.message);
+
+        // 요청 성공 시 아래 코드 실행
+        tbody1_arr.forEach((el, idx) => {
+          if (checkedIdx_tbody1.includes(idx)) {
+            tbody2_arr = [...tbody2_arr, {
+              'school': el['school'],
+              'year': el['year'],
+              'semester': el['semester'],
+              'grade': el['grade'],
+              'subject': el['subject'],
+            }];
+          }
+        });
+        checkedIdx_tbody1.sort((a, b) => b - a);
+        checkedIdx_tbody1.forEach(idx => { tbody1_arr.splice(idx, 1); });
+        tbody1_checked_arr = [];
+        checkedIdx_tbody1 = [];
+        renderTableFromData(tbody1_arr, tbody2_arr);
+        document.querySelector('#menu_b_table1 button.toggleAllcheckboxes').click();
+      } catch(error) {
+        console.error('Error: ', error);
+      }
+    });
+
+    document.querySelector('#btnB3').addEventListener('click', async (event) => {
+      // 서버에 DB 비활성화 요청
+      try {
+        // console.log(tbody2_checked_arr);
+        const inactive = { 'is_active' : false };
+        const data = tbody2_checked_arr.map(el => ({ ...el, ...inactive }));
+        // console.log(data);
+        const options = {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        };
+        const response = await fetch(`${_URL}/neis/updateSubjectActivation/`, options);
+        if(!response.ok){
+          throw new Error(response.status);
+        }
+        const answer = await response.json();
+        console.log(answer.message);
+
+        // 요청 성공 시 아래 코드 실행
+        tbody2_arr.forEach((el, idx) => {
+          if (checkedIdx_tbody2.includes(idx)) {
+            tbody1_arr = [...tbody1_arr, {
+              'school': el['school'],
+              'year': el['year'],
+              'semester': el['semester'],
+              'grade': el['grade'],
+              'subject': el['subject'],
+              'isRecordSavedToDb': true,
+            }];
+          }
+        });
+        checkedIdx_tbody2.sort((a, b) => b - a);
+        checkedIdx_tbody2.forEach(idx => { tbody2_arr.splice(idx, 1); });
+        tbody2_checked_arr = [];
+        checkedIdx_tbody2 = [];
+        renderTableFromData(tbody1_arr, tbody2_arr);
+        document.querySelector('#menu_b_table2 button.toggleAllcheckboxes').click();
+      } catch(error) {
+        console.error('Error: ', error);
+      }
+    });
+
+    // 서버로 fetch 요청을 통해 데이터베이스에 저장된 등록 및 활성화된 항목을 가져와 테이블에 렌더링하는 코드가 들어와야 함. 
+    try {
+      const response = await fetch(`${_URL}/neis/getRegisteredSubjects/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      console.log(res.message);
+      // 요청 성공 시 아래 코드 실행
+      tbody1_arr = [...res.inactiveSubjects];
+      tbody2_arr = [...res.activeSubjects];
+      renderTableFromData(tbody1_arr, tbody2_arr);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+
+  function renderAcademicYearClassInfoTable() { // 특정 학년도의 학년, 반, 학생 수 등의 정보를 등록하거나 조회 및 수정하는 테이블을 렌더링 --> MENU.C
+    let html = null;
+    html = `
+      <div id="menu_c_content">
+        <div class="table-banner">
+          <button id="btnC1" type="button" class="btn btn-sm btn-primary">가져오기</button>
+          <button id="btnC2" type="button" class="btn btn-sm btn-secondary" disabled>반영하기</button>
+          <button id="btnC3" type="button" class="btn btn-sm btn-secondary" disabled>삭제하기</button>
+        </div>
+        <table id="menu_c_table" class="table table-hover caption-top table-bordered">
+          <caption class="table_caption">Total <span>0</span></caption>
+          <thead>
+            <tr>
+              ${renderSelectAllCheckboxButton(3)}
+              <th scope="col style="width: 5%;">순번</th>
+              <th scope="col" style="width: 15%;">학년도</th>
+              <th scope="col" style="width: 15%;">학년</th>
+              <th scope="col" style="width: 12%;">반명</th>
+              <th scope="col" style="width: 12%;">학생수</th>
+              <th scope="col" style="width: 19%;">등록일자</th>
+              <th scope="col" style="width: 19%;">수정일자</th>
+            </tr>
+          </thead>
+          <tbody id="menu_c_tbody" class="text-center">
+            ${renderEmptyTbodyWithMessage(8)}
+          </tbody>
+        </table>
+      </div>
+    `;
+    return html;
+  }
+
+  async function script_renderAcademicYearClassInfoTable() {
+    let tbody_arr = [];
+    let tbody_checked_arr = [];
+    let checkedIdx_tbody = [];
+    let params = null;
+    let clickable = true;
+    const $tbody = document.getElementById('menu_c_tbody');
+    const $table = document.getElementById('menu_c_table');
+    const $btn1 = document.getElementById('btnC1');
+    const $btn2 = document.getElementById('btnC2');
+    const $btn3 = document.getElementById('btnC3');
+
+    const updateDbButtonsBasedOnSelection = () => { // tbody에서 체크된 항목을 분석하고, 세 개의 버튼 (btnC1, btnC2, btnC3)의 활성화 상태를 제어함.
+      const checked = $tbody.querySelectorAll('input:checked');
+      checkedIdx_tbody = Array.from(checked).map(el => el.parentElement.nextElementSibling.textContent - 1);
+      tbody_checked_arr = tbody_arr.filter((_, idx) => checkedIdx_tbody.includes(idx));
+
+      if (tbody_checked_arr.length === 0 && clickable) {
+        // '가져오기' 버튼 활성화
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, true], [$btn3, true]);
+      } else if (tbody_checked_arr.length !== 0 && tbody_checked_arr.every(record => !record.created_at)) {
+        // '반영하기' 버튼 활성화
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]);
+      } else if (tbody_checked_arr.length !== 0 && tbody_checked_arr.every(record => record.created_at)) {
+        // '삭제하기' 버튼 활성화
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, false]);
+      } else {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true]);
+      }
+    }
+
+    const renderTableFromData = tbody_arr => { // 테이블의 컬럼명과 값을 담은 객체들의 배열 내용에 따라 tbody의 innerHTML을 바꾸어 테이블을 리렌더링
+      $tbody.innerHTML = '';
+      const tbody_arr_sorted = sortArray(tbody_arr, 'year', 'grade', 'className', 'numOfStudents');
+      tbody_arr_sorted.forEach((obj, idx) => {
+        const rowHtml = `
+          <tr>
+            <td scope="row" data-id="${idx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+            <td>${idx + 1}</td>
+        `;
+        const tds = ['year', 'grade', 'className', 'numOfStudents', 'created_at', 'updated_at'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el]}</td>`).join('');
+        $tbody.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
+      });
+      tbody_arr = [ ...tbody_arr_sorted ];
+      $tbody.querySelectorAll('td:nth-child(1)').forEach(el => {
+        el.addEventListener('click', event => {
+          if (event.target.tagName !== 'INPUT') return;
+          updateDbButtonsBasedOnSelection();
+        });
+      });
+    }
+
+    const getGradeClassesAndStudentCounts = async () => {
+      const response = await fetch(`${_URL}/neis/getGradeClassesAndStudentCounts/?${params.toString()}`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      console.log(res.message);
+      // console.log(res2.classes);
+      // console.log(res2.total);
+      tbody_arr = [ ...res.classes ];
+      renderTableFromData(tbody_arr);
+      $table.style.flexGrow = '0';
+    }
+
+    // 서버로 fetch 요청을 통해 데이터베이스에 저장된 활성화된 교과 항목과 관계된 학교명, 연도, 학기 정보 등을 가져오는 코드가 들어와야 함. 
+    try {
+      const response = await fetch(`${_URL}/neis/getRegisteredSubjects/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      console.log(res.message);
+      // 요청 성공 시 아래 코드 실행
+      if (res.activeSubjects.length === 0) {
+        return
+      }
+      const { school, year, semester } = res.activeSubjects?.[0];
+      const grades = Array.from(new Set(res.activeSubjects?.map(el => el.grade)));
+      params = new URLSearchParams();
+      params.append('school', school);
+      params.append('year', year);
+      params.append('semester', semester);
+      grades.forEach(g => params.append('grades', g));
+
+      getGradeClassesAndStudentCounts();
+    } catch (error) {
+      console.error('Error:', error);
+    }
+
+    $btn1.addEventListener('click', async (event) => { // 가져오기
+      if (!clickable) { return; }
+      try {
+        const response = await fetch(`${_URL}/neis/analyzeStudentListByClassInfo/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        // console.log(res.message);
+        // console.log(res.classList);
+        tbody_arr = [ ...tbody_arr, ...res.classList ];
+        renderTableFromData(tbody_arr);
+        updateButtonStatesWithStyles([$btn1, true]);
+        clickable = false;
+        $table.style.flexGrow = '0';
+      } catch (error) {
+        conosle.error('Error:', error);
+      }
+    });
+
+    $btn2.addEventListener('click', async (event) => { // 반영하기
+      try {
+        const url = `${_URL}/neis/processGradeClassAndStudentRecords/`;
+        const data = tbody_checked_arr.map(el => ({ ...el, 'school': params.get('school'), 'semester': params.get('semester')}));
+        // console.log(data);
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log("message: ", res.message);
+        console.log("created_classes: ", res.created_classes);
+        console.log("created_students: ", res.created_students);
+        console.log("linked_relations: ", res.linked_relations);
+        console.log("missing_files: ", res.missing_files);
+
+        // 요청 성공 시 아래 코드 실행
+        tbody_checked_arr = [];
+        document.querySelector('#menu_c_table button.toggleAllcheckboxes').click();
+
+        getGradeClassesAndStudentCounts();
+        updateButtonStatesWithStyles([$btn1, false]);
+        clickable = true;
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $btn3.addEventListener('click', async (event) => { // 삭제하기
+      if(confirm(`${tbody_checked_arr.length}개의 학급을 삭제하시겠습니까? 학급을 삭제해도 소속 학생의 정보는 삭제되지 않습니다.`)){
+        try {
+          const url = `${_URL}/neis/deleteGradeClassBySchoolYearSemesterAndName/`;
+          const data = tbody_checked_arr.map(el => ({ ...el, 'school': params.get('school'), 'semester': params.get('semester')}));
+          console.log(data);
+          const options = {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log("message: ", res.message);
+          console.log("deleted: ", res.deleted);
+          console.log("not_found: ", res.not_found);
+
+          // 요청 성공 시 아래 코드 실행
+          if (res.deleted.length === 0) {
+            alert("삭제할 학급이 존재하지 않습니다.");
+          } else {
+            alert(`${res.deleted.length}개의 학급을 삭제하였습니다.`);
+            if (res.not_found.length > 0) {
+              alert(`${res.not_found.length}개의 학급은 존재하지 않아 삭제되지 않았습니다.`);
+            }
+          }
+          tbody_checked_arr = [];
+          document.querySelector('#menu_c_table button.toggleAllcheckboxes').click();
+
+          getGradeClassesAndStudentCounts();
+          updateButtonStatesWithStyles([$btn1, false]);
+          clickable = true;
+        } catch (error) {
+          console.error('Error: ', error);
+          alert("삭제 중 오류가 발생하였습니다.");
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    const sideEffect = tbody => {
+      updateDbButtonsBasedOnSelection();
+    };
+    toggleAllTableCheckboxes('#menu_c_table', sideEffect);
+  }
+
+  function renderStudentRecordDeletionTable() {
+    // 특정 학생의 학적을 비롯한 학업성적 등 일체의 자료를 삭제하기 위한 테이블을 렌더링 --> MENU.D
+    let html = null;
+    html = `
+      <div id="menu_d_content">
+        <div class="table-banner">
+          <button type="button" class="btn btn-sm btn-secondary">학생자료 삭제 승인요청</button>
+          <button type="button" class="btn btn-sm btn-secondary">학생자료 복원하기</button>
+        </div>
+        <table id="menu_d_table" class="table table-hover caption-top table-bordered">
+          <caption class="table_caption">Total <span>0</span></caption>
+          <thead>
+            <tr>
+              ${renderSelectAllCheckboxButton(4)}
+              <th scope="col" style="width: 12%;">재학구분</th>
+              <th scope="col" style="width: 12%;">학년</th>
+              <th scope="col" style="width: 12%;">반</th>
+              <th scope="col" style="width: 12%;">번호</th>
+              <th scope="col" style="width: 12%;">성명</th>
+              <th scope="col" style="width: 18%;">생년월일</th>
+              <th scope="col" style="width: 18%;">승인날짜</th>
+            </tr>
+          </thead>
+          <tbody id="menu_d_tbody">
+          </tbody>
+        </table>
+      </div>
+    `;
+    return html; 
+  }
+
+  async function renderStudentRecordDeletionTable() {
+    
+  }
+
+  function renderAssessmentCriteriaTable() {
+    // 학생 평가에 필요한 성취기준 및 평가요소를 관리하기 위한 테이블을 화면에 렌더링 --> MENU.E
+    const $subselection = document.getElementById('subselection');
+    const $btns = $subselection.querySelectorAll('button');
+    if (!$btns[0].dataset.clickAttached) {
+      $btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          $btns.forEach(el => {
+            el.classList.remove('active');
+          });
+          btn.classList.add('active');
+          document.getElementById('content_wrapper').innerHTML = renderAssessmentCriteriaTable();
+        });
+      });
+      $btns[0].dataset.clickAttached = 'true';
+    }
+
+    let html = null;
+    if ($btns[0].classList.contains('active')) {
+      html = `
+      <div id="menu_e1_content">
+        <div class="table-banner">
+          <button type="button" class="btn btn-sm btn-secondary">영역명관리</button>
+          <button type="button" class="btn btn-sm btn-secondary">행추가</button>
+          <button type="button" class="btn btn-sm btn-secondary">저장</button>
+          <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+        </div>
+        <table id="menu_e1_table" class="table table-hover caption-top table-bordered">
+          <caption class="table_caption">Total <span>0</span></caption>
+          <thead>
+            <tr>
+              ${renderSelectAllCheckboxButton(3)}
+              <th scope="col" style="width: 6%;">영역순번</th>
+              <th scope="col" style="width: 11%;">영역명</th>
+              <th scope="col" style="width: 34%;">성취기준</th>
+              <th scope="col" style="width: 28%;">평가요소</th>
+              <th scope="col" style="width: 6%;">교과평가</th>
+              <th scope="col" style="width: 6%;">관찰내용</th>
+              <th scope="col" style="width: 6%;">정렬순서</th>
+            </tr>
+          </thead>
+          <tbody id="menu_e1_tbody">
+            ${renderEmptyTbodyWithMessage(8)}
+          </tbody>
+        </table>
+      </div>
+      `; 
+    } else {
+      html = `
+      <div id="menu_e2_content">
+        <div id="menu_e2_content_left" class="col-12 col-xl-8">
+          <div class="table-banner">
+            <button type="button" class="btn btn-sm btn-secondary">일괄입력</button>
+            <button type="button" class="btn btn-sm btn-secondary">전과목일괄입력</button>
+            <button type="button" class="btn btn-sm btn-secondary">출력</button>
+          </div>
+          <table id="menu_e2_table_1" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption">Total <span>0</span></caption>
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(5)}
+                <th scope="col" style="width: 20%;">영역명</th>
+                <th scope="col" style="width: 45%;">성취기준</th>
+                <th scope="col" style="width: 30%;">평가요소</th>
+              </tr>
+            </thead>
+            <tbody id="menu_e2_tbody_1">
+              ${renderEmptyTbodyWithMessage(4)}
+            </tbody>
+          </table>
+        </div>
+        <div id="menu_e2_content_right" class="col-12 col-xl-4">
+          <div class="table-banner">
+            <button type="button" class="btn btn-sm btn-secondary">특수문자</button>
+            <button type="button" class="btn btn-sm btn-secondary">저장</button>
+            <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+          </div>
+          <table id="menu_e2_table_2" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption mt-1 mb-1" style="padding: 5px 0px 5px 0px;"><span class="fw-bold fs-6">평가기준</span>&ensp;Total <span>0</span>
+              <div style="padding: 0.7rem 0.7rem 0.7rem 0.7rem; background-color: #f3f4f8;">
+                <select id="eval_range" class="form-select form-select-sm select-width-sm"></select>
+              </div>
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" style="width: 33.3%;">평가단계</th>
+                <th scope="col" style="width: 66.6%;">평가결과</th>
+              </tr>
+            </thead>
+            <tbody id="menu_e2_tbody_2">
+              ${renderEmptyTbodyWithMessage(2)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `; 
+    }
+    return html;
+  }
+  
+  function renderAchievementEvaluationScreen() {
+    // 학생이 특정한 성취기준에 따른 평가요소를 어느 정도 수준까지 달성했는지 평가결과를 기록 및 관리하는 화면을 렌더링 --> MENU.G
+    let html = null;
+    html = `
+    <div id="menu_g_content" class="col col-xl-12">
+      <div class="achievementStandardsAndAssessment fw-semibold">
+        <div class="col col-12 col-xl-1">성취기준</div>
+        <div class="col col-12 col-xl-5"></div>
+        <div class="col col-12 col-xl-1">평가요소</div>
+        <div class="col col-12 col-xl-5"></div>
+      </div>
+      <div class="table-banner" style="top: 3.8rem;">
+        <button type="button" class="btn btn-sm btn-secondary">평가근거자료 업로드</button>
+        <button type="button" class="btn btn-sm btn-secondary">저장</button>
+        <button type="button" class="btn btn-sm btn-secondary">출력</button>
+        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      </div>
+      <table id="menu_g_table" class="table table-hover caption-top table-bordered">
+        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
+          <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
+            <select class="form-select form-select-sm select-width-xl"></select>
+          </div>
+        </caption>
+        <thead>
+          <tr>
+            ${renderSelectAllCheckboxButton(3)}
+            <th scope="col" style="width: 7%;">반/번호</th>
+            <th scope="col" style="width: 14%;">성명</th>
+            <th scope="col" style="width: 14%;">단계</th>
+            <th scope="col" style="width: 62%;">평가결과</th>
+          </tr>
+        </thead>
+        <tbody id="menu_g_tbody">
+          ${renderEmptyTbodyWithMessage(5)}
+        </tbody>
+      </table>
+    </div>
+    `; 
+    return html;
+  }
+
+  function renderFieldAssessmentResultsTable() {
+    // 학생이 특정한 과목의 한 영역(field)에 부속된 평가요소를 어느 수준까지 달성했는지 평가결과를 기록 및 관리하는 테이블을 렌더링 --> MENU.H
+    let html = null;
+    html = `
+    <div id="menu_h_content" class="col col-xl-12">
+      <div class="table-banner" style="top: -0.3rem;">
+        <button type="button" class="btn btn-sm btn-secondary">평가근거자료 업로드</button>
+        <button type="button" class="btn btn-sm btn-secondary">저장</button>
+        <button type="button" class="btn btn-sm btn-secondary">출력</button>
+        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      </div>
+      <table id="menu_h_table" class="table table-hover caption-top table-bordered">
+        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
+          <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
+            <select class="form-select form-select-sm select-width-xl"></select>
+            <select class="form-select form-select-sm select-width-xl"></select>
+          </div>
+        </caption>
+        <thead>
+          <tr>
+            ${renderSelectAllCheckboxButton(3)}
+            <th scope="col" style="width: 7%;">반/번호</th>
+            <th scope="col" style="width: 7%;">성명</th>
+            <th scope="col" style="width: 17%;">성취기준</th>
+            <th scope="col" style="width: 16%;">평가요소</th>
+            <th scope="col" style="width: 10%;">단계</th>
+            <th scope="col" style="width: 30%;">평가결과</th>
+          </tr>
+        </thead>
+        <tbody id="menu_h_tbody">
+          ${renderEmptyTbodyWithMessage(7)}
+        </tbody>
+      </table>
+    </div>
+    `; 
+    return html;
+  }
+
+  function renderSubjectAssessmentResultsTable() {
+   // 학생이 특정 교과에 배당된 모든 평가요소에 대해 어느 수준까지 성취했는지 그 평가결과를 기록 및 관리하는 테이블을 렌더링
+   let html = null;
+    html = `
+    <div id="menu_i_content" class="col col-xl-12">
+      <div class="table-banner" style="top: -0.3rem;">
+        <button type="button" class="btn btn-sm btn-secondary">평가근거자료 업로드</button>
+        <button type="button" class="btn btn-sm btn-secondary">저장</button>
+        <button type="button" class="btn btn-sm btn-secondary">출력</button>
+        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      </div>
+      <table id="menu_i_table" class="table table-hover caption-top table-bordered">
+        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
+          <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
+            <select class="form-select form-select-sm select-width-xl"></select>
+            <select class="form-select form-select-sm select-width-xl"></select>
+            <select class="form-select form-select-sm select-width-xl"></select>
+          </div>
+        </caption>
+        <thead>
+          <tr>
+            ${renderSelectAllCheckboxButton(3)}
+            <th scope="col" style="width: 5%;">반/번호</th>
+            <th scope="col" style="width: 6%;">성명</th>
+            <th scope="col" style="width: 8%;">영역</th>
+            <th scope="col" style="width: 16%;">성취기준</th>
+            <th scope="col" style="width: 15%;">평가요소</th>
+            <th scope="col" style="width: 9%;">단계</th>
+            <th scope="col" style="width: 28%;">평가결과</th>
+          </tr>
+        </thead>
+        <tbody id="menu_i_tbody">
+          ${renderEmptyTbodyWithMessage(8)}
+        </tbody>
+      </table>
+    </div>
+    `; 
+    return html; 
+  }
+
+  function renderSemesterSubjectFeedbackTable() {
+    // 학생의 특정 교과에 대한 해당 학기의 종합의견을 기록 및 관리하는 테이블을 렌더링 --> MENU.J
+    let html = null;
+    html = `
+    <div id="menu_j_content" class="col col-xl-12">
+      <div class="table-banner" style="top: -0.3rem;">
+        <button type="button" class="btn btn-sm btn-secondary">문자열바꾸기</button>
+        <button type="button" class="btn btn-sm btn-secondary">교과평가일괄복사</button>
+        <button type="button" class="btn btn-sm btn-secondary">ChatGPT</button>
+        <button type="button" class="btn btn-sm btn-secondary">저장</button>
+        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+        <button type="button" class="btn btn-sm btn-secondary">출력</button>
+      </div>
+      <table id="menu_j_table" class="table table-hover caption-top table-bordered">
+        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
+        </caption>
+        <thead>
+          <tr>
+            ${renderSelectAllCheckboxButton(3)}
+            <th scope="col" style="width: 7%;">반/번호</th>
+            <th scope="col" style="width: 15%;">성명</th>
+            <th scope="col" style="width: 10%;">참고자료</th>
+            <th scope="col" style="width: 65%;">학기말 종합의견</th>
+          </tr>
+        </thead>
+        <tbody id="menu_i_tbody">
+          ${renderEmptyTbodyWithMessage(5)}
+        </tbody>
+      </table>
+    </div>
+    `; 
+    return html; 
+  }
+
+  function renderAnnualSubjectProgressTable() {
+    // 학생의 특정 교과에 대한 한 해동안의 발달상황을 기록하고 관리하는 테이블을 렌더링 --> MENU.K
+    let html = null;
+    html = `
+      <div id="menu_k_content">
+        <div id="menu_k_content_left" class="col-12 col-xl-3">
+          <div class="table-banner">
+            <button type="button" class="btn btn-sm btn-secondary">일괄저장</button>
+            <button type="button" class="btn btn-sm btn-secondary">일괄삭제</button>
+          </div>
+          <table id="menu_k_table_1" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption">Total <span>0</span></caption>
+            <thead>
+              <tr>
+                <th scope="col" style="width: 40%;">번호</th>
+                <th scope="col" style="width: 60%;">성명</th>
+              </tr>
+            </thead>
+            <tbody id="menu_k_tbody_1">
+              ${renderEmptyTbodyWithMessage(2)}
+            </tbody>
+          </table>
+        </div>
+        <div id="menu_k_content_right" class="col-12 col-xl-9">
+          <div class="table-banner">
+          </div>
+          <table id="menu_k_table_2" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption mt-1 mb-1" style="padding: 5px 0px 5px 0px;">
+            </caption>
+            <thead>
+            </thead>
+            <tbody id="menu_k_tbody_2">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `; 
+    return html;
+  }
+
+  function renderClassSubjectGradesTable() {
+    // 특정 학급 학생들 전체의 교과별 성적을 조회하는 테이블을 렌더링 --> MENU.L
+    return ``;
+  }
+
+  function renderStudentGradesTable() {
+    // 학급 명단에서 학생 이름을 클릭함으로써 특정 학생의 개인별 성적을 조회하는 테이블을 렌더링 --> MENU.M
+    let html = null;
+    html = `
+      <div id="menu_m_content">
+        <div id="menu_m_content_left" class="col-12 col-xl-3">
+          <div class="table-banner">
+            <button type="button" class="btn btn-sm btn-secondary">일괄출력</button>
+          </div>
+          <table id="menu_m_table_1" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption">Total <span>0</span></caption>
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(10)}
+                <th scope="col" style="width: 30%;">번호</th>
+                <th scope="col" style="width: 60%;">성명</th>
+              </tr>
+            </thead>
+            <tbody id="menu_m_tbody_1">
+              ${renderEmptyTbodyWithMessage(3)}
+            </tbody>
+          </table>
+        </div>
+        <div id="menu_m_content_right" class="col-12 col-xl-9">
+        </div>
+      </div>
+      `; 
+    return html;
+  }
+  
+  function renderStudentObservationsTable() {
+    // 학생에 대한 관찰내용을 일자별로 기록 및 관리하는 테이블을 렌더링 --> MENU.N
+    let html = null;
+    html = `
+      <div id="menu_n_content">
+        <div id="menu_n_content_left" class="col-12 col-xl-3">
+          <div class="table-banner">
+            <button type="button" class="btn btn-sm btn-secondary">출력</button>
+          </div>
+          <table id="menu_n_table_1" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption">Total <span>0</span></caption>
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(10)}
+                <th scope="col" style="width: 40%;">반/번호</th>
+                <th scope="col" style="width: 50%;">성명</th>
+              </tr>
+            </thead>
+            <tbody id="menu_n_tbody_1">
+              ${renderEmptyTbodyWithMessage(3)}
+            </tbody>
+          </table>
+        </div>
+        <div id="menu_n_content_right" class="col-12 col-xl-9">
+          <div class="table-banner">
+            <button type="button" class="btn btn-sm btn-secondary">행추가</button>
+            <button type="button" class="btn btn-sm btn-secondary">관찰근거자료 업로드</button>
+            <button type="button" class="btn btn-sm btn-secondary">문자열바꾸기</button>
+            <button type="button" class="btn btn-sm btn-secondary">일괄입력</button>
+            <button type="button" class="btn btn-sm btn-secondary">저장</button>
+            <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+          </div>
+          <table id="menu_n_table_2" class="table table-hover caption-top table-bordered">
+            <caption class="table_caption">Total <span>0</span>
+              <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; margin-top: 0.4rem; background-color: #f3f4f8;">
+                <span>&emsp;영역&ensp;</span>
+                <select class="form-select form-select-sm select-width-lg"></select>
+                <select class="form-select form-select-sm select-width-lg"></select>
+              </div>
+            </caption>
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(3)}
+                <th scope="col" style="width: 21%;">일자</th>
+                <th scope="col" style="width: 38%;">내용</th>
+                <th scope="col" style="width: 38%;">영역</th>
+              </tr>
+            </thead>
+            <tbody id="menu_n_tbody_2">
+              ${renderEmptyTbodyWithMessage(4)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `; 
+    return html;
+  }
+
+  function renderDataFromGETResponse(menu) {
+    // 서버측에 전달한 GET 요청의 결과로 반환받은 데이터를 적절한 레이아웃으로 화면에 렌더링
+    switch (menu) {
+      case MENU.B:
+        return renderAcademicYearSemesterTable();
+      case MENU.C:
+        return renderAcademicYearClassInfoTable();
+      case MENU.D:
+        return renderStudentRecordDeletionTable();
+      case MENU.E:
+        return renderAssessmentCriteriaTable();
+      case MENU.G:
+        return renderAchievementEvaluationScreen();
+      case MENU.H:
+        return renderFieldAssessmentResultsTable();
+      case MENU.I:
+        return renderSubjectAssessmentResultsTable();
+      case MENU.J:
+        return renderSemesterSubjectFeedbackTable();
+      case MENU.K:
+        return renderAnnualSubjectProgressTable();
+      case MENU.L: 
+        return renderClassSubjectGradesTable();
+      case MENU.M: 
+        return renderStudentGradesTable();
+      case MENU.N:
+        return renderStudentObservationsTable();
+      default:
+        return ''
+    }
+  }
+
+  function attachEventsAfterRenderByMenu(menu) {
+    // 사용자로부터 전달받은 메뉴에 따라 화면 렌더링을 마친 후, 렌더링 된 화면에 따라 요소에 필요한 이벤트 등을 덧붙이기
+    switch (menu) {
+      case MENU.B:
+        script_renderAcademicYearSemesterTable();
+        return;
+      case MENU.C:
+        script_renderAcademicYearClassInfoTable();
+        return;
+      case MENU.D:
+        return;
+      case MENU.E:
+        return;
+      case MENU.G:
+        return;
+      case MENU.H:
+        return;
+      case MENU.I:
+        return;
+      case MENU.J:
+        return;
+      case MENU.K:
+        return;
+      case MENU.L: 
+        return;
+      case MENU.M: 
+        return;
+      case MENU.N:
+        return;
+      default:
+        return;
+    }
+  }
+
+  async function renderSelectedMenuScreen() {
+    // 여러 개의 메뉴 항목 중 하나를 선택했을 때, 해당 메뉴와 관련된 화면을 렌더링
+    const { menu } = store.getState();
+    document.getElementById('content_header').innerHTML = renderHeaderSection(menu);
+    document.getElementById('select_wrapper').innerHTML = renderSelectFormForGETRequest(menu);
+    document.getElementById('subselection').innerHTML = menu == MENU.E ? renderSubselectionMenu(menu) : '';
+    document.getElementById('content_wrapper').innerHTML = renderDataFromGETResponse(menu);
+    attachEventsAfterRenderByMenu(menu);
+  }
+  
+  function reducer(state, action) {
+    if(state == undefined) {
+      return {
+        menu: null,
+      }
+    }
+    let newState;
+    if (action.type === 'MENU') {
+      newState = {
+        ...state,
+        menu: action.menu,
+      }
+    }
+    return newState;
+  }
+  const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
+  window.store = store;
+  store.subscribe(renderSelectedMenuScreen);
+
+  window.onload = function() {
+    const $list_group_items = document.querySelectorAll('li.list-group-item');
+    $list_group_items.forEach(elem => {
+      elem.addEventListener('click', (e) => {
+        removeActiveClassFromListItems(e.target);
+        toggleAccordionButtonCss(e.target);
+        store.dispatch({ type: 'MENU', menu: e.target.textContent });
+      });
+    });
+
+    const $accordion_btns = document.querySelectorAll('.accordion-button');
+    $accordion_btns.forEach(elem => {
+      elem.style.boxShadow = 'none';
+      elem.addEventListener('click', (e) => {
+        updateAccordionCssOnClick(e.target);
+      });
+    });
+    
+    const $accordion_bodies = document.querySelectorAll('.accordion-body');
+    const $lastElem = $accordion_bodies[$accordion_bodies.length - 1];
+    if ($lastElem) {
+      $lastElem.style.borderBottom = '0.5px solid #cecfd1';
+    }
+
+    const $toggleBtn = document.getElementById('toggle-button');
+    const $nav = document.getElementById('nav');
+    const $window = document.getElementById('content_window');
+    const $btnIcon = document.getElementById('btnIcon');
+    const $select_wrapper = document.getElementById('select_wrapper');
+    $toggleBtn.addEventListener('click', () => {
+      if ($btnIcon.classList.contains('fa-caret-left')) {
+        $btnIcon.classList.replace('fa-caret-left', 'fa-caret-right');
+        $select_wrapper.classList.replace('row-cols-xxl-5', 'row-cols-xxl-6');
+      } else {
+        $btnIcon.classList.replace('fa-caret-right', 'fa-caret-left');
+        $select_wrapper.classList.replace('row-cols-xxl-6', 'row-cols-xxl-5');
+      }
+      $nav.classList.toggle('sideBar-hidden');
+      $window.classList.toggle('contentWindow-expanded');
+    });
+  }
+</script>
+{% endblock %}

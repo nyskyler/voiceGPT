@@ -208,6 +208,22 @@
   .btn-transparent:hover {
     background-color: rgba(0, 0, 0, 0.1); /* 호버 시 배경색 추가 (선택 사항) */
   }
+  .bg-3030 {
+    background-color: #303030 !important;
+  }
+  .list-group-item-dark {
+    background-color: #212121 !important;
+    color: #fff; /* 필요시 텍스트 색상 */
+    border: none !important;
+  }
+  .list-group-item-dark.active, .list-group-item-dark:hover {
+    background-color: #303030 !important;
+    border-radius: 1rem !important;
+    color: #fff; /* 필요시 텍스트 색상 */
+  }
+  ul.gpt_ul {
+    font-size: 0.8rem;
+  }
 
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
@@ -256,7 +272,7 @@
     </form>
   </div>
   <div class="offcanvas-body p-0">
-    <ul class="list-group list-group-flush toc">
+    <ul class="list-group list-group-flush toc gpt_ul">
     </ul>
   </div>
 </div>
@@ -274,7 +290,7 @@
           </div>
         </form>
       </div>
-      <ul class="list-group list-group-flush toc">
+      <ul class="list-group list-group-flush toc gpt_ul">
       </ul>
     </div>
     <div id="chatWindow" class="col-12 col-md-9 col-xl-10 chat-window p-0">
@@ -284,7 +300,7 @@
             <button id="toggleButton" class="toggle-btn btn btn-transparent">
               <i class="fa-regular fa-square-caret-left"></i><!-- FontAwesome icon -->
             </button>
-            <span id="currentModel" class="fs-5">GPT-4o mini</span>
+            <span id="currentModel" class="fs-5"></span>
           </span>
           <span>
             <button id="fontIncrease" class="btn btn-transparent"><i class="fa-regular fa-square-plus"></i></button>
@@ -344,11 +360,7 @@
             <div class="modal-body">
               <form id="systemForm">
                 <p class="fs-6"><i class="fa-regular fa-square-check"></i>&nbsp;&nbsp;GPT 모델</p>
-                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
-                  <input type="radio" class="btn-check" name="models" id="model1" autocomplete="off">
-                  <label class="btn" for="model1">GPT-4o</label>
-                  <input type="radio" class="btn-check" name="models" id="model2" autocomplete="off">
-                  <label class="btn" for="model2">GPT-4o-mini</label>
+                <div id="models" class="mb-3" style="display: flex; justify-content: space-evenly;">
                 </div>
                 <label for="memoryRange" class="form-label"><i class="fa-regular fa-comment-dots"></i>&nbsp;&nbsp;기억하는 최근 문답의 수(0~5)</label>
                 <input type="range" class="form-range" min="0" max="5" step="1" id="memoryRange" value="1">
@@ -517,7 +529,7 @@
                   <option value="bg-warning text-dark bg-opacity-25">햇살 노랑</option>
                   <option value="bg-light text-dark bg-opacity-50">구름 흰색</option>
                   <option value="bg-primary text-dark bg-opacity-10">하늘 파랑</option>
-                  <option value="bg-dark text-light bg-opacity-75">차콜 블랙</option>
+                  <option value="bg-3030 text-light bg-opacity-75">차콜 블랙</option>
                   <option value="bg-secondary text-dark bg-opacity-50">스틸 그레이</option>
                   <option value="bg-black text-white bg-opacity-25">은은한 어둠</option>
                   <option value="bg-success text-dark bg-opacity-25">싱그러운 초록</option>
@@ -535,7 +547,7 @@
                   <option value="#e3f2fd">하늘색</option>
                   <option value="#f8f9fa">밝은 회색</option>
                   <option value="#ffffff">흰색</option>
-                  <option value="#2B3035">검정</option>
+                  <option value="#212121">검정</option>
                   <option value="#ffeb3b">밝은 노란색</option>
                   <option value="#90a4ae">어두운 회색</option>
                   <option value="#e9ecef">차분한 회색</option>
@@ -583,6 +595,12 @@
 {% endblock %}
 {% block script %}
 <script type="module">
+  const MODELS = {
+    'model1': 'gpt-4.1',
+    'model2': 'gpt-4.1-mini',
+    'model3': 'o4-mini',
+  }
+  const defaultModel = MODELS['model2'];
   document.querySelector('body').classList.replace('mt-4', 'mt-2');
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
   
@@ -749,7 +767,13 @@
     updateFontSize();
     const $currentModel = document.getElementById('currentModel');
     const $dalleSettingBtn = document.getElementById('dalleSettingBtn');
-    $currentModel.textContent = $dalleSettingBtn.classList.contains('modeChange') ? state.model === 'gpt-4o' ? 'GPT-4o' : 'GPT-4o mini' : state.dalle_model.toUpperCase();
+    
+    if ($dalleSettingBtn.classList.contains('modeChange')) {
+      const model_name = state.model.replace('gpt', 'GPT');
+      $currentModel.textContent = model_name;
+    } else {
+      $currentModel.textContent = state.dalle_model.toUpperCase();
+    }
   
     const thumbnailPromises = state.contents.map(async (el) => {
       const $target = document.querySelector(`div.thumbnails[data-url="${el.imgUrl}"]`);
@@ -843,7 +867,7 @@
         list_items:[],
         subject: null,
         system: '',
-        model: 'gpt-4o-mini',
+        model: defaultModel,
         range: 1,
         contents:[],
         images:[],
@@ -1158,7 +1182,7 @@
         newState = Object.assign({}, state, {
           subject: null,
           system: '',
-          model: 'gpt-4o-mini',
+          model: defaultModel,
           range: 1,
           contents: [],
           images: [],
@@ -1176,7 +1200,7 @@
           subject: null,
           list_items: newList_items,
           system: '',
-          model: 'gpt-4o-mini',
+          model: defaultModel,
           range: 1,
           contents: [],
           images: [],
@@ -1268,6 +1292,14 @@
   }
 
   window.onload = function(){
+    const $modelsDiv = document.getElementById('models');
+    const modelHTML = Object.entries(MODELS).map(item => {
+      return `
+        <input type="radio" class="btn-check" name="models" id="${item[0]}" autocomplete="off">
+        <label class="btn" for="${item[0]}">${item[1]}</label>
+      `
+    }).join('');
+    $modelsDiv.innerHTML = modelHTML;
     const $myInput = document.getElementById('myInput');
     // 메시지 입력창에서 줄바꿈이 일어났을 때 스크롤 내 높이를 조정해 사용자가 입력하는 내용을 볼 수 있도록 함.
     $myInput.addEventListener('input', () => {
@@ -1285,7 +1317,8 @@
     const selectedBgColor = localStorage.getItem('bg-color');
     const $buttons = document.querySelectorAll('.btn-transparent');
     const $model = document.getElementById('currentModel');
-    if (selectedBgColor === '#2B3035') {
+    
+    if (selectedBgColor === '#212121') {
       $buttons.forEach(button => {
         const icon = button.querySelector('i');
         if (icon) {
@@ -1318,11 +1351,11 @@
         // console.log(_desc);
         
         const currentModel = document.getElementById('currentModel').textContent.toLowerCase();
-        if (currentModel.startsWith('gpt')) {
-          store.dispatch({type:'CREATE', author:_author, desc:_desc});
-        } else if (currentModel.startsWith('dall')) {
-          // console.log('dall!');
+        if (currentModel.startsWith('dall')) {
           store.dispatch({type:'IMG_CREATE', author:_author, desc:_desc});
+        } else {
+          // console.log('dall!');
+          store.dispatch({type:'CREATE', author:_author, desc:_desc});
         }
         Initialize_textareaTag(null); 
       } else {
@@ -1649,7 +1682,7 @@
 
       const $buttons = document.querySelectorAll('.btn-transparent');
       const $model = document.getElementById('currentModel');
-      if (selectedBgColor === '#2B3035') {
+      if (selectedBgColor === '#212121') {
         $buttons.forEach(button => {
           const icon = button.querySelector('i');
           if (icon) {
@@ -1720,13 +1753,17 @@
         alert("작업을 취소하셨습니다.")
       }
     });
+
     document.getElementById('settingBtn').addEventListener('click', () => {
       const state = store.getState();
       const activeItems = $('.toc a.active');
       if (!activeItems.length) {
         return;
       }
-      const $elem = (state.model === 'gpt-4o-mini' ? $('#model2') : $('#model1'));
+
+      const modelStr = Object.entries(MODELS).filter(model => model[1] === state.model)[0];
+      const modelTag = '#'.concat(modelStr);
+      const $elem = $(modelTag);
       $elem.prop('checked', true);
       
       const resolutions = {
@@ -2105,7 +2142,12 @@
       const state = store.getState();
       $settingBtn.classList.toggle('modeChange');
       $dalleSettingBtn.classList.toggle('modeChange');
-      $currentModel.textContent = $dalleSettingBtn.classList.contains('modeChange') ? state.model === 'gpt-4o' ? 'GPT-4o' : 'GPT-4o mini' : state.dalle_model.toUpperCase();
+      if ($dalleSettingBtn.classList.contains('modeChange')) {
+        const model_name = state.model.replace('gpt', 'GPT');
+        $currentModel.textContent = model_name;
+      } else {
+        $currentModel.textContent = state.dalle_model.toUpperCase();
+      }
     });
 
     // MutationObserver에 사용할 콜백 함수 정의

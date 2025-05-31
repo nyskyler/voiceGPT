@@ -125,8 +125,8 @@ def question():
     _messages.append({"role": "user", "content": content})
     
   try:
-    print("model: ", _model)
-    print("messages: ", _messages)
+    # print("model: ", _model)
+    # print("messages: ", _messages)
     completion = client.chat.completions.create(
       model=_model,
       messages=_messages,
@@ -177,7 +177,7 @@ def check_transparency(file_path):
 def generate_image():
   try:
     data = request.get_json()
-    print(data['images'])
+    # print(data['images'])
     # if not data or not all(key in data for key in ('prompt')):
     #   return jsonify({'error': 'Invalid input'}), 400
   
@@ -403,15 +403,15 @@ def upload():
       )
       db.session.add(_message)
       db.session.flush()
-      print(f'Message ID: {_message.id}')
+      # print(f'Message ID: {_message.id}')
       msgIds.append(_message.id)
 
     for _image in _images:
       parts = _image.split('/')
       filename = parts[-1]
-      print(f'filename: {filename}')
+      # print(f'filename: {filename}')
       targetImage = MsgImage.query.filter_by(thumbnailPath=filename).first_or_404()
-      print(f'targetImage: {targetImage}')
+      # print(f'targetImage: {targetImage}')
       targetImage.message_id = int(msgIds[0])
       
     db.session.commit()
@@ -451,7 +451,7 @@ def upload_generated_image():
       _subject = Subject(
         user_id=g.user.id,
         title=subject,
-        model='gpt-4o-mini',
+        model='gpt-4.1-mini',
         range=1,
         system='',
         resolution=512,
@@ -481,24 +481,24 @@ def upload_generated_image():
       )
       db.session.add(_message)
       db.session.flush()
-      print(f'Message ID: {_message.id}')
+      # print(f'Message ID: {_message.id}')
       msgIds.append(_message.id)
 
     if _source_images:
       for _source_image in _source_images:
         parts = _source_image.split('/')
         filename = parts[-1]
-        print(f'filename: {filename}')
+        # print(f'filename: {filename}')
         targetImage = MsgImage.query.filter_by(thumbnailPath=filename).first_or_404()
-        print(f'targetImage: {targetImage}')
+        # print(f'targetImage: {targetImage}')
         targetImage.message_id = int(msgIds[0])
 
     for _image in _images:
       parts = _image.split('/')
       filename = parts[-1]
-      print(f'filename: {filename}')
+      # print(f'filename: {filename}')
       targetImage = MsgImage.query.filter_by(thumbnailPath=filename).first_or_404()
-      print(f'targetImage: {targetImage}')
+      # print(f'targetImage: {targetImage}')
       targetImage.message_id = int(msgIds[1])
       
     db.session.commit()
@@ -634,10 +634,10 @@ def update():
     # 입력 데이터 검증
     if not data or not all(key in data for key in ('id', 'system', 'model', 'range', 'topic', 'resolution')):
       return jsonify({'error': 'Invalid input'}), 400
+    
     _id = data['id']
     _system = data['system']
     _model = data['model']
-    _model = 'gpt-4o' if _model == 'GPT-4o' else 'gpt-4o-mini'
     _range = int(data['range'])
     _topic = data['topic']
     _resolution = data['resolution']

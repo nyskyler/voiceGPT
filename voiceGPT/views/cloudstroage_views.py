@@ -1,5 +1,8 @@
 from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file, Response
 from werkzeug.utils import redirect
+import cv2
+import numpy as np
+import pillow_heif
 import os
 import shutil
 import imghdr
@@ -32,6 +35,79 @@ user_list = [user.strip() for user in authorized_users.split(',') if user.strip(
 
 bp = Blueprint('cloudstorage', __name__, url_prefix='/cloudstorage')
 root_dir = Path('/Volumes/X31')
+
+def convert_heic_to_jpg(img_path):
+  ext = os.path.splitext(img_path)[-1].lower()
+  if ext in ['.heic', '.heif']:
+    # 새로운 jpg 파일 경로 생성
+    jpg_path = os.path.splitext(img_path)[0] + '.jpg'
+    # heic 이미지 열기
+    heif_file = pillow_heif.read_heif(img_path)
+    image = Image.frombytes(
+      heif_file.mode,
+      heif_file.size,
+      heif_file.data,
+      "raw"
+    )
+    # JPEG로 저장
+    image.save(jpg_path, format="JPEG")
+    print(f"변환 완료: {img_path} -> {jpg_path}")
+    return jpg_path
+  else:
+    print(f"지원되는 HEIC/HEIF 파일이 아닙니다: {img_path}")
+    return img_path
+  
+def order_points(pts):
+  rect = np.zeros((4,2), dtype="float32")
+  s = pts.sum(axis=1)
+  rect[0] = pts[np.argmin(s)] # 좌상
+  rect[2] = pts[np.argmax(s)] # 우하
+  diff = np.diff(pts, axis=1)
+  rect[1] = pts[np.argmin(diff)] # 우상
+  rect[3] = pts[np.argmax(diff)] # 좌하
+  return rect
+
+def transform_and_binaried_image(img_path, area_val):
+  # 이미지 불러오기
+  img = cv2.imread(img_path)
+  if img is None:
+    raise FileNotFoundError(f"이미지 파일을 찾을 수 없습니다: {img_path}")
+  img_height, img_width = img.shape[:2]
+  gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+  _, th = cv2.threshold(gray_image, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+
+  # 외곽선 찾기
+  contours, _ = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+  for pts in contours:
+    if cv2.contourArea(pts) < area_val or len(pts) < 4:
+      continue
+    epsilon = 0.02 * cv2.arcLength(pts, True)
+    approx = cv2.approxPolyDP(pts, epsilon, True)
+    print('approx: ', len(approx))
+
+    if len(approx) == 4 or len(approx) == 6:
+      src_points = np.array([p[0] for p in approx], dtype="float32")
+      src_points = order_points(src_points)  # 꼭짓점 올바른 순서로
+      dst_points = np.array([
+        [0, 0],
+        [img_width - 1, 0],
+        [img_width - 1, img_height - 1],
+        [0, img_height - 1]
+      ], dtype="float32")
+      M = cv2.getPerspectiveTransform(src_points, dst_points)
+      result_img = cv2.warpPerspective(img, M, (img_width, img_height))
+      # gray_result = cv2.cvtColor(result_img, cv2.COLOR_BGR2GRAY)
+      # th_result = cv2.adaptiveThreshold(
+      #   gray_result, 255,
+      #   cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+      #   51, 13
+      # )
+      # cv2.imwrite(img_path, cv2.cvtColor(th_result, cv2.COLOR_GRAY2BGR))
+      cv2.imwrite(img_path, result_img)
+      return
+  # 만약 적합한 사각형을 찾지 못했을 경우 원본 그대로 저장(혹은 예외)
+  cv2.imwrite(img_path, gray_image)
 
 def listSubdirectoryPaths(path):
   path = Path(path)  # Ensure path is a Path object
@@ -777,6 +853,35 @@ def rename_resource():
   except Exception as e:
     print(f"Error Createing Directory: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
+  
+@bp.route("/saveUploadedImageFromChunks/", methods=['POST'])
+# @login_required
+def saveUploadedImageFromChunks():
+  try:
+    file = request.files['file']
+    file_name = request.form['fileName']
+    file_path = request.form['filePath']
+    chunk_index = int(request.form['chunkIndex'])
+    total_chunks = int(request.form['totalChunks'])
+
+    target_path = str(root_dir) + '/' + file_path
+
+    save_path = os.path.join(target_path, file_name + ".part")
+
+    # Chunk 데이터를 추가하여 파일 저장
+    with open(save_path, 'ab') as f:
+      f.write(file.read())
+
+    # 모든 조각이 업로드되면 최종 파일로 저장
+    if chunk_index == total_chunks - 1:
+      os.rename(save_path, os.path.join(target_path, file_name))
+      transform_and_binaried_image(convert_heic_to_jpg(os.path.join(target_path, file_name)), 400)
+      return jsonify({"message": "Upload complete"}), 200
+
+    return jsonify({"message": "Chunk received"}), 200
+  except Exception as e:
+    print(f"Error Saving File: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
 
 @bp.route("/saveUploadedFileFromChunks/", methods=['POST'])
 # @login_required
@@ -850,12 +955,8 @@ def serveMediaResource(file_path):
     if not os.path.exists(target_path):
       return jsonify({"error": "File not found"}), 404
 
-    # if file_path.split['.'][-1].lower() == 'pdf':
-    #   return send_file(target_path, mimetype='application/pdf', as_attachment=False)
-    # else:
      # MIME 타입 자동 추론
     mime_type, _ = mimetypes.guess_type(target_path)
-    
     return send_file(target_path, mimetype=mime_type, as_attachment=False)
   except Exception as e:
     print(f"Error Serving File: {e}")
