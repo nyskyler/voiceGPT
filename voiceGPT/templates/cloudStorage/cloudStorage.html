@@ -1309,7 +1309,7 @@
         
         // const currentPath = current_path.startsWith('/') ? current_path.slice(1) : current_path;
         const file_name = file_div.querySelector('input').getAttribute('value');
-        const file_ext = file_name.includes('.') ? file_name.split('.')[1] : undefined;
+        const file_ext = file_name.includes('.') ? file_name.split('.').pop() : undefined;
         const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'];
         const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
         const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];

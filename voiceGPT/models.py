@@ -178,6 +178,7 @@ class Student(db.Model):
   date_of_birth = db.Column(db.Date, nullable=False)
   student_num = db.Column(db.String(20), unique=True, nullable=False)
   is_enrolled = db.Column(db.Boolean, default=True, nullable=False)
+  untracked_date = db.Column(db.Date, nullable=True)
 
   evaluation_results = db.relationship('EvaluationResult', back_populates='student', cascade="all, delete-orphan")
   classes = db.relationship(

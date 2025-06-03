@@ -249,6 +249,9 @@
   .form-check-input:focus {
     box-shadow: none;
   }
+  #dob {
+    font-size: 0.8rem;
+  }
 </style>
 <div class="container-fluid" style="padding: 0px;">
   <div id="mainRow">
@@ -343,8 +346,8 @@
         <div class="d-flex col col-xl-11">
           <div id="select_wrapper" style="flex-grow: 1;" class="row row-cols-xxl-5"></div>
         </div>
-        <div class="col col-xl-1">
-          <button id="submitBtn" type="sumbit" class="btn btn-primary fw-semibold" form="select_form"><i class="fa-solid fa-magnifying-glass"></i>&ensp;조회</button>
+        <div id="submit_div" class="col col-xl-1">
+          <!-- <button id="submitBtn" type="sumbit" class="btn btn-primary fw-semibold" form="select_form"><i class="fa-solid fa-magnifying-glass"></i>&ensp;조회</button> -->
         </div>
       </form>
       <div id="content_wrapper"></div>
@@ -459,6 +462,9 @@
     // 서버측에 GET 요청을 하기에 앞서 원하는 항목을 지정하기 위해 필요한 여러 개의 select 태그로 구성된 form을 렌더링
     let html = null;
     let arrayForHTML = null;
+    const $submitDiv = document.getElementById('submit_div');
+    $submitDiv.innerHTML = '';
+    $submitDiv.innerHTML = `<button id="submitBtn" type="sumbit" class="btn btn-primary fw-semibold" form="select_form"><i class="fa-solid fa-magnifying-glass"></i>&ensp;조회</button>`;
     document.getElementById('select_form').style.display = 'block';
     switch (menu) {
       case MENU.B:
@@ -469,11 +475,11 @@
         return `
           <span class="d-flex">
             <label for="name" class="form-label fw-bold me-3 text-end fixed-label">*성명</label>
-            <input type="text" class="form-control inputField select-width-lg" id="name" minlength="2" maxlength="50" placeholder="" autocomplete="off">
+            <input type="text" class="form-control inputField select-width-lg" id="name" maxlength="50" placeholder="" autocomplete="off">
           </span>
           <span class="d-flex">
-            <label for="doa" class="form-label fw-bold me-3 text-end fixed-label">*생년월일</label>
-            <input type="text" class="form-control inputField select-width-lg" id="doa" minlength="2" maxlength="50" placeholder="" autocomplete="off">
+            <label for="dob" class="form-label fw-bold me-3 text-end fixed-label">*생년월일</label>
+            <input type="date" class="form-control inputField select-width-lg" id="dob" placeholder="" autocomplete="off">
           </span>
         `;
       case MENU.E:
@@ -1065,29 +1071,33 @@
     let html = null;
     html = `
       <div id="menu_c_content">
-        <div class="table-banner">
-          <button id="btnC1" type="button" class="btn btn-sm btn-primary">가져오기</button>
-          <button id="btnC2" type="button" class="btn btn-sm btn-secondary" disabled>반영하기</button>
-          <button id="btnC3" type="button" class="btn btn-sm btn-secondary" disabled>삭제하기</button>
+        <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="class_count">0</span></div>
+          <div> 
+            <button id="btnC1" type="button" class="btn btn-sm btn-primary">가져오기</button>
+            <button id="btnC2" type="button" class="btn btn-sm btn-secondary" disabled>반영하기</button>
+            <button id="btnC3" type="button" class="btn btn-sm btn-secondary" disabled>삭제하기</button>
+          </div>
         </div>
-        <table id="menu_c_table" class="table table-hover caption-top table-bordered">
-          <caption class="table_caption">Total <span>0</span></caption>
-          <thead>
-            <tr>
-              ${renderSelectAllCheckboxButton(3)}
-              <th scope="col style="width: 5%;">순번</th>
-              <th scope="col" style="width: 15%;">학년도</th>
-              <th scope="col" style="width: 15%;">학년</th>
-              <th scope="col" style="width: 12%;">반명</th>
-              <th scope="col" style="width: 12%;">학생수</th>
-              <th scope="col" style="width: 19%;">등록일자</th>
-              <th scope="col" style="width: 19%;">수정일자</th>
-            </tr>
-          </thead>
-          <tbody id="menu_c_tbody" class="text-center">
-            ${renderEmptyTbodyWithMessage(8)}
-          </tbody>
-        </table>
+        <div style="height: 81vh; overflow-y: auto;">
+          <table id="menu_c_table" class="table table-hover table-bordered">
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(3)}
+                <th scope="col style="width: 5%;">순번</th>
+                <th scope="col" style="width: 15%;">학년도</th>
+                <th scope="col" style="width: 15%;">학년</th>
+                <th scope="col" style="width: 12%;">반명</th>
+                <th scope="col" style="width: 12%;">학생수</th>
+                <th scope="col" style="width: 19%;">등록일자</th>
+                <th scope="col" style="width: 19%;">수정일자</th>
+              </tr>
+            </thead>
+            <tbody id="menu_c_tbody" class="text-center">
+              ${renderEmptyTbodyWithMessage(8)}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
     return html;
@@ -1104,6 +1114,7 @@
     const $btn1 = document.getElementById('btnC1');
     const $btn2 = document.getElementById('btnC2');
     const $btn3 = document.getElementById('btnC3');
+    const $cnt = document.getElementById('class_count');
 
     const updateDbButtonsBasedOnSelection = () => { // tbody에서 체크된 항목을 분석하고, 세 개의 버튼 (btnC1, btnC2, btnC3)의 활성화 상태를 제어함.
       const checked = $tbody.querySelectorAll('input:checked');
@@ -1126,6 +1137,7 @@
 
     const renderTableFromData = tbody_arr => { // 테이블의 컬럼명과 값을 담은 객체들의 배열 내용에 따라 tbody의 innerHTML을 바꾸어 테이블을 리렌더링
       $tbody.innerHTML = '';
+      $cnt.textContent = tbody_arr.length;
       const tbody_arr_sorted = sortArray(tbody_arr, 'year', 'grade', 'className', 'numOfStudents');
       tbody_arr_sorted.forEach((obj, idx) => {
         const rowHtml = `
@@ -1298,34 +1310,175 @@
     let html = null;
     html = `
       <div id="menu_d_content">
-        <div class="table-banner">
-          <button type="button" class="btn btn-sm btn-secondary">학생자료 삭제 승인요청</button>
-          <button type="button" class="btn btn-sm btn-secondary">학생자료 복원하기</button>
+        <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
+          <div>
+            <button id="btnD1" class="btn btn-sm btn-secondary" disabled>학생자료 삭제 승인요청</button>
+            <button id="btnD2" class="btn btn-sm btn-secondary" disabled>학생자료 복원하기</button>
+          </div>
         </div>
-        <table id="menu_d_table" class="table table-hover caption-top table-bordered">
-          <caption class="table_caption">Total <span>0</span></caption>
-          <thead>
-            <tr>
-              ${renderSelectAllCheckboxButton(4)}
-              <th scope="col" style="width: 12%;">재학구분</th>
-              <th scope="col" style="width: 12%;">학년</th>
-              <th scope="col" style="width: 12%;">반</th>
-              <th scope="col" style="width: 12%;">번호</th>
-              <th scope="col" style="width: 12%;">성명</th>
-              <th scope="col" style="width: 18%;">생년월일</th>
-              <th scope="col" style="width: 18%;">승인날짜</th>
-            </tr>
-          </thead>
-          <tbody id="menu_d_tbody">
-          </tbody>
-        </table>
+        <div style="height: 77vh; overflow-y: auto;">
+          <table id="menu_d_table" class="table table-hover table-bordered">
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(4)}
+                <th scope="col" style="width: 12%;">재학구분</th>
+                <th scope="col" style="width: 12%;">학년</th>
+                <th scope="col" style="width: 12%;">반</th>
+                <th scope="col" style="width: 12%;">번호</th>
+                <th scope="col" style="width: 12%;">성명</th>
+                <th scope="col" style="width: 18%;">생년월일</th>
+                <th scope="col" style="width: 18%;">승인날짜</th>
+              </tr>
+            </thead>
+            <tbody id="menu_d_tbody" class="text-center">
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
     return html; 
   }
 
-  async function renderStudentRecordDeletionTable() {
-    
+  async function script_renderStudentRecordDeletionTable() {
+    let tbody_arr = [];
+    let tbody_checked_arr = [];
+    let checkedIdx_tbody = [];
+    let params = null;
+    const $tbody = document.getElementById('menu_d_tbody');
+    const $table = document.getElementById('menu_d_table');
+    const $btn1 = document.getElementById('btnD1');
+    const $btn2 = document.getElementById('btnD2');
+    const $cnt = document.getElementById('student_count');
+
+    const updateDbButtonsBasedOnSelection = () => { // tbody에서 체크된 항목을 분석하고, 두 개의 버튼 (btnD1, btnD2)의 활성화 상태를 제어함.
+      const checked = $tbody.querySelectorAll('input:checked');
+      checkedIdx_tbody = Array.from(checked).map(el => el.parentElement.getAttribute('data-id') - 1);
+      // console.log(checkedIdx_tbody);
+      tbody_checked_arr = tbody_arr.filter((_, idx) => checkedIdx_tbody.includes(idx));
+
+      if (tbody_checked_arr.length !== 0 && tbody_checked_arr.every(record => record.is_enrolled)) {
+        // '학생자료 삭제 승인요청' 버튼 활성화
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, true]);
+      } else if (tbody_checked_arr.length !== 0 && tbody_checked_arr.every(record => !record.is_enrolled)) {
+        // '학생자료 복원하기' 버튼 활성화
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false]);
+      } else {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true]);
+      }
+    }
+
+    const renderTableFromData = tbody_arr => { // 테이블의 컬럼명과 값을 담은 객체들의 배열 내용에 따라 tbody의 innerHTML을 바꾸어 테이블을 리렌더링
+      $tbody.innerHTML = '';
+      $cnt.textContent = tbody_arr.length;
+      const tbody_arr_sorted = sortArray(tbody_arr, 'grade', 'class_name', 'name');
+        tbody_arr_sorted.forEach((obj, idx) => {
+          const rowHtml = `
+            <tr>
+              <td scope="row" data-id="${idx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+          `;
+          const tds = ['is_enrolled', 'grade', 'class_name', 'student_num', 'name', 'date_of_birth', 'untracked_date'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el] || ''}</td>`).join('');    
+          $tbody.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
+        });
+      tbody_arr = [ ...tbody_arr_sorted ];
+      $tbody.querySelectorAll('td:nth-child(1)').forEach(el => {
+        el.addEventListener('click', event => {
+          if (event.target.tagName !== 'INPUT') return;
+          updateDbButtonsBasedOnSelection();
+        });
+      });
+    }
+
+    async function handleToggleEnrollmentRequest(button) {
+      try {
+        const data = tbody_checked_arr;
+        console.log(data);
+        const options = {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(`${_URL}/neis/toggle_student_enrollment_status_bulk/`, options);
+        if (!response.ok) throw new Error(response.status);
+
+        const res = await response.json();
+        // console.log(res.message);
+        // console.log(res.updated);
+        // console.log(res.skipped);
+        // 요청 성공 시 테이블 갱신
+        checkedIdx_tbody.sort((a, b) => b - a);
+        checkedIdx_tbody.forEach(idx => { tbody_arr.splice(idx, 1); });
+        renderTableFromData(tbody_arr);
+        tbody_checked_arr = [];
+        checkedIdx_tbody = [];
+        document.querySelector('#menu_d_table button.toggleAllcheckboxes').click();
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true]);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', async (event) => {
+      event.preventDefault();
+      const myForm = event.target.closest('form');
+      const { name, dob } = myForm.elements;
+      params = new URLSearchParams();
+      params.append('name', name.value);
+      params.append('dob', dob.value);
+
+      try {
+        const response = await fetch(`${_URL}/neis/search_students_by_partial_name_and_birthdate/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        // console.log(res.student_list);
+        tbody_arr = [ ...res.student_list ];
+        if (tbody_arr.length === 0) {
+          alert('입력한 조건과 일치하는 학생이 없습니다.');
+        }
+        renderTableFromData(tbody_arr);
+        tbody_checked_arr = [];
+        checkedIdx_tbody = [];
+        document.querySelector('#menu_d_table button.toggleAllcheckboxes').click();
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true]);
+        name.value = '';
+        dob.value = '';
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $btn1.addEventListener('click', () => handleToggleEnrollmentRequest($btn1)); // 삭제 승인요청
+    $btn2.addEventListener('click', () => handleToggleEnrollmentRequest($btn2)); // 복원하기
+
+    const sideEffect = tbody => {
+      updateDbButtonsBasedOnSelection();
+    };
+    toggleAllTableCheckboxes('#menu_d_table', sideEffect);
+
+    try {
+      params = new URLSearchParams();
+      params.append('name', '');
+      params.append('dob', '');
+      const response = await fetch(`${_URL}/neis/search_students_by_partial_name_and_birthdate/?${params.toString()}`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      // console.log(res.student_list);
+      tbody_arr = [ ...res.student_list ];
+      renderTableFromData(tbody_arr);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   }
 
   function renderAssessmentCriteriaTable() {
@@ -1756,6 +1909,7 @@
         script_renderAcademicYearClassInfoTable();
         return;
       case MENU.D:
+        script_renderStudentRecordDeletionTable();
         return;
       case MENU.E:
         return;

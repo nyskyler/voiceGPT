@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file
+from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file, session
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy import func
 from operator import itemgetter 
 import os
@@ -47,6 +47,17 @@ def main():
   if g.user.username not in user_list:
     flash('NEIS는 인가받은 사용자만 이용가능합니다. 관리자에게 문의하세요.')
     return redirect(url_for('main.index'))
+  
+  gs = GradeSubject.query.filter_by(is_active=True).first()
+  sg = SchoolGrade.query.filter_by(id=gs.grade_id).first()
+  syi = SchoolYearInfo.query.filter_by(id=sg.school_year_id).first()
+
+  session['active_school_info'] = {
+    'school': syi.school_name,
+    'year': syi.year,
+    'semester': syi.semester,
+  }
+  
   return render_template('neis/neis.html')
 
 
@@ -243,6 +254,13 @@ def update_subject_activation():
         })
 
     db.session.commit()
+
+    if updated:
+      session['active_school_info'] = {
+        'school': school,
+        'year': year,
+        'semester': semester,
+      }
 
     return jsonify({
       "message": f"{len(updated)}개의 교과가 업데이트되었습니다.",
@@ -562,6 +580,156 @@ def deleteGradeClassBySchoolYearSemesterAndName():
       "message": "삭제 완료",
       "deleted": deleted,
       "not_found": not_found
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(f"오류 발생: {e}")
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+
+
+def find_students_orm_way(school_year_info_id, partial_name, date_of_birth=None, is_enrolled=True):
+  Grade = aliased(SchoolGrade)
+  Class = aliased(GradeClass)
+  StudentAlias = aliased(Student)
+
+  base_query = (
+    db.session.query(
+      StudentAlias.name,
+      StudentAlias.is_enrolled,
+      StudentAlias.date_of_birth,
+      StudentAlias.student_num,
+      StudentAlias.untracked_date,
+      Class.class_name,
+      Grade.grade
+    )
+    .join(student_class_association, StudentAlias.id == student_class_association.c.student_id)
+    .join(Class, student_class_association.c.grade_class_id == Class.id)
+    .join(Grade, Class.school_grade_id == Grade.id)
+    .join(SchoolYearInfo, Grade.school_year_id == SchoolYearInfo.id)
+    .filter(
+      SchoolYearInfo.id == school_year_info_id,
+      StudentAlias.name.contains(partial_name),
+      StudentAlias.is_enrolled == is_enrolled
+    )
+  )
+
+  if date_of_birth:
+    base_query = base_query.filter(StudentAlias.date_of_birth == date_of_birth)
+
+  results = base_query.all()
+
+  return [
+    {
+      "name": r.name,
+      "is_enrolled": r.is_enrolled,
+      "date_of_birth": r.date_of_birth.strftime("%Y.%m.%d."),
+      "student_num": r.student_num,
+      "untracked_date": r.untracked_date.strftime("%Y.%m.%d.") if r.untracked_date else '', 
+      "class_name": r.class_name,
+      "grade": r.grade
+    }
+    for r in results
+  ]
+
+
+@bp.route("/search_students_by_partial_name_and_birthdate/", methods=['GET'])
+@login_required
+def search_students_by_partial_name_and_birthdate():
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+  school = school_info['school']
+  year = school_info['year']
+  semester = school_info['semester']
+
+  name = request.args.get('name', '').strip()
+  dob_str = request.args.get('dob', '').strip()
+
+  dob = None
+  if dob_str:
+    try:
+      dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+    except ValueError:
+      return jsonify({"error": "날짜 형식이 올바르지 않습니다. (예: YYYY-MM-DD)"}), 400
+
+  try:
+    syi = SchoolYearInfo.query.filter_by(school_name=school, year=year, semester=semester).first()
+    if not syi:
+      return jsonify({"error": "해당 학기 정보를 찾을 수 없습니다."}), 404
+
+    is_enrolled = False if not name and not dob else True
+
+    student_list = find_students_orm_way(syi.id, name, dob, is_enrolled)
+
+    return jsonify({
+      "message": f"{school} {year}년 {semester}학기 학생 정보 조회 완료",
+      "student_list": student_list
+    }), 200
+
+  except Exception as e:
+    print(f"오류 발생: {e}")
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+
+@bp.route("/toggle_student_enrollment_status_bulk/", methods=['PATCH'])
+@login_required
+def toggle_student_enrollment_status_bulk():
+  data = request.get_json()
+  if not isinstance(data, list):
+    return jsonify({"error": "Invalid request format. Expected a list."}), 400
+
+  updated = []
+  skipped = []
+
+  try:
+    for item in data:
+      try:
+        _name = item.get('name')
+        _student_num = item.get('student_num')
+        dob_str = item.get('date_of_birth')
+        _is_enrolled = item.get('is_enrolled')
+
+        # 필수값 검증
+        if not all([_name, _student_num, dob_str]) or not isinstance(_is_enrolled, bool):
+          skipped.append({"item": item, "reason": "Invalid fields"})
+          continue
+
+        # 생년월일 파싱
+        _date_of_birth = datetime.strptime(dob_str, "%Y.%m.%d.").date()
+        new_status = not _is_enrolled
+
+        student = Student.query.filter_by(
+          name=_name,
+          student_num=_student_num,
+          date_of_birth=_date_of_birth
+        ).first()
+
+        if not student:
+          skipped.append({"item": item, "reason": "Student not found"})
+          continue
+
+        student.is_enrolled = new_status
+        student.untracked_date = None if new_status else datetime.now(tz('Asia/Seoul'))
+
+        updated.append({
+          "name": _name,
+          "student_num": _student_num,
+          "date_of_birth": dob_str,
+          "is_enrolled": new_status,
+          "untracked_date": student.untracked_date.strftime("%Y.%m.%d.") if student.untracked_date else '',
+        })
+      except Exception as inner_e:
+        skipped.append({"item": item, "reason": f"Error: {str(inner_e)}"})
+
+    db.session.commit()
+
+    return jsonify({
+      "message": f"{len(updated)}명 학생의 재학여부가 업데이트되었습니다.",
+      "updated": updated,
+      "skipped": skipped
     }), 200
 
   except Exception as e:
