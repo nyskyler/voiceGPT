@@ -1,5 +1,6 @@
 from voiceGPT import db
 from datetime import datetime
+from sqlalchemy import asc
 from sqlalchemy.sql import func
 import enum
 from pytz import timezone as tz
@@ -232,7 +233,7 @@ class AssessmentArea(db.Model):
   area = db.Column(db.String(50), nullable=False)
 
   grade_subject = db.relationship('GradeSubject', back_populates='assessment_areas')
-  criteria = db.relationship('AchievementCriterion', back_populates='assessment_area', cascade="all, delete")
+  criteria = db.relationship('AchievementCriterion', back_populates='assessment_area', order_by=lambda: asc(AchievementCriterion.sort_order), cascade="all, delete")
   observations = db.relationship('Observation', back_populates='area', cascade="all, delete")
 
 
@@ -245,6 +246,7 @@ class AchievementCriterion(db.Model):
   evaluation_item = db.Column(db.Text, nullable=False)
   is_assessed = db.Column(db.Boolean, default=False, nullable=False)
   is_observed = db.Column(db.Boolean, default=False, nullable=False)
+  sort_order = db.Column(db.Integer, default=100, nullable=False)
 
   assessment_area = db.relationship('AssessmentArea', back_populates='criteria')
   evaluation_criteria = db.relationship('EvaluationCriteria', back_populates='achievement_criterion', cascade="all, delete")

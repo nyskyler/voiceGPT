@@ -2,8 +2,10 @@ from flask import Blueprint, jsonify, url_for, render_template, flash, request, 
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, aliased
+from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 from operator import itemgetter 
+from collections import defaultdict
 import os
 import json
 import configparser
@@ -13,10 +15,11 @@ import csv
 import pprint
 import io
 import base64
+import traceback
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
-from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association
+from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria
 from pathlib import Path
 from PIL import Image, ExifTags
 from datetime import datetime, timedelta, timezone
@@ -736,3 +739,517 @@ def toggle_student_enrollment_status_bulk():
     db.session.rollback()
     print(f"오류 발생: {e}")
     return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+
+@bp.route("/get_active_grades/", methods=['GET'])
+@login_required
+def get_active_grades():
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+  school = school_info['school']
+  year = school_info['year']
+  semester = school_info['semester']
+
+  try: 
+    school_year = SchoolYearInfo.query.filter_by(
+      school_name=school, year=year, semester=semester
+    ).first()
+
+    if not school_year:
+      return jsonify({"error": "SchoolYearInfo not found."}), 400
+    
+    school_grades = SchoolGrade.query.filter_by(
+      school_year_id=school_year.id
+    ).order_by("grade").all()
+
+    if not school_grades:
+      return jsonify({"error": "SchoolGrade not found."}), 400
+    
+    active_grades = [sg.grade for sg in school_grades]
+    
+    return jsonify({
+      "year": year,
+      "semester": semester,
+      "active_grades": active_grades
+    }), 200
+
+  except Exception as e:
+    print(f"오류 발생: {e}")
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+
+@bp.route("/get_subjects_by_grade/<string:_grade>", methods=['GET'])
+@login_required
+def get_subjects_by_grade(_grade):
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+  school, year, semester = itemgetter('school', 'year', 'semester')(school_info)
+
+  try: 
+    school_year = SchoolYearInfo.query.filter_by(
+      school_name=school, year=year, semester=semester
+    ).first()
+
+    if not school_year:
+      return jsonify({"error": "SchoolYearInfo not found."}), 400
+    
+    school_grade = SchoolGrade.query.filter_by(
+      school_year_id=school_year.id, grade=_grade
+    ).first()
+
+    if not school_grade:
+      return jsonify({"error": "SchoolGrade not found."}), 400
+    
+    subjects = [gs.subject.value for gs in school_grade.subjects]
+    
+    return jsonify({
+      "grade": _grade,
+      "subjects": subjects,
+    }), 200
+
+  except Exception as e:
+    print(f"오류 발생: {e}")
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+
+@bp.route("/get_fields_by_subject/", methods=['GET'])
+@login_required
+def get_fields_by_subject():
+  _grade = request.args.get('grade')
+  _subject = request.args.get('subject')
+
+  if not (_grade and _subject):
+    return jsonify({
+      "error": "Missing required parameters.",
+      "detail": {
+        "grade": _grade,
+        "subject": _subject,
+      }
+    }), 400
+
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+  try:
+    school, year, semester = itemgetter('school', 'year', 'semester')(school_info)
+    
+    school_year = SchoolYearInfo.query.filter_by(
+      school_name=school, year=year, semester=semester
+    ).first()
+    if not school_year:
+      return jsonify({"error": "SchoolYearInfo not found."}), 400
+
+    school_grade = SchoolGrade.query.filter_by(
+      school_year_id=school_year.id, grade=_grade
+    ).first()
+    if not school_grade:
+      return jsonify({"error": "SchoolGrade not found."}), 400
+
+    try:
+      enum_subject = SubjectEnum(_subject)  # 문자열 → Enum 변환
+    except ValueError:
+      return jsonify({"error": f"Invalid subject value: {_subject}"}), 400
+
+    grade_subject = GradeSubject.query.filter_by(
+      grade_id=school_grade.id, subject=enum_subject
+    ).first()
+    if not grade_subject:
+      return jsonify({"error": "GradeSubject not found."}), 400
+
+    fields = [(field.area, len(field.criteria)) for field in grade_subject.assessment_areas]
+    if not fields:
+      fields = [('-없음-', 0)]
+    else:
+      fields.insert(0, ('-전체-', 0))
+
+    return jsonify({
+      "subject": _subject,
+      "fields": fields,
+    }), 200
+
+  except Exception as e:
+    print(f"오류 발생: {e}")
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+@bp.route("/manage_assessment_areas_by_grade_subject/", methods=['POST'])
+@login_required
+def manage_assessment_areas_by_grade_subject():
+  data = request.get_json()
+  if not isinstance(data, dict):
+    return jsonify({"error": "Invalid request format. Expected a dict."}), 400
+
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+  try:
+    school, year, semester = itemgetter('school', 'year', 'semester')(school_info)
+    grade, subject = itemgetter('grade', 'subject')(data['extraInfo'])
+    del data['extraInfo']
+
+    school_year = SchoolYearInfo.query.filter_by(
+      school_name=school, year=year, semester=semester
+    ).first()
+    if not school_year:
+      return jsonify({"error": "SchoolYearInfo not found."}), 400
+
+    school_grade = SchoolGrade.query.filter_by(
+      school_year_id=school_year.id, grade=grade
+    ).first()
+    if not school_grade:
+      return jsonify({"error": "SchoolGrade not found."}), 400
+
+    try:
+      enum_subject = SubjectEnum(subject)  # 문자열 → Enum 변환
+    except ValueError:
+      return jsonify({"error": f"Invalid subject value: {subject}"}), 400
+
+    grade_subject = GradeSubject.query.filter_by(
+      grade_id=school_grade.id, subject=enum_subject
+    ).first()
+
+    if not grade_subject:
+      return jsonify({"error": "GradeSubject not found."}), 400  
+    
+    fieldsList = AssessmentArea.query.filter_by(subject_id=grade_subject.id)
+    keys_to_delete = []
+    for idx, field in enumerate(fieldsList, start=1):
+      idx = str(idx)
+      if idx in data:
+        if data[idx] != field.area:
+          field.area = data[idx]
+        keys_to_delete.append(idx)
+      else:
+        db.session.delete(field)
+
+    for k in keys_to_delete:
+      del data[k]
+
+    for val in data.values():
+      field = AssessmentArea(
+        subject_id=grade_subject.id,
+        area=val
+      )
+      db.session.add(field)
+
+    db.session.commit()
+    return jsonify({
+      "message": "영역명 처리 완료",
+    }), 200
+  except Exception as e:
+    db.session.rollback()
+    print(f"오류 발생: {e}")
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+# 💡 공통 에러 응답 유틸
+def error_response(message, code=400, detail=None):
+  response = {"error": message}
+  if detail:
+    response["detail"] = detail
+  return jsonify(response), code
+
+# 💡 중복된 학사정보 조회 로직 정리
+class SchoolContext:
+  def __init__(self, session_data, grade_str, subject_str):
+    self.school_info = session_data
+    self.grade_str = grade_str
+    self.subject_str = subject_str
+
+    self.school_year = None
+    self.school_grade = None
+    self.grade_subject = None
+
+  def resolve(self):
+    try:
+      school, year, semester = itemgetter('school', 'year', 'semester')(self.school_info)
+
+      self.school_year = SchoolYearInfo.query.filter_by(
+        school_name=school, year=year, semester=semester
+      ).first()
+      if not self.school_year:
+        return error_response("SchoolYearInfo not found.")
+
+      self.school_grade = SchoolGrade.query.filter_by(
+        school_year_id=self.school_year.id, grade=self.grade_str
+      ).first()
+      if not self.school_grade:
+        return error_response("SchoolGrade not found.")
+
+      try:
+        enum_subject = SubjectEnum(self.subject_str)
+      except ValueError:
+        return error_response(f"Invalid subject value: {self.subject_str}")
+
+      self.grade_subject = GradeSubject.query.filter_by(
+        grade_id=self.school_grade.id, subject=enum_subject
+      ).first()
+
+      if not self.grade_subject:
+        return error_response("GradeSubject not found.")
+
+    except Exception as e:
+      return error_response("학교 정보 처리 중 오류가 발생했습니다.", 500, str(e))
+
+    return None  # 성공 시 None 반환
+
+# 성취기준 조회 엔드포인트
+@bp.route("/get_achievement_criteria_by_grade_subject_area/", methods=['GET'])
+@login_required
+def get_achievement_criteria_by_grade_subject_area():
+  grade = request.args.get('grade')
+  subject = request.args.get('subject')
+  field = request.args.get('field')
+
+  if not (grade and subject and field):
+    return error_response("Missing required parameters.", 400, {
+      "grade": grade,
+      "subject": subject,
+      "field": field
+    })
+
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return error_response("활성화된 학교 정보가 없습니다.")
+
+  # 공통 학사 정보 조회
+  context = SchoolContext(school_info, grade, subject)
+  err = context.resolve()
+  if err:
+    return err
+
+  try:
+    # 영역 조회 (selectinload로 N+1 회피)
+    if field == '-전체-':
+      areas = AssessmentArea.query.options(
+        selectinload(AssessmentArea.criteria)
+      ).filter_by(subject_id=context.grade_subject.id).all()
+    else:
+      areas = AssessmentArea.query.options(
+        selectinload(AssessmentArea.criteria)
+      ).filter_by(subject_id=context.grade_subject.id, area=field).all()
+
+    # 성취기준 정리
+    result = defaultdict(list)
+    for area in areas:
+      for criterion in area.criteria:
+        result[area.area].append([
+          criterion.criterion,
+          criterion.evaluation_item,
+          criterion.is_assessed,
+          criterion.is_observed
+        ])
+
+    return jsonify({
+      "message": "성취기준 조회 완료",
+      "criteria": result
+    }), 200
+
+  except Exception as e:
+    print(f"[ERROR] 성취기준 조회 실패: {e}")
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/update_achievement_criteria_records/", methods=['POST'])
+@login_required
+def update_achievement_criteria_records():
+  try:
+    data = request.get_json()
+    basic_info = data.get('basicInfo')
+    if not basic_info:
+      return jsonify({"error": "기본 정보 누락"}), 400
+
+    grade = basic_info['grade']
+    subject_label = basic_info['subject']
+
+    school_info = session.get('active_school_info')
+    if not school_info:
+      return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+    context = SchoolContext(school_info, grade, subject_label)
+    err = context.resolve()
+    if err:
+      return err
+
+    try:
+      subject_enum = SubjectEnum(subject_label)
+    except ValueError:
+      return jsonify({"error": "올바르지 않은 교과명입니다."}), 400
+
+    grade_subject = GradeSubject.query.filter_by(
+      id=context.grade_subject.id, subject=subject_enum
+    ).first()
+
+    if not grade_subject:
+      return jsonify({"error": "해당 교과 정보가 없습니다."}), 404
+
+    # 클라이언트로부터 온 분야별 성취기준 처리
+    for area in grade_subject.assessment_areas:
+      area_data = data.get(area.area, {})
+      if not isinstance(area_data, dict) or not area_data:
+        continue
+
+      existing_criteria = area.criteria
+      matched_keys = set(area_data.keys())
+      max_existing_index = 0
+
+      for idx, criterion in enumerate(existing_criteria, start=1):
+        str_idx = str(idx)
+        if str_idx in area_data:
+          crit, eval_item, sort_order = area_data[str_idx]
+          criterion.criterion = crit
+          criterion.evaluation_item = eval_item
+          criterion.sort_order = int(sort_order)
+          max_existing_index = idx
+        else:
+          db.session.delete(criterion)
+
+      #새 항목 추가
+      next_idx = max_existing_index + 1
+      while str(next_idx) in area_data:
+        crit, eval_item, sort_order = area_data[str(next_idx)]
+        db.session.add(AchievementCriterion(
+          area_id=area.id,
+          criterion=crit,
+          evaluation_item=eval_item,
+          sort_order = int(sort_order) if str(sort_order).strip().isdigit() else 100
+        ))
+        next_idx += 1
+
+    db.session.commit()
+    return jsonify({"success": True}), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({"error": "Server error", "details": str(e)}), 500
+  
+
+@bp.route("/get_evaluation_criteria_by_achievement_criterion/", methods=['POST'])
+@login_required
+def get_evaluation_criteria_by_achievement_criterion():
+  data = request.get_json()
+  if not data:
+    return jsonify({"error": "Invalid request."}), 400
+
+  _grade, _subject, _field, _criterion, _evaluation = itemgetter(
+    'grade', 'subject', 'field', 'criterion', 'evaluation'
+  )(data)
+
+  if not (_grade and _subject and _field and _criterion and _evaluation):
+    return error_response("Missing required parameters.", 400, {
+      "grade": _grade,
+      "subject": _subject,
+      "field": _field,
+      "criterion": _criterion,
+      "evaluation": _evaluation
+    })
+
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return error_response("활성화된 학교 정보가 없습니다.")
+
+  context = SchoolContext(school_info, _grade, _subject)
+  err = context.resolve()
+  if err:
+    return err
+
+  try:
+    area = AssessmentArea.query.filter_by(
+      subject_id=context.grade_subject.id, area=_field
+    ).first()
+    if not area:
+      return jsonify({"error": "AssessmentArea not found."}), 404
+
+    criterion = AchievementCriterion.query.filter_by(
+      area_id=area.id, criterion=_criterion, evaluation_item=_evaluation
+    ).first()
+    if not criterion:
+      return jsonify({"error": "AchievementCriterion not found."}), 404
+
+    records = EvaluationCriteria.query.filter_by(criterion_id=criterion.id).order_by(EvaluationCriteria.step).all()
+    result = [[r.level_name, r.description] for r in records]
+
+    return jsonify({
+      "message": "평가기준 조회 완료",
+      "criterion_id": criterion.id,
+      "moddable": criterion.is_assessed or criterion.is_observed,
+      "result": result,
+    }), 200
+
+  except Exception as e:
+    print(f"[ERROR] 평가기준 조회 실패: {e}")
+    return error_response("서버 오류 발생", 500, str(e))
+
+
+@bp.route("/manage_evaluation_criteria_records/", methods=['POST'])
+@login_required
+def manage_evaluation_criteria_records():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다."}), 400
+
+    criterion_id_raw = data.get('criterionId')
+    if not criterion_id_raw:
+      return jsonify({"error": "기본 정보 누락: criterionId"}), 400
+
+    try:
+      criterion_id = int(criterion_id_raw)
+    except ValueError:
+      return jsonify({"error": "criterionId는 정수여야 합니다."}), 400
+
+    del data['criterionId']
+
+    existing = EvaluationCriteria.query.filter_by(criterion_id=criterion_id).all()
+    existing_dict = {c.step: c for c in existing}
+
+    incoming_steps = {int(k): v for k, v in data.items()}
+
+    # 업데이트 또는 생성
+    for step, [level_name, description] in incoming_steps.items():
+      if step in existing_dict:
+        existing_dict[step].level_name = level_name
+        existing_dict[step].description = description
+      else:
+        db.session.add(EvaluationCriteria(
+          criterion_id=criterion_id,
+          step=step,
+          level_name=level_name,
+          description=description
+        ))
+
+    # 삭제할 항목 제거
+    incoming_step_set = set(incoming_steps.keys())
+    for step, obj in existing_dict.items():
+      if step not in incoming_step_set:
+        db.session.delete(obj)
+
+    db.session.commit()
+
+    records = EvaluationCriteria.query.filter_by(criterion_id=criterion_id).order_by(EvaluationCriteria.step).all()
+    result = [[r.level_name, r.description] for r in records]
+
+    return jsonify({
+      "message": "평가기준 저장 완료",
+      "result": result,
+      "saved": len(incoming_steps),
+      "deleted": len([s for s in existing_dict if s not in incoming_step_set])
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500

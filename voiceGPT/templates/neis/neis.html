@@ -6,6 +6,7 @@
     flex-direction: row;
     height: 94vh;
   }
+
   .sideBar {
     display: flex;
     flex-direction: column;
@@ -13,27 +14,34 @@
     border-right: 2px solid #cecfd1;
     overflow-y: auto;
   }
+
   .sideBar-hidden {
     display: none;
     padding: 0px;
   }
+
   .contentWindow {
     display: flex;
     flex-direction: column;
     flex: auto;
     /* border-left: 1px solid #cecfd1; */
-    transition: flex 0.5s ease; /* 슬라이드 애니메이션 */
+    transition: flex 0.5s ease;
+    /* 슬라이드 애니메이션 */
   }
+
   .contentWindow-expanded {
-    flex-grow: 1; /* 부모 너비를 기준으로 남은 공간 채우기 */
+    flex-grow: 1;
+    /* 부모 너비를 기준으로 남은 공간 채우기 */
     transition: flex-grow 0.5s ease;
   }
+
   #content_header {
     display: flex;
     flex-flow: row nowrap;
     justify-content: space-between;
     padding: 1rem 0.5rem 0.2rem 0;
   }
+
   #select_form {
     display: flex;
     flex-flow: row wrap;
@@ -45,10 +53,12 @@
     margin-left: 0.3rem;
     margin-right: 1rem;
   }
+
   #content_wrapper {
     padding: 0.5rem 1rem 0.5rem 0.3rem;
     flex-grow: 1;
   }
+
   .achievementStandardsAndAssessment {
     display: flex;
     flex-direction: row;
@@ -56,59 +66,106 @@
     color: #3a5877;
     margin-top: 0.3rem;
   }
-  .achievementStandardsAndAssessment > div{
+
+  .achievementStandardsAndAssessment>div {
     padding: 1rem 0 1rem 0;
     border-top: 1.5px solid #74787d;
     border-bottom: 1px solid #e7e8e8;
   }
-  .achievementStandardsAndAssessment > div:nth-child(2n+1) {
+
+  .achievementStandardsAndAssessment>div:nth-child(2n+1) {
     background-color: #eff0f5;
     text-align: center;
   }
+
   .toggleAllcheckboxes {
     padding: 0px;
     border: none;
   }
-  .inputField, .inputField:focus {
+
+  .inputField,
+  .inputField:focus {
     border: 1px solid #bb395a;
     box-shadow: none;
   }
-  #menu_e2_content, #menu_k_content, #menu_m_content, #menu_n_content {
+
+  #menu_e2_content,
+  #menu_k_content,
+  #menu_m_content,
+  #menu_n_content {
     display: flex;
     flex-flow: row wrap;
     height: 100%;
   }
-  #menu_e2_content_left, #menu_k_content_left, #menu_m_content_left, #menu_n_content_left, #menu_b_content_table1, #menu_b_content_table2 {
+
+  #menu_e2_content_left,
+  #menu_k_content_left,
+  #menu_m_content_left,
+  #menu_n_content_left,
+  #menu_b_content_table1,
+  #menu_b_content_table2 {
     position: relative;
     display: flex;
     flex-direction: column;
     /* padding-right: 0.4rem; */
   }
-  #menu_e2_content_right, #menu_k_content_right, #menu_m_content_right, #menu_n_content_right {
+
+  #menu_e2_content_right,
+  #menu_k_content_right,
+  #menu_m_content_right,
+  #menu_n_content_right {
     position: relative;
     display: flex;
     flex-direction: column;
     padding-left: 0.8rem;
   }
-  #menu_e1_content, #menu_g_content, #menu_h_content, #menu_i_content, #menu_j_content, #menu_b_content, #menu_c_content, #menu_d_content {
+
+  #menu_e1_content,
+  #menu_g_content,
+  #menu_h_content,
+  #menu_i_content,
+  #menu_j_content,
+  #menu_b_content,
+  #menu_c_content,
+  #menu_d_content {
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
   }
+
   #menu_g_table {
     margin-top: 0.5rem;
   }
-  #menu_e1_table, #menu_e2_table_1, #menu_e2_table_2, #menu_g_table, #menu_h_table, #menu_i_table, #menu_j_table, #menu_k_table_1, #menu_k_table_2, #menu_m_table_1, #menu_n_table_1, #menu_n_table_2, #menu_b_table, #menu_c_table, #menu_d_table {
+
+  #menu_e1_table,
+  #menu_e2_table_1,
+  #menu_e2_table_2,
+  #menu_g_table,
+  #menu_h_table,
+  #menu_i_table,
+  #menu_j_table,
+  #menu_k_table_1,
+  #menu_k_table_2,
+  #menu_m_table_1,
+  #menu_n_table_1,
+  #menu_n_table_2,
+  #menu_b_table,
+  #menu_c_table,
+  #menu_d_table {
     flex-grow: 1;
   }
+
   .accordion-body {
     padding: 0.3rem 0rem 0.3rem 0.6rem;
     border-top: 0.5px solid #cecfd1;
   }
-  .list-group-item:hover, .accordion-button:hover {
+
+  .list-group-item:hover,
+  .accordion-button:hover {
     color: #3d64dc;
   }
+
   .list-group-item {
     font-size: 0.8rem;
     color: #68758E;
@@ -116,14 +173,17 @@
     border: none;
     cursor: pointer;
   }
+
   .accordion-button {
     color: #393372;
     padding: 0.5rem 1rem 0.5rem 0.6rem;
   }
+
   .list-group-item.active {
     color: #3d64dc;
     background-color: transparent;
   }
+
   #toggle-button {
     /* position: absolute; */
     position: relative;
@@ -131,6 +191,7 @@
     border: none;
     /* left: 16.669%; */
   }
+
   #toggle-button button {
     color: #ffffff;
     background-color: #263574;
@@ -138,42 +199,66 @@
     height: 3.5rem;
     padding: 1.5px;
   }
+
   .form-select-sm {
     font-size: 0.8rem;
     padding: 0;
     padding-left: 1rem;
   }
+
   .select-width-sm {
     width: 6.5rem;
     height: 1.4rem;
   }
+
   .select-width-md {
     width: 7.9rem;
     height: 1.4rem;
   }
+
   .select-width-lg {
     width: 9.3rem;
     height: 1.4rem;
   }
+
   .select-width-xl {
     width: 10.7rem;
     height: 1.4rem;
   }
+
   .select-width-xxl {
     width: 12.1rem;
     height: 1.4rem;
   }
+
+  .select-width-full {
+    width: 100%;
+    height: 1.4rem;
+  }
+
   .form-label {
     color: #bb395a;
     font-size: 0.8rem;
   }
-  .form-select, .form-select:focus {
+
+  .form-select,
+  .form-select:focus {
     border: 1px solid #bb395a;
     outline: none;
     box-shadow: none;
     display: inline-block;
     vertical-align: middle;
   }
+
+  textarea, textarea:focus {
+    border: 1px solid #bb395a;
+    border-radius: 5px;
+    outline: none;
+    box-shadow: none;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
   #submitBtn {
     position: absolute;
     width: 3.5rem;
@@ -182,10 +267,13 @@
     right: 0.7rem;
     font-size: 0.8rem;
   }
+
   .fixed-label {
     display: inline-block;
-    width: 100px; /* 원하는 너비 */
+    width: 100px;
+    /* 원하는 너비 */
   }
+
   #subselection {
     display: flex;
     flex-flow: row nowrap;
@@ -194,63 +282,82 @@
     margin-left: 0.3rem;
     margin-right: 1rem;
   }
+
   .subselectionBtn {
     flex: auto;
     height: 3rem;
-    background-color: transparent;        
-    border: 1px solid #8a8e98;               
-    color: #8a8e98;                      
-    border-radius: 8px;         
-    margin-top: 0.4rem;        
-    padding: 0.5rem 0.8rem;                
-    font-weight: normal;     
-    font-size: 0.9rem;         
+    background-color: transparent;
+    border: 1px solid #8a8e98;
+    color: #8a8e98;
+    border-radius: 8px;
+    margin-top: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    font-weight: normal;
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;   
+    transition: all 0.2s ease-in-out;
   }
+
   /* 클릭되었을 때 스타일 (예: .active 클래스 추가 시) */
   .subselectionBtn.active {
-    border: 2px solid #3772ff;                 
-    color: black;                        
-    font-weight: bold;                  
+    border: 2px solid #3772ff;
+    color: black;
+    font-weight: bold;
   }
+
   .btn {
     margin-left: 0.4rem;
     font-size: 0.7rem;
     padding: 0.2rem 0.4rem 0.2rem 0.4rem;
   }
+
   .table-banner {
     display: inline-block;
     position: absolute;
     right: 0rem;
   }
+
   .table_caption {
     font-weight: 500;
     font-size: 0.75rem;
     color: #3a5877;
   }
+
   .table thead th {
     position: sticky;
     top: 0;
-    background-color: #eff0f5; /* 헤더 배경색 설정 */
-    z-index: 1; /* 다른 콘텐츠보다 위에 표시되도록 설정 */
+    background-color: #eff0f5;
+    /* 헤더 배경색 설정 */
+    z-index: 1;
+    /* 다른 콘텐츠보다 위에 표시되도록 설정 */
     font-weight: 500;
     font-size: 0.75rem;
     color: #3a5877;
   }
+
   .table tbody td {
     font-weight: 500;
     font-size: 0.75rem;
     color: #3a5877;
   }
-  input[type="text"], input[type="number"] {
+
+  input[type="text"],
+  input[type="number"] {
     font-size: 0.8rem;
+    text-align: center;
   }
+
   .form-check-input:focus {
     box-shadow: none;
   }
+
   #dob {
     font-size: 0.8rem;
+  }
+  input.eval_input, input.eval_input:focus {
+    border: 0px;
+    outline: none;
+    box-shadow: none;
   }
 </style>
 <div class="container-fluid" style="padding: 0px;">
@@ -259,7 +366,9 @@
       <div class="accordion accordion-flush" id="accordionFlushExample">
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseOne" aria-expanded="true" aria-controls="panelsStayOpen-collapseOne">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#panelsStayOpen-collapseOne" aria-expanded="true"
+              aria-controls="panelsStayOpen-collapseOne">
               학교정보
             </button>
           </h2>
@@ -275,7 +384,9 @@
         </div>
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseTwo" aria-expanded="false" aria-controls="panelsStayOpen-collapseTwo">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#panelsStayOpen-collapseTwo" aria-expanded="false"
+              aria-controls="panelsStayOpen-collapseTwo">
               평가계획
             </button>
           </h2>
@@ -289,7 +400,9 @@
         </div>
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseThree" aria-expanded="false" aria-controls="panelsStayOpen-collapseThree">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#panelsStayOpen-collapseThree" aria-expanded="false"
+              aria-controls="panelsStayOpen-collapseThree">
               학생평가
             </button>
           </h2>
@@ -307,7 +420,9 @@
         </div>
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseFour" aria-expanded="false" aria-controls="panelsStayOpen-collapseFour">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#panelsStayOpen-collapseFour" aria-expanded="false"
+              aria-controls="panelsStayOpen-collapseFour">
               성적조회
             </button>
           </h2>
@@ -322,7 +437,9 @@
         </div>
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseFive" aria-expanded="false" aria-controls="panelsStayOpen-collapseFive">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#panelsStayOpen-collapseFive" aria-expanded="false"
+              aria-controls="panelsStayOpen-collapseFive">
               관찰기록관리
             </button>
           </h2>
@@ -341,7 +458,7 @@
     </div>
     <div id="content_window" class="contentWindow col-12 col-sm-9 col-xl-10">
       <div id="content_header"></div>
-      <div id="subselection" class="mb-2" ></div>
+      <div id="subselection" class="mb-2"></div>
       <form id="select_form">
         <div class="d-flex col col-xl-11">
           <div id="select_wrapper" style="flex-grow: 1;" class="row row-cols-xxl-5"></div>
@@ -379,9 +496,9 @@
   const testURL = 'http://127.0.0.1:8080';
   const localURL = 'http://172.30.1.25:8080';
   let _URL = null;
-  if (window.location.href.split('/')[2] === '127.0.0.1:8080'){
+  if (window.location.href.split('/')[2] === '127.0.0.1:8080') {
     _URL = testURL;
-  } else if (window.location.href.split('/')[2] === '172.30.1.25:8080'){
+  } else if (window.location.href.split('/')[2] === '172.30.1.25:8080') {
     _URL = localURL;
   } else {
     _URL = productionURL;
@@ -399,23 +516,23 @@
 
   function updateAccordionCssOnClick(target) {
     // 클릭한 부트스트랩 아코디언 컴포넌트의 css를 변경
-    const $btns = document.querySelectorAll('.accordion-button'); 
+    const $btns = document.querySelectorAll('.accordion-button');
     $btns.forEach(btn => {
       const flag = (btn === target) && (btn.getAttribute('aria-expanded') === 'true')
-      const background_color = flag  ? '#EFF3FB' : 'transparent';
+      const background_color = flag ? '#EFF3FB' : 'transparent';
       const font_color = flag ? '#3B4ED9' : '#433D79';
       btn.style.backgroundColor = background_color;
       btn.style.color = font_color;
     });
   }
 
-  function toggleAccordionButtonCss(target) { 
+  function toggleAccordionButtonCss(target) {
     // 클릭한 list-group-item에서 가장 가까운(closest) accordion-button 요소를 찾아 css를 추가하며, 그 대신 다른 accord-button 요소의 css는 초기화
     const $btns = document.querySelectorAll('.accordion-button');
-    const $elem = target.closest('.accordion-item')?.querySelector('button'); 
+    const $elem = target.closest('.accordion-item')?.querySelector('button');
     $btns.forEach(btn => {
       const flag = (btn === $elem)
-      const background_color = flag  ? '#EFF3FB' : 'transparent';
+      const background_color = flag ? '#EFF3FB' : 'transparent';
       const font_color = flag ? '#3B4ED9' : '#433D79';
       btn.style.backgroundColor = background_color;
       btn.style.color = font_color;
@@ -489,7 +606,7 @@
         });
         return html.join('');
       case MENU.G:
-        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm'], 
+        arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm'],
         ['영역', 'field', 'md'], ['성취기준', 'standard', 'md']];
         html = arrayForHTML.map(arr => {
           return createLabeledSelectSpan(...arr);
@@ -561,8 +678,10 @@
   }
 
   const VISIBLE_STATUS_MAP = { // 데이터베이스 상의 데이터(true, false)를 화면에 보여지는 데이터('O', 'X')로 전환하기 위해, 화면 상의 데이터를 키로 전달하면 화면에 보여지는 데이터(값)으로 전환해주는 자바스크립트 객체 상수
-    'true' : 'O',
-    'false' : 'X',
+    true: 'O',
+    false: 'X',
+    null: '',
+    undefined: ''
   };
 
   const updateButtonStatesWithStyles = (...btnArr) => {
@@ -578,7 +697,7 @@
     });
   }
 
-  function toggleAllTableCheckboxes(tableSelector, sideEffect=undefined) {
+  function toggleAllTableCheckboxes(tableSelector, sideEffect = undefined) {
     // 테이블의 선택자를 인자로 받아 해당 테이블 내부에 있는 체크박스를 일괄로 선택하거나 해제하는 toogleAllCheckboxes 토글 버튼의 조작을 정의
     const $tbody = document.querySelector(`${tableSelector} tbody`);
     const $toggleBtn = document.querySelector(`${tableSelector} button.toggleAllcheckboxes`);
@@ -591,14 +710,15 @@
         } else if (checkedNum == totalRowCnt) {
           $toggleBtn.innerHTML = `<i class="fa-solid fa-square-check fs-6" style="color: #4078FF;"></i>`;
         } else {
-          $toggleBtn.innerHTML = `<i class="fa-solid fa-square-minus fs-6" style="color: #4078FF;"></i>`; 
+          $toggleBtn.innerHTML = `<i class="fa-solid fa-square-minus fs-6" style="color: #4078FF;"></i>`;
         }
       }
     });
     $toggleBtn.addEventListener('click', event => {
+      event.preventDefault();
       const classList = Array.from(event.target.classList);
       const checkboxes = $tbody.querySelectorAll('input.form-check-input');
-      if (classList.includes('fa-square')) { 
+      if (classList.includes('fa-square')) {
         checkboxes.forEach(cb => {
           cb.checked = true;
         });
@@ -607,7 +727,7 @@
         checkboxes.forEach(cb => {
           cb.checked = false;
         });
-        $toggleBtn.innerHTML = `<i class="fa-regular fa-square fs-6" style="color: #979aa4; background-color: white;"></i>`;  
+        $toggleBtn.innerHTML = `<i class="fa-regular fa-square fs-6" style="color: #979aa4; background-color: white;"></i>`;
       }
       if (sideEffect) {
         sideEffect($tbody);
@@ -616,7 +736,7 @@
   }
 
   function sortArray(arr, ...keys) {
-    return arr.sort(function(a, b) {
+    return arr.sort(function (a, b) {
       for (let key of keys) {
         let aValue = a[key];
         let bValue = b[key];
@@ -635,6 +755,29 @@
       }
       return 0; // 전 항목 동일 시
     });
+  }
+
+  function populateSelectOptionsAndSetDisabled(options, $selector, disabled_state = false) {
+    const arr = Array.isArray(options) ? options : [options];
+    const $fragment = document.createDocumentFragment();
+
+    arr.forEach(el => {
+      const $option = document.createElement('option');
+      $option.value = el;
+      $option.textContent = el;  // 필수: 사용자에게 보이는 값 설정
+      $fragment.appendChild($option);
+    });
+
+    $selector.innerHTML = ''; // 기존 옵션 초기화
+    $selector.appendChild($fragment);
+
+    // 유효한 인덱스만 선택하도록 보호
+    if (arr.length > 0) {
+      $selector.selectedIndex = 0;
+    }
+
+    $selector.disabled = disabled_state;
+    $selector.dispatchEvent(new Event('change'));
   }
 
   function renderAcademicYearSemesterTable() { // 애플리케이션이 현재 사용하고 있거나 과거에 사용한 기준년도 및 학기에 관한 기록을 데이터베이스로부터 조회를 통해 얻어낸 후, 이를 테이블 형태로 렌더링 --> MENU.B
@@ -739,7 +882,7 @@
     return html;
   }
 
-  async function script_renderAcademicYearSemesterTable() { 
+  async function script_renderAcademicYearSemesterTable() {
     let tbody1_arr = [];
     let tbody2_arr = [];
     let tbody1_checked_arr = [];
@@ -778,7 +921,7 @@
         updateButtonStatesWithStyles([$btn1, true], [$btn2, true]);
       }
     }
-    
+
     const updateDeactivateButtonState = () => { // tbody2에서 체크된 항목이 있는지 확인하고, 그에 따라 ‘DB 비활성화’ 버튼 (btnB3)의 활성화 상태를 설정
       const $btn3 = document.getElementById('btnB3');
       const checked = $tbody2.querySelectorAll('input:checked');
@@ -792,7 +935,7 @@
         updateButtonStatesWithStyles([$btn3, true]);
       }
     };
-    
+
     const renderTableFromData = (tbody1_arr, tbody2_arr) => { // 테이블의 컬럼명과 값을 담은 객체들의 배열 내용에 따라 tbody의 innerHTML을 바꾸어 테이블을 리렌더링
       $tbody1.innerHTML = '';
       const tbody1_arr_sorted = sortArray(tbody1_arr, 'school', 'year', 'semester', 'grade', 'subject', 'isRecordSavedToDb');
@@ -821,7 +964,7 @@
             <td>${idx + 1}</td>
         `;
         // const tds = Object.entries(obj).map(el => `<td>${VISIBLE_STATUS_MAP[el[1]] || el[1]}</td>`).join('');
-        const tds = ['school', 'year', 'semester', 'grade', 'subject'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el]}</td>`).join('');    
+        const tds = ['school', 'year', 'semester', 'grade', 'subject'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el]}</td>`).join('');
         $tbody2.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
       });
       $tbody2.querySelectorAll('td:nth-child(1)').forEach(el => {
@@ -829,13 +972,13 @@
           if (event.target.tagName !== 'INPUT') return;
           updateDeactivateButtonState();
         });
-      });  
+      });
     }
 
     $selects[0].addEventListener('change', event => {
       let options = null;
       const selected = event.target.value;
-      switch(selected) {
+      switch (selected) {
         case '1학년':
         case '2학년':
           options = `
@@ -888,14 +1031,14 @@
       event.preventDefault();
       const myForm = event.target.closest('form');
       const { school, year, grade, subject } = myForm.elements;
-      const semester = myForm.querySelector('input.semester:checked');      
+      const semester = myForm.querySelector('input.semester:checked');
       const is_validate = [school, year, semester, grade, subject].every(el => el?.value || false);
       if (!is_validate) {
         alert('누락된 입력값이 있거나 형식이 올바르지 않습니다.');
         return
       }
       const exists = [...tbody1_arr, ...tbody2_arr].some(obj => obj.school === school.value.trim() && obj.year == year.value &&
-        obj.semester == semester.value && obj.grade == grade.value && obj.subject == subject.value); 
+        obj.semester == semester.value && obj.grade == grade.value && obj.subject == subject.value);
       if (exists) {
         alert('같은 내용으로 등록된 항목이 있습니다.');
         return
@@ -963,7 +1106,7 @@
       // 서버에 DB 활성화하기 요청
       try {
         // console.log(tbody1_checked_arr);
-        const active = { 'is_active' : true };
+        const active = { 'is_active': true };
         const data = tbody1_checked_arr.map(el => ({ ...el, ...active }));
         // console.log(data);
         const options = {
@@ -974,7 +1117,7 @@
           body: JSON.stringify(data),
         };
         const response = await fetch(`${_URL}/neis/updateSubjectActivation/`, options);
-        if(!response.ok){
+        if (!response.ok) {
           throw new Error(response.status);
         }
         const answer = await response.json();
@@ -998,7 +1141,7 @@
         checkedIdx_tbody1 = [];
         renderTableFromData(tbody1_arr, tbody2_arr);
         document.querySelector('#menu_b_table1 button.toggleAllcheckboxes').click();
-      } catch(error) {
+      } catch (error) {
         console.error('Error: ', error);
       }
     });
@@ -1007,7 +1150,7 @@
       // 서버에 DB 비활성화 요청
       try {
         // console.log(tbody2_checked_arr);
-        const inactive = { 'is_active' : false };
+        const inactive = { 'is_active': false };
         const data = tbody2_checked_arr.map(el => ({ ...el, ...inactive }));
         // console.log(data);
         const options = {
@@ -1018,7 +1161,7 @@
           body: JSON.stringify(data),
         };
         const response = await fetch(`${_URL}/neis/updateSubjectActivation/`, options);
-        if(!response.ok){
+        if (!response.ok) {
           throw new Error(response.status);
         }
         const answer = await response.json();
@@ -1043,7 +1186,7 @@
         checkedIdx_tbody2 = [];
         renderTableFromData(tbody1_arr, tbody2_arr);
         document.querySelector('#menu_b_table2 button.toggleAllcheckboxes').click();
-      } catch(error) {
+      } catch (error) {
         console.error('Error: ', error);
       }
     });
@@ -1148,7 +1291,7 @@
         const tds = ['year', 'grade', 'className', 'numOfStudents', 'created_at', 'updated_at'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el]}</td>`).join('');
         $tbody.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
       });
-      tbody_arr = [ ...tbody_arr_sorted ];
+      tbody_arr = [...tbody_arr_sorted];
       $tbody.querySelectorAll('td:nth-child(1)').forEach(el => {
         el.addEventListener('click', event => {
           if (event.target.tagName !== 'INPUT') return;
@@ -1168,7 +1311,7 @@
       console.log(res.message);
       // console.log(res2.classes);
       // console.log(res2.total);
-      tbody_arr = [ ...res.classes ];
+      tbody_arr = [...res.classes];
       renderTableFromData(tbody_arr);
       $table.style.flexGrow = '0';
     }
@@ -1212,7 +1355,7 @@
         const res = await response.json();
         // console.log(res.message);
         // console.log(res.classList);
-        tbody_arr = [ ...tbody_arr, ...res.classList ];
+        tbody_arr = [...tbody_arr, ...res.classList];
         renderTableFromData(tbody_arr);
         updateButtonStatesWithStyles([$btn1, true]);
         clickable = false;
@@ -1225,7 +1368,7 @@
     $btn2.addEventListener('click', async (event) => { // 반영하기
       try {
         const url = `${_URL}/neis/processGradeClassAndStudentRecords/`;
-        const data = tbody_checked_arr.map(el => ({ ...el, 'school': params.get('school'), 'semester': params.get('semester')}));
+        const data = tbody_checked_arr.map(el => ({ ...el, 'school': params.get('school'), 'semester': params.get('semester') }));
         // console.log(data);
         const options = {
           method: 'POST',
@@ -1256,10 +1399,10 @@
     });
 
     $btn3.addEventListener('click', async (event) => { // 삭제하기
-      if(confirm(`${tbody_checked_arr.length}개의 학급을 삭제하시겠습니까? 학급을 삭제해도 소속 학생의 정보는 삭제되지 않습니다.`)){
+      if (confirm(`${tbody_checked_arr.length}개의 학급을 삭제하시겠습니까? 학급을 삭제해도 소속 학생의 정보는 삭제되지 않습니다.`)) {
         try {
           const url = `${_URL}/neis/deleteGradeClassBySchoolYearSemesterAndName/`;
-          const data = tbody_checked_arr.map(el => ({ ...el, 'school': params.get('school'), 'semester': params.get('semester')}));
+          const data = tbody_checked_arr.map(el => ({ ...el, 'school': params.get('school'), 'semester': params.get('semester') }));
           console.log(data);
           const options = {
             method: 'DELETE',
@@ -1337,7 +1480,7 @@
         </div>
       </div>
     `;
-    return html; 
+    return html;
   }
 
   async function script_renderStudentRecordDeletionTable() {
@@ -1372,15 +1515,15 @@
       $tbody.innerHTML = '';
       $cnt.textContent = tbody_arr.length;
       const tbody_arr_sorted = sortArray(tbody_arr, 'grade', 'class_name', 'name');
-        tbody_arr_sorted.forEach((obj, idx) => {
-          const rowHtml = `
+      tbody_arr_sorted.forEach((obj, idx) => {
+        const rowHtml = `
             <tr>
               <td scope="row" data-id="${idx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
           `;
-          const tds = ['is_enrolled', 'grade', 'class_name', 'student_num', 'name', 'date_of_birth', 'untracked_date'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el] || ''}</td>`).join('');    
-          $tbody.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
-        });
-      tbody_arr = [ ...tbody_arr_sorted ];
+        const tds = ['is_enrolled', 'grade', 'class_name', 'student_num', 'name', 'date_of_birth', 'untracked_date'].map(el => `<td>${VISIBLE_STATUS_MAP[obj[el]] || obj[el] || ''}</td>`).join('');
+        $tbody.insertAdjacentHTML('beforeend', rowHtml.concat(tds, "</tr>"));
+      });
+      tbody_arr = [...tbody_arr_sorted];
       $tbody.querySelectorAll('td:nth-child(1)').forEach(el => {
         el.addEventListener('click', event => {
           if (event.target.tagName !== 'INPUT') return;
@@ -1405,9 +1548,6 @@
         if (!response.ok) throw new Error(response.status);
 
         const res = await response.json();
-        // console.log(res.message);
-        // console.log(res.updated);
-        // console.log(res.skipped);
         // 요청 성공 시 테이블 갱신
         checkedIdx_tbody.sort((a, b) => b - a);
         checkedIdx_tbody.forEach(idx => { tbody_arr.splice(idx, 1); });
@@ -1438,7 +1578,7 @@
         }
         const res = await response.json();
         // console.log(res.student_list);
-        tbody_arr = [ ...res.student_list ];
+        tbody_arr = [...res.student_list];
         if (tbody_arr.length === 0) {
           alert('입력한 조건과 일치하는 학생이 없습니다.');
         }
@@ -1474,7 +1614,7 @@
       }
       const res = await response.json();
       // console.log(res.student_list);
-      tbody_arr = [ ...res.student_list ];
+      tbody_arr = [...res.student_list];
       renderTableFromData(tbody_arr);
     } catch (error) {
       console.error('Error:', error);
@@ -1486,30 +1626,31 @@
     const $subselection = document.getElementById('subselection');
     const $btns = $subselection.querySelectorAll('button');
     if (!$btns[0].dataset.clickAttached) {
-      $btns.forEach(btn => {
+      $btns.forEach((btn, idx) => {
         btn.addEventListener('click', () => {
           $btns.forEach(el => {
             el.classList.remove('active');
           });
           btn.classList.add('active');
-          document.getElementById('content_wrapper').innerHTML = renderAssessmentCriteriaTable();
         });
       });
       $btns[0].dataset.clickAttached = 'true';
     }
 
     let html = null;
-    if ($btns[0].classList.contains('active')) {
-      html = `
-      <div id="menu_e1_content">
-        <div class="table-banner">
-          <button type="button" class="btn btn-sm btn-secondary">영역명관리</button>
-          <button type="button" class="btn btn-sm btn-secondary">행추가</button>
-          <button type="button" class="btn btn-sm btn-secondary">저장</button>
-          <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+    html = `
+    <div id="menu_e1_content">
+      <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="assessment_count_1">0</span></div>
+        <div>
+          <button id="btnE1" type="button" class="btn btn-sm btn-primary">영역명관리</button>
+          <button id="btnE2" type="button" class="btn btn-sm btn-secondary" disabled>행추가</button>
+          <button id="btnE3" type="button" class="btn btn-sm btn-secondary" disabled>저장</button>
+          <button id="btnE4" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
         </div>
-        <table id="menu_e1_table" class="table table-hover caption-top table-bordered">
-          <caption class="table_caption">Total <span>0</span></caption>
+      </div>
+      <div style="display: flex; flex-direction: column; height: 70vh; overflow-y: auto;">
+        <table id="menu_e1_table" class="table table-hover table-bordered">
           <thead>
             <tr>
               ${renderSelectAllCheckboxButton(3)}
@@ -1522,26 +1663,58 @@
               <th scope="col" style="width: 6%;">정렬순서</th>
             </tr>
           </thead>
-          <tbody id="menu_e1_tbody">
+          <tbody id="menu_e1_tbody" class="text-center">
             ${renderEmptyTbodyWithMessage(8)}
           </tbody>
         </table>
       </div>
-      `; 
-    } else {
-      html = `
-      <div id="menu_e2_content">
-        <div id="menu_e2_content_left" class="col-12 col-xl-8">
-          <div class="table-banner">
-            <button type="button" class="btn btn-sm btn-secondary">일괄입력</button>
-            <button type="button" class="btn btn-sm btn-secondary">전과목일괄입력</button>
-            <button type="button" class="btn btn-sm btn-secondary">출력</button>
+    </div>
+    <!-- 영역명관리를 위한 모달창 -->
+    <button type="button" id="fieldBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#fieldModal"></button>
+    <div class="modal fade" id="fieldModal" tabindex="-1" aria-labelledby="fieldModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="fieldModalLabel">영역명관리</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <table id="menu_e2_table_1" class="table table-hover caption-top table-bordered">
-            <caption class="table_caption">Total <span>0</span></caption>
+          <div class="modal-body">
+            <form id="fieldForm">
+              <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+                <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;"><span id="field_span"></span>Total <span id="field_count">0</span></div>
+                <div> 
+                  <button id="btnE_1" type="button" class="btn btn-sm btn-primary">행추가</button>
+                  <button id="btnE_2" type="button" class="btn btn-sm btn-primary">저장</button>
+                  <button id="btnE_3" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
+                </div>
+              </div>
+              <div style="height: 50vh; overflow-y: auto;">
+                <table id="menu_e_sub_table" class="table table-hover table-bordered">
+                  <thead>
+                    <tr>
+                      ${renderSelectAllCheckboxButton(3)}
+                      <th scope="col style="width: 17%;">순번</th>
+                      <th scope="col" style="width: 80%;">영역명</th>
+                    </tr>
+                  </thead>
+                  <tbody id="menu_e_sub_tbody" class="text-center">
+                  </tbody>
+                </table>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="menu_e2_content" style="display: none;">
+      <div id="menu_e2_content_left" class="col-12 col-xl-8">
+        <div class="table-header sticky-top bg-white p-0 mt-2 mb-2 d-flex justify-content-between align-items-center">
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="assessment_count_2">0</span></div>
+        </div>
+        <div style="display: flex; flex-direction: column; height: 70vh; overflow-y: auto;">
+          <table id="menu_e2_table_1" class="table table-hover table-bordered">
             <thead>
               <tr>
-                ${renderSelectAllCheckboxButton(5)}
                 <th scope="col" style="width: 20%;">영역명</th>
                 <th scope="col" style="width: 45%;">성취기준</th>
                 <th scope="col" style="width: 30%;">평가요소</th>
@@ -1552,18 +1725,27 @@
             </tbody>
           </table>
         </div>
-        <div id="menu_e2_content_right" class="col-12 col-xl-4">
-          <div class="table-banner">
-            <button type="button" class="btn btn-sm btn-secondary">특수문자</button>
-            <button type="button" class="btn btn-sm btn-secondary">저장</button>
-            <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      </div>
+      <div id="menu_e2_content_right" class="col-12 col-xl-4">
+        <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;"><span class="fw-bold fs-6">평가기준</span>&ensp;Total <span>0</span></div>
+          <div> 
+            <button id="btnE5" type="button" class="btn btn-sm btn-secondary" disabled>저장</button>
+            <button id="btnE6" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
           </div>
-          <table id="menu_e2_table_2" class="table table-hover caption-top table-bordered">
-            <caption class="table_caption mt-1 mb-1" style="padding: 5px 0px 5px 0px;"><span class="fw-bold fs-6">평가기준</span>&ensp;Total <span>0</span>
-              <div style="padding: 0.7rem 0.7rem 0.7rem 0.7rem; background-color: #f3f4f8;">
-                <select id="eval_range" class="form-select form-select-sm select-width-sm"></select>
-              </div>
-            </caption>
+        </div>
+        <div style="padding: 0.4rem 0.7rem 0.5rem 0.7rem; background-color: #f3f4f8;">
+          <select id="eval_range" class="form-select form-select-sm select-width-sm" disabled>
+            <option value="0">단계선택</option>
+            <option value="2">2단계</option>
+            <option value="3">3단계</option>
+            <option value="4">4단계</option>
+            <option value="5">5단계</option>
+            <option value="7">7단계</option>
+          </select>
+        </div>
+        <div style="display: flex; flex-direction: column; height: 65.5vh; overflow-y: auto;">
+          <table id="menu_e2_table_2" class="table table-hover table-bordered">
             <thead>
               <tr>
                 <th scope="col" style="width: 33.3%;">평가단계</th>
@@ -1576,11 +1758,693 @@
           </table>
         </div>
       </div>
-      `; 
-    }
+    </div>
+    `;
     return html;
   }
+
+  async function script_renderAssessmentCriteriaTable() {
+    let params = null;
+    let fieldArr = [];
+    let lastIdx = null;
+    let criteriaArr = [];
+    let mainLastIdx = null;
+    let currentGrade = null;
+    let currentSubject = null;
+    let currentField = null;
+    let currentCriterionId = null;
+    let currentModdable = null;
+    const $submitBtn = document.getElementById('submitBtn');
+    const $year = document.getElementById('year');
+    const $semester = document.getElementById('semester');
+    const $grade = document.getElementById('grade');
+    const $subject = document.getElementById('subject');
+    const $field = document.getElementById('field');
+    const fieldModal = document.getElementById('fieldModal');
+    const $btn1 = document.getElementById('btnE1'); // 영역명관리
+    const $btn2 = document.getElementById('btnE2'); // 행추가
+    const $btn3 = document.getElementById('btnE3'); // 저장
+    const $btn4 = document.getElementById('btnE4'); // 삭제
+    const $btn5 = document.getElementById('btnE5'); // 평가기준 저장
+    const $btn6 = document.getElementById('btnE6'); // 평가기준 삭제
+
+    $('#subselection').on('click', (event) => {
+      const isAttached = event.target.dataset?.clickAttached;
+      $('#menu_e1_content').css({
+        display: isAttached ? 'flex' : 'none',
+        flexGrow: isAttached ? '1' : ''
+      });
+      $('#menu_e2_content').css('display', isAttached ? 'none' : 'flex');
+    });
+
+    const updateFieldButtonsBasedOnSelection = (tbody) => {
+      let delete_flag = false;
+      const $subBtn_2 = document.getElementById('btnE_3'); // 삭제
+      const checked_arr = Array.from(tbody.querySelectorAll('input:checked'));
+
+      const checked_obj = Object.fromEntries(
+        checked_arr.map(el => [
+          el.parentElement.getAttribute('data-id') - 1,
+          el.closest('tr').querySelector('input[type="text"]').value.trim()
+        ])
+      );
+
+      if (checked_arr.length === 0) {
+        updateButtonStatesWithStyles([$subBtn_2, true]);
+        return;
+      }
+
+      for (let i = 0; i < fieldArr.length; i++) {
+        const [, children] = fieldArr[i];
+        if (children == 0 && checked_obj.hasOwnProperty(i.toString())) {
+          delete_flag = false;
+          break;
+        }
+        delete_flag = true;
+      }
+
+      updateButtonStatesWithStyles([$subBtn_2, delete_flag]);
+    };
+
+    const updateCriteriaButtonsBasedOnSelection = () => {
+      let delete_flag = true;
+      if ($("#menu_e1_tbody input:checked").length === 0) { 
+        updateButtonStatesWithStyles([$btn4, delete_flag]);
+        return 
+      }
+
+      delete_flag = $("#menu_e1_tbody input:checked").map(function() {
+        return $(this).closest("tr").find("td").slice(5,7).map(function() {
+          return $(this).text();
+        }).get().join('');
+      }).get().join('').includes('O');
+
+      // console.log(delete_flag);
+      updateButtonStatesWithStyles([$btn4, delete_flag]);
+    };
+
+    const renderAssessmentFieldsBySubject = async () => {
+      const response = await fetch(`${_URL}/neis/get_fields_by_subject/?${params.toString()}`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { subject, fields } = res;
+      const labels = fields.filter(el => !el[0]?.startsWith('-'));
+      fieldArr = [...labels];
+      // console.log(fieldArr);
+
+      const rowHtml = labels.map(([label, editable], i) => `
+        <tr>
+          <td scope="row" data-id="${i + 1}">
+            <input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;">
+          </td>
+          <td>${i + 1}</td>
+          <td>
+            <input type="text" class="form-control inputField select-width-full" maxlength="50"
+                  placeholder="" autocomplete="off" value="${label}" ${editable !== 0 ? 'readonly' : ''}>
+          </td>
+        </tr>
+      `).join('');
+      $('#menu_e_sub_tbody').html(rowHtml);
+      $('#field_span').text(`${$year.value}학년도 ${$semester.value}학기 ${$grade.value} ${$subject.value}`);
+      $('#field_span').css({
+        'color': '#294065',
+        'font-size': '0.9rem',
+        'margin-right': '0.5rem'
+      });
+      $('#field_count').text($('#menu_e_sub_tbody tr').length);
+    }
+
+    const renderAssessmentCriteriaTable1 = async () => {
+      const params = new URLSearchParams();
+      params.set('grade', $grade.value);
+      params.set('subject', $subject.value);
+
+      try {
+        // 1차 요청: 영역명 목록 가져오기
+        const response1 = await fetch(`${_URL}/neis/get_fields_by_subject/?${params.toString()}`);
+        if (!response1.ok) throw new Error(`서버 오류: ${response1.status}`);
+
+        const { fields } = await response1.json();
+        fields.shift(); // '-전체-' 제거
+
+        // 2차 요청: 성취기준 정보 가져오기
+        params.set('field', $field.value);
+        const response2 = await fetch(`${_URL}/neis/get_achievement_criteria_by_grade_subject_area/?${params.toString()}`);
+        if (!response2.ok) throw new Error(`서버 오류: ${response2.status}`);
+
+        const { message, criteria } = await response2.json();
+        // console.log(message);
+
+        let html = '';
+
+        // 테이블 HTML 생성
+        fields.forEach(([label, editable], i) => {
+          const safeLabel = label.replace(/[^\uAC00-\uD7A3\w]+/g, '_');
+          const items = criteria[label] || [];
+          items.forEach(([crit_text, eval_item, assessed, observed], j) => {
+            html += `
+              <tr>
+                <td><input class="form-check-input fs-6" type="checkbox"></td>
+                <td class="${safeLabel}">${i + 1}</td>
+                <td>
+                  <select class="form-select form-select-sm select-width-full"
+                    ${assessed || observed || $field.value !== '-전체-' ? 'disabled' : ''}>
+                    ${fields.map(([fLabel]) => `
+                      <option value="${fLabel}" ${fLabel === label ? 'selected' : ''}>${fLabel}</option>
+                    `).join('')}
+                  </select>
+                </td>
+                <td>
+                  <textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false" ${assessed || observed ? 'readonly' : ''}>${crit_text}</textarea>
+                </td>
+                <td>
+                  <textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false" ${assessed || observed ? 'readonly' : ''}>${eval_item}</textarea>
+                </td>
+                <td>${VISIBLE_STATUS_MAP[assessed]}</td>
+                <td>${VISIBLE_STATUS_MAP[observed]}</td>
+                <td>
+                  <input type="number" class="form-control inputField select-width-full"
+                        min="1" max="${editable}" value="${j + 1}">
+                </td>
+              </tr>
+            `;
+          });
+        });
+
+        // 테이블 렌더링
+        document.querySelector('#menu_e1_tbody').innerHTML = html;
+
+        let html2 = '';
+
+        // 테이블 HTML 생성
+        fields.forEach(([label, editable], i) => {
+          const items = criteria[label] || [];
+          items.forEach(([crit_text, eval_item, assessed, observed]) => {
+            html2 += `
+              <tr>
+                <td class="text-center">${label}</td>
+                <td>${crit_text}</td>
+                <td>${eval_item}</td>
+              </tr>
+            `;
+          });
+        });
+
+        // 테이블 렌더링
+        document.querySelector('#menu_e2_tbody_1').innerHTML = html2;
+
+        // rowspan 적용 및 중복 셀 제거
+        fields.forEach(([label]) => {
+          const safeLabel = label.replace(/[^\uAC00-\uD7A3\w]+/g, '_');
+          const tds = Array.from(document.getElementsByClassName(safeLabel));
+          if (tds.length > 1) {
+            tds[0].setAttribute('rowspan', tds.length);
+            tds.slice(1).forEach(td => td.remove());
+          }
+        });
+
+        // assessment_count 업데이트
+        $('#assessment_count_1').text($('#menu_e1_tbody tr').length);
+        $('#assessment_count_2').text($('#menu_e2_tbody_1 tr').length);
+      
+
+        // 버튼 상태 업데이트
+        updateButtonStatesWithStyles([$btn2, false]);
+        updateButtonStatesWithStyles([$btn3, false]);
+      } catch (error) {
+        console.error('성취기준 렌더링 실패:', error);
+      }
+    };
+
+    const renderEvaluationCriteriaTable = (arr, moddable) => {
+      const tableHtml = $.map(arr, function(el, i) {
+        const rowHtml = `
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; justify-content: center; height: 3.8rem; width: 100%; border: 1px solid #bb395a; border-radius: 5px;">
+                <input type="text" style="background-color: #ffffff;" class="eval_input" maxlength="10" value="${el[0]}" ${moddable ? "" : "disabled"} />
+              </div>
+            </td>
+            <td>
+              <textarea rows="3" maxlength="500" style="background-color: #ffffff; width: 100%; height: 3.8rem; overflow: auto; resize: none;" spellcheck="false" ${moddable ? "" : "disabled"}>${el[1]}</textarea>
+            </td>
+          </tr>      
+        `;
+        return rowHtml;
+      }).join('');
+      
+      // console.log(tableHtml);
+      $("#menu_e2_tbody_2").html(tableHtml);
+      // menu_e2_tbody_2
+    };
+
+    $btn1.addEventListener('click', async (event) => { // 영역명관리 버튼 클릭 시
+      params = new URLSearchParams();
+      params.append('grade', $grade.value);
+      params.append('subject', $subject.value);
+
+      try {
+        renderAssessmentFieldsBySubject();
+        $('#fieldBtn').click();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $('#btnE_1').on('click', () => { // '영역명관리' 모달창의 '행추가' 버튼 클릭 시
+      lastIdx = $('#menu_e_sub_tbody tr:last td:nth-child(2)').text() || 0
+      lastIdx = parseInt(lastIdx);
+      const rowHtml = `
+        <tr>
+          <td scope="row" data-id="${lastIdx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+          <td>${lastIdx + 1}</td>
+          <td><input type="text" class="form-control inputField select-width-full" maxlength="50" placeholder="" autocomplete="off"></td>
+        </tr>
+      `;
+      $('#menu_e_sub_tbody').append(rowHtml);
+      fieldArr = [...fieldArr, ['', 0]];
+      $('#field_count').text($('#menu_e_sub_tbody tr').length);
+    });
+
+    $('#btnE2').on('click', () => { // '행추가' 버튼 클릭 시
+      lastIdx = $("#menu_e1_tbody").index($("tr:last")) === -1 ? 0 : $("#menu_e1_tbody").index($("tr:last"));
+      const tdForField = currentField.startsWith('-') ? `
+        <select class="form-select form-select-sm select-width-full">
+          ${$("#field option:gt(0)").map(function() {
+            return this.outerHTML;
+          }).get().join('')};
+        </select>
+      ` : `<select class="form-select form-select-sm select-width-full" disabled>
+            <option value="${currentField}">${currentField}</option>
+          </select>`;
+
+      const rowHtml = `
+        <tr>
+          <td scope="row" data-id="${lastIdx + 1}"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+          <td></td>
+          <td>${tdForField}</td>
+          <td><textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false"></textarea></td>
+          <td><textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false"></textarea></td>
+          <td></td>
+          <td></td>
+          <td><input type="text" class="form-control inputField select-width-full" maxlength="3" placeholder="" autocomplete="off" readonly></input></td>
+          
+        </tr>
+      `;
+
+      $("#menu_e1_tbody").append(rowHtml);
+      $('#assessment_count_1').text($('#menu_e1_tbody tr').length);
+    });
+
+    $('#btnE_2').on('click', async (event) => { // '영역명관리' 모달창의 '저장' 버튼 클릭 시
+      let save_flag = false;
+      const tbody = document.getElementById('menu_e_sub_table');
+      const tbody_arr = Array.from(tbody.querySelectorAll('input[type="text"]'));
+      const tbody_obj = Object.fromEntries(
+        tbody_arr.map(el => [
+          el.closest('tr').querySelector('td').getAttribute('data-id') - 1,
+          el.value.trim()
+        ])
+      );
+
+      if (fieldArr.length > 0) {
+        save_flag = fieldArr.every((el, idx) => el[0] === tbody_obj[idx.toString()]);
+      }
+
+      const data = $('#fieldForm input[type="text"]').map((i, el) => $(el).val().trim()).get();
+      if (save_flag && (fieldArr.length === data.length)) {
+        alert('변경된 내용이 없습니다.');
+        return
+      } else if (data.some(el => !el)) {
+        alert('비어있는 셀이 있어 저장할 수 없습니다.');
+        return
+      }
+
+      // 서버에 fetch 요청 후 갱신된 영역명 리스트를 받아 변수를 재할당하고 데이터를 화면에 렌더링하기
+      let fetchData = {};
+      $('#menu_e_sub_table tr:gt(0)').each(function () {
+        const $tds = $(this).find("td");
+        const idx = $tds.eq(1).text().trim();
+        const field = $tds.eq(2).find("input").val()?.trim() || '';
+        const temp = { [idx]: field };
+        fetchData = { ...fetchData, ...temp };
+      })
+
+      const tempInfo = { 'grade': $('#grade').val(), 'subject': $('#subject').val() };
+      fetchData = { ...fetchData, extraInfo: { ...tempInfo } };
+      // console.log(fetchData);
+
+      try {
+        const url = `${_URL}/neis/manage_assessment_areas_by_grade_subject/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fetchData),
+        };
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(res.message);
+        // renderAssessmentFieldsBySubject();
+        $('#fieldModal button.btn-close').first().click();
+        $subject.dispatchEvent(new Event('change'));
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
   
+    $('#btnE3').on('click', async (event) => { // 성취기준 관리 테이블의 '저장' 버튼 클릭 시
+      const info = {
+        basicInfo: {
+          grade: $("#grade").val(),
+          subject: $("#subject").val(),
+        }
+      };
+
+      // 고유 분야명 수집
+      const fieldList = [...new Set(
+        $("#menu_e1_tbody td:nth-child(3) select :selected").map(function() {
+          return $(this).val();
+        }).get()
+      )];
+
+      const dataObj = {};
+
+      fieldList.forEach((fieldName) => {
+        let tempObj = {};
+        let idx = 1;
+
+        $("#menu_e1_tbody td:nth-last-child(6)").each(function() {
+          const selectedVal = $(this).find(":selected").val();
+          if (selectedVal === fieldName) {
+            const $tr = $(this).closest("tr");
+            const textareaItems = $tr.find("textarea").map(function() {
+              return $(this).val().trim();
+            }).get();
+            const lastInputVal = $tr.find("input").last().val();  // sort_order가 마지막 input이라면
+            tempObj[idx] = [...textareaItems, lastInputVal];
+            idx++;
+          }
+        });
+
+        dataObj[fieldName] = tempObj;
+      });
+
+      const data = { ...info, ...dataObj };
+      // console.log(data);
+
+      try {
+        const url = `${_URL}/neis/update_achievement_criteria_records/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        // console.log(res.message);
+        renderAssessmentCriteriaTable1();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $('#btnE_3').on('click', async () => { // '영역명관리' 모달창의 '삭제' 버튼 클릭 시
+      $('#menu_e_sub_tbody input:checked').closest("tr").remove();
+      $('#field_count').text($('#menu_e_sub_tbody tr').length);
+      $('#menu_e_sub_table button.toggleAllcheckboxes').click();
+    });
+
+    $('#btnE4').on('click', async () => { // 성취기준 관리 테이블의 '삭제' 버튼 클릭 시
+      $('#menu_e1_tbody input:checked').each(function() {
+        const label = $(this).closest('tr').find('td:nth-last-child(6)').find(':selected').val();
+        const firstRow = $(this).closest('tr').find('td').length === 8 ? true : false; 
+        const hasRowspan = $(this).closest('tr').find('td:nth-child(2)').attr("rowspan");
+        const safeLabel = label.replace(/[^\uAC00-\uD7A3\w]+/g, '_');
+        const $cell = $(`.${safeLabel}`).first();
+        const currentRowspan = parseInt($cell.attr('rowspan'), 10);
+        // console.log('current: ', currentRowspan);
+        if (!firstRow) {
+          $cell.attr('rowspan', currentRowspan - 1);
+        } else if (hasRowspan) {  
+          const idx = $cell.text();
+          $cell.closest('tr').next().find('td:eq(0)').after(`<td class="${safeLabel}" rowspan="${currentRowspan - 1}">${idx}</td>`);
+          console.log("hasRowspan");
+        } 
+
+        $(this).closest("tr").remove();
+      });
+      // $('#menu_e1_tbody input:checked').closest("tr").remove();
+      $('#criteria_count').text($('#menu_e1_tbody tr').length);
+      $('#menu_e1_table button.toggleAllcheckboxes').click();
+    });
+
+    $grade.addEventListener('change', async (event) => {
+      try {
+        const response = await fetch(`${_URL}/neis/get_subjects_by_grade/${$grade.value}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { grade, subjects } = res;
+        populateSelectOptionsAndSetDisabled(subjects, $subject);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $subject.addEventListener('change', async (event) => {
+      params = new URLSearchParams();
+      params.append('grade', $grade.value);
+      params.append('subject', $subject.value);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_fields_by_subject/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { subject, fields } = res;
+
+        populateSelectOptionsAndSetDisabled(fields.map(el => el[0]), $field, fields[0][0] == '-없음-' ? true : false);
+        // 이어서 '조회' 버튼 활성화 여부를 판단하는 코드가 들어와야 함. 
+
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $field.addEventListener('change', () => {
+      if ($field.value === '-없음-') {
+        updateButtonStatesWithStyles([$submitBtn, true]);
+      } else {
+        updateButtonStatesWithStyles([$submitBtn, false]);
+      }
+      updateButtonStatesWithStyles([$btn1, false]);
+    });
+
+    try {
+      const response = await fetch(`${_URL}/neis/get_active_grades/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { year, semester, active_grades } = res;
+      populateSelectOptionsAndSetDisabled(year, $year, true);
+      populateSelectOptionsAndSetDisabled(semester, $semester, true);
+      populateSelectOptionsAndSetDisabled(active_grades, $grade);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+
+    const sideEffect = tbody => {
+      updateFieldButtonsBasedOnSelection(tbody);
+    };
+
+    toggleAllTableCheckboxes('#menu_e_sub_table', sideEffect);
+    $('#menu_e_sub_tbody').on('click', 'input.form-check-input', function (event) {
+      updateFieldButtonsBasedOnSelection(document.getElementById('menu_e_sub_tbody'));
+    });
+
+    const sideEffect2 = () => {
+      updateCriteriaButtonsBasedOnSelection();
+    };
+    toggleAllTableCheckboxes('#menu_e1_table', sideEffect2);
+    $('#menu_e1_tbody').on('click', 'input.form-check-input', function (event) {
+      updateCriteriaButtonsBasedOnSelection();
+    });
+
+    $submitBtn.addEventListener('click', async (event) => { // '조회' 버튼 클릭 시
+      event.preventDefault();
+      // const btnText = $('button.subselectionBtn.active').text().trim();
+      currentGrade = $('#grade').val();
+      currentSubject = $('#subject').val();
+      currentField = $("#field").val();
+      $("#menu_e1_table").css({ "flex-grow": "0" });
+      $("#menu_e2_table_1").css({ "flex-grow": "0" });
+       renderAssessmentCriteriaTable1();
+      $("#menu_e2_tbody_2").html(`${renderEmptyTbodyWithMessage(2)}`);
+      $("#menu_e2_table_2").css({ "flex-grow": "1" });
+
+    });
+
+    $("#menu_e2_tbody_1").on("click", "td", async function() {
+      const row_info = $(this).closest("tr").find("td").map(function() {
+       return $(this).text();
+      }).get();
+
+      $("#menu_e2_tbody_1 tr.table-active").removeClass("table-active");
+      $(this).closest("tr").addClass("table-active");
+
+      const data = {
+        'grade': currentGrade,
+        'subject': currentSubject,
+        'field': row_info[0],
+        'criterion': row_info[1],
+        'evaluation': row_info[2],
+      }
+
+      try {
+        const url = `${_URL}/neis/get_evaluation_criteria_by_achievement_criterion/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        // console.log(res.message);
+        // console.log(res.criterion_id);
+        // console.log(res.moddable); // false
+        // console.log(res.result);
+        currentCriterionId = res.criterion_id;
+        currentModdable = !res.moddable;
+
+        if (Object.keys(res.result).length > 0 && !currentModdable) { // 객체에 유효한 값이 들어있으며 수정이 불가능할 시
+          $("#eval_range").prop("disabled", true);
+          updateButtonStatesWithStyles([$btn5, true], [$btn6, true]);
+        } else if (Object.keys(res.result).length > 0 && currentModdable) { // 객체에 유효한 값이 들어있으며 수정이 가능할 시
+          $("#eval_range").prop("disabled", false);
+          updateButtonStatesWithStyles([$btn5, false], [$btn6, false]);
+        } else { // 객체가 비어있을 경우
+          $("#eval_range").prop("disabled", false);
+          $("#eval_range option:selected").prop("selected", false);
+          $("#eval_range option").eq(0).prop("selected", true);
+        }
+        $("#menu_e2_table_2").css({ "flex-grow" : 0 });
+
+        renderEvaluationCriteriaTable(res.result, currentModdable);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $("#eval_range").on("change", function() {
+      // #menu_e2_tbody_2에 활성화 된 tr의 개수를 확인하고, 부족한 수만큼 새로 생성하거나, 불필요한 만큼 삭제 수행
+      const rows_exists = $("#menu_e2_tbody_2 tr").length;
+      const rows_result = $("#eval_range").val();
+      const diff = rows_result - rows_exists;
+      const rowHtml = `
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center; justify-content: center; height: 3.8rem; width: 100%; border: 1px solid #bb395a; border-radius: 5px;">
+              <input type="text" class="eval_input" maxlength="10" />
+            </div>
+          </td>
+          <td>
+            <textarea rows="3" maxlength="500" style="width: 100%; height: 3.8rem; overflow: auto; resize: none;" spellcheck="false"></textarea>
+          </td>
+        </tr>
+      `;
+      if (diff > 0) { // diff에 해당하는 숫자만큼의 행을 tbody의 마지막 행에 이어 순차적으로 생성
+        for (let i = 0; i < diff; i++) {
+          $("#menu_e2_tbody_2").append(rowHtml);
+        }
+      } else if (diff < 0) { // diff에 해당하는 숫자만큼의 행을 tbody의 마지막 행부터 순차적으로 삭제
+        for (let i = 0; i < Math.abs(diff); i++) {
+          $("#menu_e2_tbody_2 tr:last").remove();
+        }
+      }
+
+      if (rows_result === '0') {
+        updateButtonStatesWithStyles([$btn5, true], [$btn6, true]);
+      } else {
+        updateButtonStatesWithStyles([$btn5, false], [$btn6, false]);
+      }
+    });
+
+    $("#btnE6").on("click", function(){ // 평가기준 테이블의 삭제 버튼 클릭 시
+      $("#eval_range option:selected").prop("selected", false);
+      $("#eval_range option").eq(0).prop("selected", true);
+      $("#menu_e2_tbody_2").html("");
+      updateButtonStatesWithStyles([$btn5, true], [$btn6, true]);
+    });
+
+    $("#btnE5").on("click", async function () { // 평가기준 테이블의 저장 버튼 클릭 시
+      const keys = $("#menu_e2_tbody_2 input").map((i, el) => $(el).val().trim()).get();
+      const values = $("#menu_e2_tbody_2 textarea").map((i, el) => $(el).val().trim()).get();
+
+      const is_valid = [...keys, ...values].every(el => el?.trim() !== "");
+
+      if (!is_valid) {
+        alert("비어있는 셀이 있어 저장할 수 없습니다.");
+        return;
+      }
+
+      const rawData = keys.map((item, i) => [item, values[i]]);
+      const data = rawData.reduce((obj, value, i) => {
+        obj[i + 1] = value;
+        return obj;
+      }, {});
+
+      data['criterionId'] = currentCriterionId;
+      
+      try {
+        const url = `${_URL}/neis/manage_evaluation_criteria_records/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(res.message);
+        alert(res.message);
+        console.log(res.result);
+        console.log(res.saved);
+        console.log(res.deleted);
+
+        renderEvaluationCriteriaTable(res.result, currentModdable);
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+    });
+  }
+
   function renderAchievementEvaluationScreen() {
     // 학생이 특정한 성취기준에 따른 평가요소를 어느 정도 수준까지 달성했는지 평가결과를 기록 및 관리하는 화면을 렌더링 --> MENU.G
     let html = null;
@@ -1618,7 +2482,7 @@
         </tbody>
       </table>
     </div>
-    `; 
+    `;
     return html;
   }
 
@@ -1656,13 +2520,13 @@
         </tbody>
       </table>
     </div>
-    `; 
+    `;
     return html;
   }
 
   function renderSubjectAssessmentResultsTable() {
-   // 학생이 특정 교과에 배당된 모든 평가요소에 대해 어느 수준까지 성취했는지 그 평가결과를 기록 및 관리하는 테이블을 렌더링
-   let html = null;
+    // 학생이 특정 교과에 배당된 모든 평가요소에 대해 어느 수준까지 성취했는지 그 평가결과를 기록 및 관리하는 테이블을 렌더링
+    let html = null;
     html = `
     <div id="menu_i_content" class="col col-xl-12">
       <div class="table-banner" style="top: -0.3rem;">
@@ -1696,8 +2560,8 @@
         </tbody>
       </table>
     </div>
-    `; 
-    return html; 
+    `;
+    return html;
   }
 
   function renderSemesterSubjectFeedbackTable() {
@@ -1730,8 +2594,8 @@
         </tbody>
       </table>
     </div>
-    `; 
-    return html; 
+    `;
+    return html;
   }
 
   function renderAnnualSubjectProgressTable() {
@@ -1770,7 +2634,7 @@
           </table>
         </div>
       </div>
-      `; 
+      `;
     return html;
   }
 
@@ -1805,10 +2669,10 @@
         <div id="menu_m_content_right" class="col-12 col-xl-9">
         </div>
       </div>
-      `; 
+      `;
     return html;
   }
-  
+
   function renderStudentObservationsTable() {
     // 학생에 대한 관찰내용을 일자별로 기록 및 관리하는 테이블을 렌더링 --> MENU.N
     let html = null;
@@ -1863,7 +2727,7 @@
           </table>
         </div>
       </div>
-      `; 
+      `;
     return html;
   }
 
@@ -1888,9 +2752,9 @@
         return renderSemesterSubjectFeedbackTable();
       case MENU.K:
         return renderAnnualSubjectProgressTable();
-      case MENU.L: 
+      case MENU.L:
         return renderClassSubjectGradesTable();
-      case MENU.M: 
+      case MENU.M:
         return renderStudentGradesTable();
       case MENU.N:
         return renderStudentObservationsTable();
@@ -1912,6 +2776,7 @@
         script_renderStudentRecordDeletionTable();
         return;
       case MENU.E:
+        script_renderAssessmentCriteriaTable();
         return;
       case MENU.G:
         return;
@@ -1923,9 +2788,9 @@
         return;
       case MENU.K:
         return;
-      case MENU.L: 
+      case MENU.L:
         return;
-      case MENU.M: 
+      case MENU.M:
         return;
       case MENU.N:
         return;
@@ -1943,9 +2808,9 @@
     document.getElementById('content_wrapper').innerHTML = renderDataFromGETResponse(menu);
     attachEventsAfterRenderByMenu(menu);
   }
-  
+
   function reducer(state, action) {
-    if(state == undefined) {
+    if (state == undefined) {
       return {
         menu: null,
       }
@@ -1963,7 +2828,7 @@
   window.store = store;
   store.subscribe(renderSelectedMenuScreen);
 
-  window.onload = function() {
+  window.onload = function () {
     const $list_group_items = document.querySelectorAll('li.list-group-item');
     $list_group_items.forEach(elem => {
       elem.addEventListener('click', (e) => {
@@ -1980,7 +2845,7 @@
         updateAccordionCssOnClick(e.target);
       });
     });
-    
+
     const $accordion_bodies = document.querySelectorAll('.accordion-body');
     const $lastElem = $accordion_bodies[$accordion_bodies.length - 1];
     if ($lastElem) {
