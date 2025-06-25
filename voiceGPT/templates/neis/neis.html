@@ -1728,7 +1728,7 @@
       </div>
       <div id="menu_e2_content_right" class="col-12 col-xl-4">
         <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
-          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;"><span class="fw-bold fs-6">평가기준</span>&ensp;Total <span>0</span></div>
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;"><span class="fw-bold fs-6">평가기준</span>&ensp;Total <span id="evaluation_count">0</span></div>
           <div> 
             <button id="btnE5" type="button" class="btn btn-sm btn-secondary" disabled>저장</button>
             <button id="btnE6" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
@@ -1999,7 +1999,7 @@
       
       // console.log(tableHtml);
       $("#menu_e2_tbody_2").html(tableHtml);
-      // menu_e2_tbody_2
+      $("#evaluation_count").text($("#menu_e2_tbody_2 tr").length);
     };
 
     $btn1.addEventListener('click', async (event) => { // 영역명관리 버튼 클릭 시
@@ -2174,6 +2174,7 @@
         const res = await response.json();
         // console.log(res.message);
         renderAssessmentCriteriaTable1();
+        alert("성취기준 저장 완료");
       } catch (error) {
         console.error('Error:', error);
       }
@@ -2390,6 +2391,8 @@
       } else {
         updateButtonStatesWithStyles([$btn5, false], [$btn6, false]);
       }
+
+      $("#evaluation_count").text($("#menu_e2_tbody_2 tr").length);
     });
 
     $("#btnE6").on("click", function(){ // 평가기준 테이블의 삭제 버튼 클릭 시

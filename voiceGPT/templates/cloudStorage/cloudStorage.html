@@ -977,7 +977,7 @@
     $pasteBtn.classList.toggle('invisible', showPasteBtn);
   }
 
-  function openFile(filename, isVideo = false, isAudio = false) {
+  function openFile(filename, isVideo = false, isAudio = false, files = []) {
     const url = `${_URL}/cloudstorage/view/${filename}`;
     
     if (isVideo) {
@@ -1016,8 +1016,205 @@
       
       const audioWindow = window.open("", "_blank");
       audioWindow.document.write(audioPage);
-    } else {
+    } else if (files.length > 0) {
       // 일반 파일 열기
+      const imagePage = `
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                background: #111;
+                overflow: hidden;
+                height: 100%;
+              }
+
+              .main-swiper {
+                width: 100vw;
+                height: 92vh;
+              }
+
+              .thumb-swiper {
+                height: 8vh;
+                padding: 10px 0;
+              }
+
+              .swiper-slide {
+                overflow: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+
+              .zoomable {
+                height: 100%;
+                width: auto;
+                max-width: none;
+                max-height: none;
+                cursor: grab;
+                transition: transform 0.2s ease;
+              }
+
+              .thumb-swiper .swiper-slide {
+                opacity: 0.4;
+                transition: opacity 0.3s ease;
+                cursor: pointer;
+              }
+
+              .thumb-swiper .swiper-slide-thumb-active {
+                opacity: 1;
+              }
+
+              .swiper-button-next,
+              .swiper-button-prev {
+                background-color: rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.2s ease, background-color 0.2s ease;
+              }
+
+              .swiper-button-next:hover,
+              .swiper-button-prev:hover {
+                transform: scale(1.2);
+                background-color: rgba(255, 255, 255, 0.5);
+              }
+
+              .swiper-button-next::after,
+              .swiper-button-prev::after {
+                font-size: 1.4rem;
+                color: white;
+              }
+
+              .swiper-scrollbar {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                height: 8px;
+                margin: 4px 16px;
+              }
+
+              .swiper-scrollbar-drag {
+                background: linear-gradient(135deg, #00c6ff, #0072ff);
+                border-radius: 10px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="swiper main-swiper">
+              <div class="swiper-wrapper">
+                ${files.map((el, i) => `
+                  <div class="swiper-slide">
+                    <img src="${el}" alt="사진${i}" class="zoomable" ondblclick="toggleFullscreen(this)">
+                  </div>`).join('')}
+              </div>
+              <div class="swiper-button-next"></div>
+              <div class="swiper-button-prev"></div>
+              <div class="swiper-scrollbar"></div>
+            </div>
+
+            <div class="swiper thumb-swiper">
+              <div class="swiper-wrapper">
+                ${files.map((el, i) => `
+                  <div class="swiper-slide">
+                    <img src="${el}" alt="썸네일${i}" style="height: 100%; object-fit: contain;" />
+                  </div>`).join('')}
+              </div>
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></scr` + `ipt>
+            <script>
+              const thumbSwiper = new Swiper('.thumb-swiper', {
+                spaceBetween: 10,
+                slidesPerView: 25,
+                freeMode: true,
+                watchSlidesProgress: true,
+              });
+
+              const mainSwiper = new Swiper('.main-swiper', {
+                loop: true,
+                spaceBetween: 10,
+                navigation: {
+                  nextEl: '.swiper-button-next',
+                  prevEl: '.swiper-button-prev',
+                },
+                scrollbar: {
+                  el: '.swiper-scrollbar',
+                  draggable: true,
+                },
+                keyboard: {
+                  enabled: true,
+                  onlyInViewport: true,
+                },
+                thumbs: {
+                  swiper: thumbSwiper,
+                },
+                speed: 500,
+              });
+
+              // 줌 + 드래그
+              document.querySelectorAll('.zoomable').forEach(img => {
+                const container = img.closest('.swiper-slide');
+                let scale = 1;
+
+                img.addEventListener('wheel', (e) => {
+                  e.preventDefault();
+                  scale += e.deltaY < 0 ? 0.1 : -0.1;
+                  scale = Math.max(1, Math.min(5, scale));
+                  img.style.transform = \`scale(\${scale})\`;
+                });
+
+                let isDragging = false, startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+
+                img.addEventListener('mousedown', (e) => {
+                  isDragging = true;
+                  container.style.cursor = 'grabbing';
+                  startX = e.pageX;
+                  startY = e.pageY;
+                  scrollLeft = container.scrollLeft;
+                  scrollTop = container.scrollTop;
+                });
+
+                img.addEventListener('mouseup', () => {
+                  isDragging = false;
+                  container.style.cursor = 'grab';
+                });
+
+                img.addEventListener('mouseleave', () => {
+                  isDragging = false;
+                  container.style.cursor = 'grab';
+                });
+
+                img.addEventListener('mousemove', (e) => {
+                  if (!isDragging) return;
+                  e.preventDefault();
+                  const dx = e.pageX - startX;
+                  const dy = e.pageY - startY;
+                  container.scrollLeft = scrollLeft - dx;
+                  container.scrollTop = scrollTop - dy;
+                });
+              });
+
+              function toggleFullscreen(elem) {
+                if (!document.fullscreenElement) {
+                  elem.requestFullscreen?.();
+                } else {
+                  document.exitFullscreen?.();
+                }
+              }
+            </scr` + `ipt>
+          </body>
+        </html>
+        `;
+      const imageWindow = window.open("", '_blank');
+      imageWindow.document.write(imagePage);
+    } else {
       window.open(url, '_blank');
     }
   }
@@ -1130,8 +1327,25 @@
           openFile(`${currentPath}/${filename}`, true, false);
         } else if (audio_exts.includes(file_ext)) {
           openFile(`${currentPath}/${filename}`, false, true);  // 비디오 파일
-        } else if (image_exts.includes(file_ext) || code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
-          openFile(`${currentPath}/${filename}`);
+        } else if (code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
+          openFile(`${currentPath}/${filename}`)
+        } else if (image_exts.includes(file_ext)) {
+          const checked = $("#table_body input:checked")?.map(function() {
+            return $(this).closest("tr").attr("data-name");
+          }).get().filter(el => image_exts.includes(el.split('.').pop()))
+          .map(el => `${_URL}/cloudstorage/view/${currentPath}/${el}`);
+
+          if (checked.length > 0) {
+            const startItem = `${_URL}/cloudstorage/view/${currentPath}/${filename}`;
+            const startIdx = checked.indexOf(startItem);
+
+            const updatedArr = startIdx === -1
+            ? checked.slice() // 없으면 원본 배열 복사
+            : checked.slice(startIdx).concat(checked.slice(0, startIdx));
+            openFile(`${currentPath}/${filename}`, false, false, updatedArr);
+          } else {
+            openFile(`${currentPath}/${filename}`);
+          }
         } 
       });
     });
@@ -1315,13 +1529,31 @@
         const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
         const code_exts = ['html', 'css', 'js', 'py'];
         const office_exts = ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx'];
+
         if (video_exts.includes(file_ext)) {
           openFile(`${currentPath}/${file_name}`, true, false);
         } else if (audio_exts.includes(file_ext)) {
           openFile(`${currentPath}/${file_name}`, false, true);  // 비디오 파일
-        } else if (image_exts.includes(file_ext) || code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
-          openFile(`${currentPath}/${file_name}`);
-        } 
+        } else if (code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
+          openFile(`${currentPath}/${file_name}`)
+        } else if (image_exts.includes(file_ext)) {
+          const checked = $("#table_body input:checked")?.map(function() {
+            return $(this).closest("tr").attr("data-name");
+          }).get().filter(el => image_exts.includes(el.split('.').pop()))
+          .map(el => `${_URL}/cloudstorage/view/${currentPath}/${el}`);
+
+          if (checked.length > 0) {
+            const startItem = `${_URL}/cloudstorage/view/${currentPath}/${file_name}`;
+            const startIdx = checked.indexOf(startItem);
+
+            const updatedArr = startIdx === -1
+            ? checked.slice() // 없으면 원본 배열 복사
+            : checked.slice(startIdx).concat(checked.slice(0, startIdx));
+            openFile(`${currentPath}/${file_name}`, false, false, updatedArr);
+          } else {
+            openFile(`${currentPath}/${file_name}`);
+          }
+        }
       });
     });  
 
