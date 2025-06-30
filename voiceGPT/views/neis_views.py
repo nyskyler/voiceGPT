@@ -19,7 +19,7 @@ import traceback
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
-from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria
+from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria, EvaluationResult, EvaluationEvidence
 from pathlib import Path
 from PIL import Image, ExifTags
 from datetime import datetime, timedelta, timezone
@@ -298,7 +298,7 @@ def analyzeStudentListByClassInfo():
 
   # 2. 파일 경로 체크
   target_path = os.path.join(
-    str(root_dir), "NEIS", school, year, f"{semester}학기"
+    str(root_dir), "NEIS", school, year, f"{semester}학기", "학생명렬표"
   )
 
   if not os.path.exists(target_path):
@@ -636,6 +636,8 @@ def find_students_orm_way(school_year_info_id, partial_name, date_of_birth=None,
   ]
 
 
+
+
 @bp.route("/search_students_by_partial_name_and_birthdate/", methods=['GET'])
 @login_required
 def search_students_by_partial_name_and_birthdate():
@@ -741,6 +743,23 @@ def toggle_student_enrollment_status_bulk():
     return jsonify({"error": "Server error", "details": str(e)}), 500
   
 
+@bp.route("/get_active_school_info/", methods=['GET'])
+@login_required
+def get_active_school_info():
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return jsonify({"error": "활성화된 학교 정보가 없습니다."}), 400
+
+  school = school_info['school']
+  year = school_info['year']
+  semester = school_info['semester']
+
+  return jsonify({
+    "school": school,
+    "year": year,
+    "semester": semester,
+  }), 200
+  
 
 @bp.route("/get_active_grades/", methods=['GET'])
 @login_required
@@ -807,10 +826,12 @@ def get_subjects_by_grade(_grade):
       return jsonify({"error": "SchoolGrade not found."}), 400
     
     subjects = [gs.subject.value for gs in school_grade.subjects]
+    classes = [[cs.class_name, cs.id] for cs in school_grade.classes]
     
     return jsonify({
       "grade": _grade,
       "subjects": subjects,
+      "classes": sorted(classes, reverse = True)
     }), 200
 
   except Exception as e:
@@ -864,7 +885,7 @@ def get_fields_by_subject():
     if not grade_subject:
       return jsonify({"error": "GradeSubject not found."}), 400
 
-    fields = [(field.area, len(field.criteria)) for field in grade_subject.assessment_areas]
+    fields = [(field.area, len(field.criteria), field.id) for field in grade_subject.assessment_areas]
     if not fields:
       fields = [('-없음-', 0)]
     else:
@@ -1001,6 +1022,41 @@ class SchoolContext:
       return error_response("학교 정보 처리 중 오류가 발생했습니다.", 500, str(e))
 
     return None  # 성공 시 None 반환
+
+
+@bp.route("/get_achievement_criteria_by_field_id/<string:fid>", methods=['GET'])
+@login_required
+def get_achievement_criteria_by_field_id(fid):
+  try:
+    try:
+      area_id = int(fid)
+    except ValueError:
+      return jsonify({"error": "유효하지 않은 분야 ID입니다."}), 400
+
+    area = AssessmentArea.query.get(area_id)
+    if not area:
+      return jsonify({"error": "해당 분야가 존재하지 않습니다."}), 404
+
+    criteria = AchievementCriterion.query.filter_by(area_id=area_id).all()
+
+    result = [
+      {
+        "criterion": c.criterion,
+        "evaluation_item": c.evaluation_item,
+        "id": c.id
+      }
+      for c in criteria
+    ]
+
+    return jsonify({
+      "message": "성취기준 조회 완료",
+      "criteria": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
 
 # 성취기준 조회 엔드포인트
 @bp.route("/get_achievement_criteria_by_grade_subject_area/", methods=['GET'])
@@ -1244,6 +1300,376 @@ def manage_evaluation_criteria_records():
       "result": result,
       "saved": len(incoming_steps),
       "deleted": len([s for s in existing_dict if s not in incoming_step_set])
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+# 성취기준별 특정 학급 학생들의 성적 조회 엔드포인트
+@bp.route("/get_students_achievement_results/", methods=['GET'])
+@login_required
+def get_students_achievement_results():
+  class_id = request.args.get('class_id')
+  achievement_id = request.args.get('achievement_id')
+
+  if not (class_id and achievement_id):
+    return error_response("Missing required parameters.", 400, {
+      "class_id": class_id,
+      "achievement_id": achievement_id
+    })
+
+  try:
+    class_id = int(class_id)
+    achievement_id = int(achievement_id)
+  except ValueError:
+    return error_response("class_id 및 achievement_id는 정수여야 합니다.", 400)
+
+  try:
+    gc = GradeClass.query.options(
+      selectinload(GradeClass.students)
+        .selectinload(Student.evaluation_results)
+          .selectinload(EvaluationResult.evidences)
+    ).filter_by(id=class_id).first()
+
+    if not gc:
+      return error_response("해당 학급을 찾을 수 없습니다.", 404)
+
+    result = []
+    for student in gc.students:
+      if not student.is_enrolled:
+        continue
+
+      er = next(
+        (r for r in student.evaluation_results if r.achievement_criterion_id == achievement_id),
+        None
+      )
+
+      result.append({
+        "student_id": student.id,
+        "name": student.name,
+        "achievement_id": achievement_id,
+        "level": er.level if er else None,
+        "description": er.description if er else None,
+        "evidence_count": len(er.evidences) if er else 0
+      })
+
+    return jsonify({
+      "message": "학급 학생 및 성적 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/get_evaluation_criteria_by_achievement_id/<string:aid>", methods=['GET'])
+@login_required
+def get_evaluation_criteria_by_achievement_id(aid):
+  try:
+    try:
+      achievement_id = int(aid)
+    except ValueError:
+      return jsonify({"error": "유효하지 않은 성취기준 ID입니다."}), 400
+
+    ac = AchievementCriterion.query.options(
+      selectinload(AchievementCriterion.evaluation_criteria)
+    ).filter_by(id=achievement_id).first()
+
+    if not ac:
+      return jsonify({"error": "해당 성취기준이 존재하지 않습니다."}), 404
+
+    result = [
+      {
+        "step": c.step,
+        "level_name": c.level_name,
+        "description": c.description
+      }
+      for c in ac.evaluation_criteria
+    ]
+
+    return jsonify({
+      "message": "평가기준 조회 완료",
+      "criteria": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+
+
+@bp.route("/update_student_achievement_levels/", methods=['POST'])
+@login_required
+def update_student_achievement_levels():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, list):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다. 리스트 형태여야 합니다."}), 400
+
+    created, updated = 0, 0
+
+    for row in data:
+      sid, aid, lv, desc = itemgetter(
+        'student_id', 'achievement_id', 'level', 'description'
+      )(row)
+
+      sid = int(sid)
+      aid = int(aid)
+
+      er = EvaluationResult.query.filter_by(
+        student_id=sid,
+        achievement_criterion_id=aid
+      ).first()
+
+      if er:
+        if er.level != lv or er.description != desc:
+          er.level = lv
+          er.description = desc
+          updated += 1
+      else:
+        er = EvaluationResult(
+          student_id = sid,
+          achievement_criterion_id = aid,
+          level = lv,
+          description = desc
+        )
+        db.session.add(er)
+        created += 1
+    
+    ac = AchievementCriterion.query.filter_by(id = aid).first()
+    if ac and not ac.is_assessed:
+      ac.is_assessed = True
+    
+    db.session.commit()
+
+    return jsonify({
+      "message": "평가결과 저장 완료",
+      "created": created,
+      "updated": updated,
+      "total": created + updated
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/create_evaluation_evidence/", methods=['POST'])
+@login_required
+def create_evaluation_evidence():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다."}), 400
+
+    # 안전하게 필드 추출
+    try:
+      sid_raw, aid_raw, file_path, file_ext = itemgetter(
+        'student_id', 'achievement_id', 'resource_path', 'ext'
+      )(data)
+    except KeyError:
+      return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+    # 정수 변환
+    try:
+      sid = int(sid_raw)
+      aid = int(aid_raw)
+    except ValueError:
+      return jsonify({"error": "sid와 aid는 정수여야 합니다."}), 400
+
+    # 확장자 → 타입 분류
+    file_type = None
+    media_types = {
+      'image': ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'],
+      'video': ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'],
+      'audio': ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'],
+      'doc': ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx']
+    }
+
+    ext = file_ext.lower()
+    for k in media_types:
+      if ext in media_types[k]:
+        file_type = k
+        break
+
+    if file_type is None:
+      return jsonify({"error": "지원되지 않는 파일 형식입니다."}), 400
+
+    evaluation_result = EvaluationResult.query.filter_by(
+      student_id=sid, achievement_criterion_id=aid
+    ).first()
+
+    if not evaluation_result:
+      return jsonify({"error": "평가결과가 생성되지 않았습니다."}), 404
+
+    evidence = EvaluationEvidence(
+      result_id=evaluation_result.id,
+      resource_path=file_path,
+      resource_type=file_type
+    )
+
+    db.session.add(evidence)
+    db.session.commit()
+
+    return jsonify({
+      "message": "평가근거자료 저장 완료"
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/get_evaluation_evidence_by_student_and_achievement/", methods=['GET'])
+@login_required
+def get_evaluation_evidence_by_student_and_achievement():
+  sid_raw = request.args.get('student_id')
+  aid_raw = request.args.get('achievement_id')
+
+  if not (sid_raw and aid_raw):
+    return error_response("Missing required parameters.", 400, {
+      "student_id": sid_raw,
+      "achievement_id": aid_raw
+    })
+
+  try:
+    sid = int(sid_raw)
+    aid = int(aid_raw)
+  except ValueError:
+    return error_response("student_id 및 achievement_id는 정수여야 합니다.", 400)
+
+  try:
+    er = EvaluationResult.query.options(
+      selectinload(EvaluationResult.evidences)
+    ).filter_by(
+      student_id=sid,
+      achievement_criterion_id=aid
+    ).first()
+
+    # 평가결과가 없거나 평가근거자료가 없는 경우
+    if not er or not er.evidences:
+      return jsonify({
+        "message": "평가근거자료가 없습니다.",
+        "info": []
+      }), 200
+
+    result = []
+    for evidence in sorted(er.evidences, key=lambda e: e.created_at or e.id, reverse=True):
+      result.append({
+        "evidence_id": evidence.id, 
+        "resource_path": evidence.resource_path,
+        "resource_type": evidence.resource_type,
+        "created_at": evidence.created_at.strftime("%Y.%m.%d.") if evidence.created_at else "",
+        "updated_at": evidence.updated_at.strftime("%Y.%m.%d.") if evidence.updated_at else "",
+      })
+
+    return jsonify({
+      "message": "평가근거자료 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/delete_evaluation_evidence_by_id/", methods=['DELETE'])
+@login_required
+def delete_evaluation_evidence_by_id():
+  try:
+    data = request.get_json()
+    if not isinstance(data, dict):
+      return jsonify({"error": "Invalid request format. Expected a JSON object."}), 400
+
+    eid_raw = data.get('eid')
+    try:
+      eid = int(eid_raw)
+    except (TypeError, ValueError):
+      return error_response("evaluation_id는 정수여야 합니다.", 400)
+
+    evidence = EvaluationEvidence.query.filter_by(id=eid).first()
+
+    if not evidence:
+      return error_response(f"id가 {eid}인 평가근거자료를 찾지 못했습니다.", 404)
+
+    db.session.delete(evidence)
+    db.session.commit()
+
+    return jsonify({
+      "message": "삭제 완료",
+      "deleted_id": eid,
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+
+
+@bp.route("/update_evaluation_evidence_resource/", methods=['PATCH'])
+@login_required
+def update_evaluation_evidence_resource():
+  try:
+    data = request.get_json()
+    if not isinstance(data, dict):
+      return jsonify({"error": "Invalid request format. Expected a JSON object."}), 400
+
+    try:
+      eid_raw, resource_path, file_ext = itemgetter(
+          'eid', 'resource_path', 'ext')(data)
+    except (KeyError, TypeError):
+      return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+    try:
+      eid = int(eid_raw)
+    except (TypeError, ValueError):
+      return error_response("evaluation_id는 정수여야 합니다.", 400)
+
+    ext = file_ext.lower()
+    file_type = None
+    media_types = {
+      'image': ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'],
+      'video': ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'],
+      'audio': ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'],
+      'doc': ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx']
+    }
+
+    for k in media_types:
+      if ext in media_types[k]:
+        file_type = k
+        break
+
+    if file_type is None:
+      return jsonify({"error": "지원되지 않는 파일 형식입니다."}), 400
+
+    evidence = EvaluationEvidence.query.filter_by(id=eid).first()
+    if not evidence:
+      return error_response(f"id가 {eid}인 평가근거자료를 찾을 수 없습니다.", 404)
+
+    evidence.resource_path = resource_path
+    evidence.resource_type = file_type
+
+    db.session.commit()
+
+    return jsonify({
+      "message": "평가근거자료 수정 완료",
     }), 200
 
   except Exception as e:

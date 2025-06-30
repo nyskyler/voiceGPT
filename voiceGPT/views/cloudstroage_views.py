@@ -380,6 +380,52 @@ def listDirectoryContents():
   except Exception as e:
     print(f"An unexpected error occurred: {e}")
     return jsonify({"message": "An unexpected error occurred"}), 500
+  
+
+def listDirectoryTree(path):
+  path = Path(path)  # Ensure it's a Path object
+  all_paths = []
+
+  for item in path.iterdir():
+    # 숨김 파일/폴더 및 시스템 디렉토리 무시
+    if item.name.startswith(('.', '$')) or item.name == 'System Volume Information':
+      continue
+
+    all_paths.append(str(item))  # 파일 또는 디렉토리 경로 추가
+
+    if item.is_dir():
+      # 재귀적으로 하위 내용 추가
+      all_paths.extend(listDirectoryTree(item))
+
+  return all_paths
+
+
+@bp.route("/directoryAllContents/", methods=['GET'])
+# @login_required
+def listAllContents():
+  try:
+    school = request.args.get('school')
+    year = request.args.get('year')
+    semester = request.args.get('semester')
+
+    current_loc = root_dir
+    # 보안을 위해 경로가 root_dir 내에 있는지 확인
+    if not current_loc.exists() or not current_loc.is_dir():
+        return jsonify({"message": "Directory not found"}), 404
+    
+    # directory_tree = listSubdirectoryPaths(f'{current_loc}/NEIS/{school}/{year}/{semester}학기')
+    directory_tree = listDirectoryTree(f'{current_loc}/NEIS/{school}/{year}/{semester}학기')
+    directory_tree.sort()
+    # root_dir 경로를 제거하고 상대 경로로 변환
+    directory_tree = ['/' + str(Path(dir).relative_to(root_dir)) for dir in directory_tree]
+    #directory_tree = [dir.split(str(root_dir), 1)[-1] for dir in directory_tree]
+
+    # print(directory_tree)
+    return jsonify({"message": directory_tree}), 200
+  except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
 
 @bp.route("/listDirectoryDetails/", defaults={'dir_path': ''}, methods=['GET'])
 @bp.route("/listDirectoryDetails/<path:dir_path>", methods=['GET'])

@@ -271,7 +271,7 @@ class EvaluationResult(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
   achievement_criterion_id = db.Column(db.Integer, db.ForeignKey('achievement_criterion.id'), nullable=False)
-  level = db.Column(db.String(50), nullable=False)
+  level = db.Column(db.String(50), nullable=True)
   description = db.Column(db.Text)
 
   student = db.relationship('Student', back_populates='evaluation_results')

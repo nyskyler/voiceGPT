@@ -174,6 +174,33 @@
     cursor: pointer;
   }
 
+  #nav_dir_modal {
+    flex: auto;
+    padding: 1rem;
+    overflow-y: auto;
+    background-color: #F6F7FA;
+  }
+  #toc_modal {
+    white-space: nowrap; /* 줄 바꿈 방지 */
+    overflow-x: auto;    /* 가로 스크롤 표시 */
+    display: block;      /* ul 기본 블록 요소로 설정 */
+    max-height: 400px;
+    overflow: auto;
+  }
+  #toc_modal li {
+    display: inline-block; /* 목록 항목을 인라인 블록으로 설정하여 한 줄에 표시 */
+  }
+  .invisible {
+    display: none;
+  }
+  #nav_dir .list-group-item, #nav_dir_modal .list-group-item {
+    border: none;
+    background-color: #F6F7FA;
+    font-size: 0.85rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+
   .accordion-button {
     color: #393372;
     padding: 0.5rem 1rem 0.5rem 0.6rem;
@@ -569,7 +596,7 @@
     return `
       <span class="d-flex">
         <label for="${id}" class="form-label fw-bold me-3 text-end fixed-label">*${label}</label>
-        <select id="${id}" class="form-select form-select-sm select-width-${width}">
+        <select id="${id}" class="form-select form-select-sm select-width-${width}" style="text-overflow: ellipsis; padding-left: 0.5rem; padding-right: 1.5rem;">
         </select>
       </span>
     `;
@@ -607,7 +634,7 @@
         return html.join('');
       case MENU.G:
         arrayForHTML = [['학년도', 'year', 'sm'], ['학기', 'semester', 'sm'], ['학년', 'grade', 'sm'], ['반', 'class', 'sm'], ['교과(목)', 'subject', 'sm'],
-        ['영역', 'field', 'md'], ['성취기준', 'standard', 'md']];
+        ['영역', 'field', 'md'], ['성취기준', 'standard', 'full']];
         html = arrayForHTML.map(arr => {
           return createLabeledSelectSpan(...arr);
         });
@@ -2455,77 +2482,1061 @@
     <div id="menu_g_content" class="col col-xl-12">
       <div class="achievementStandardsAndAssessment fw-semibold">
         <div class="col col-12 col-xl-1">성취기준</div>
-        <div class="col col-12 col-xl-5"></div>
+        <div class="col col-12 col-xl-5" style="padding-left: 0.3rem;"></div>
         <div class="col col-12 col-xl-1">평가요소</div>
-        <div class="col col-12 col-xl-5"></div>
+        <div class="col col-12 col-xl-5" style="padding-left: 0.3rem;"></div>
       </div>
-      <div class="table-banner" style="top: 3.8rem;">
-        <button type="button" class="btn btn-sm btn-secondary">평가근거자료 업로드</button>
-        <button type="button" class="btn btn-sm btn-secondary">저장</button>
-        <button type="button" class="btn btn-sm btn-secondary">출력</button>
-        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      <div class="table-header sticky-top bg-white p-0 mt-1 mb-1 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
+        <div id="menu_g_btns">
+          <button id="btnG1" type="button" class="btn btn-sm btn-secondary" disabled data-bs-toggle="modal" data-bs-target="#searchResourcesModal" data-bs-whatever="{{ g.user.username }}">평가근거자료</button>
+          <button id="btnG2" type="button" class="btn btn-sm btn-secondary" disabled>저장</button>
+          <button id="btnG3" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
+        </div>
       </div>
-      <table id="menu_g_table" class="table table-hover caption-top table-bordered">
-        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
-          <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
-            <select class="form-select form-select-sm select-width-xl"></select>
+      <div class="modal fade" id="searchResourcesModal" tabindex="-1" aria-labelledby="searchResourcesModalLabel">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="searchResourcesModalLabel"></h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table table-hover table-bordered">
+                <thead>
+                  <tr>
+                    <th scope="col style="width: 8;">삭제</th>
+                    <th scope="col style="width: 8;">수정</th>
+                    <th scope="col style="width: 64;">경로</th>
+                    <th scope="col" style="width: 20%;">등록일자</th>
+                  </tr>
+                </thead>
+                <tbody id="menu_g_modal_tbody" class="text-center">
+                </tbody>
+              </table>
+              <div id="nav_dir_modal">
+                <ul id="toc_modal" class="list-group list-group-flush"></ul>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+              <button type="button" id="toc_modal_confirm" class="btn btn-secondary disabled">업로드</button>
+            </div>
           </div>
-        </caption>
-        <thead>
-          <tr>
-            ${renderSelectAllCheckboxButton(3)}
-            <th scope="col" style="width: 7%;">반/번호</th>
-            <th scope="col" style="width: 14%;">성명</th>
-            <th scope="col" style="width: 14%;">단계</th>
-            <th scope="col" style="width: 62%;">평가결과</th>
-          </tr>
-        </thead>
-        <tbody id="menu_g_tbody">
-          ${renderEmptyTbodyWithMessage(5)}
-        </tbody>
-      </table>
+        </div>
+      </div>
+      <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
+        <select id="batchApply" class="form-select form-select-sm select-width-xxl"></select>
+      </div>  
+      <div style="display: flex; flex-direction: column; height: 64vh; overflow-y: auto;">
+        <table id="menu_g_table" class="table table-hover table-bordered" style="margin-top: 0;">
+          <thead>
+            <tr>
+              ${renderSelectAllCheckboxButton(3)}
+              <th scope="col" style="width: 6%;">반/번호</th>
+              <th scope="col" style="width: 12%;">성명</th>
+              <th scope="col" style="width: 12%;">단계</th>
+              <th scope="col" style="width: 60%;">평가결과</th>
+              <th scope="col" style="width: 7%;">평가근거자료</th>
+            </tr>
+          </thead>
+          <tbody id="menu_g_tbody">
+            ${renderEmptyTbodyWithMessage(6)}
+          </tbody>
+        </table>
+      </div>    
     </div>
     `;
     return html;
+  }
+
+  function getStyledDirectoryName(d_path, depth, path, type) {
+    return '&emsp;'.repeat(depth) + `${type === 'directory' ? icons['folder'] : icons[d_path.split('.').pop()] || `<i class="fa-regular fa-file"></i>`}` + '&emsp;' + d_path; 
+  }
+
+  const icons = {
+    'folder': '<i class="fa-solid fa-folder" style="color: #4078FF;"></i>',
+    'pdf': '<i class="fa-solid fa-file-pdf" style="color: #DA5A37"></i>',
+    'zip': '<i class="fa-solid fa-file-zipper" style="color: #968069"></i>',
+    'doc': '<i class="fa-solid fa-file-word" style="color: #457DD8"></i>',
+    'docx': '<i class="fa-solid fa-file-word" style="color: #457DD8"></i>',
+    'ppt': '<i class="fa-solid fa-file-powerpoint" style="color: #E76C4E"></i>',
+    'pptx': '<i class="fa-solid fa-file-powerpoint" style="color: #E76C4E"></i>',
+    'xls': '<i class="fa-solid fa-file-excel" style="color: #30A364"></i>',
+    'xlsx': '<i class="fa-solid fa-file-excel" style="color: #30A364"></i>',
+    'hwp': '<i class="fa-solid fa-file-signature" style="color: #43A6DD"></i>',
+    'hwpx': '<i class="fa-solid fa-file-signature" style="color: #43A6DD"></i>',
+    'video': '<i class="fa-solid fa-file-video" style="color: #01C75A"></i>',
+    'mp3': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
+    'webm': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
+    'aac': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
+    'm4a': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
+    'wav': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
+    'flac': '<i class="fa-solid fa-file-audio" style="color: #6F42C1"></i>',
+    'html': '<i class="fa-solid fa-file-code" style="color: #1DB45B"></i>',
+    'png': '<i class="fa-solid fa-file-image" style="color: #4078FF;"></i>',
+    'jpeg': '<i class="fa-solid fa-file-image" style="color: #4078FF;"></i>',
+    'jpg': '<i class="fa-solid fa-file-image" style="color: #4078FF;"></i>',
+    'webp': '<i class="fa-solid fa-file-image" style="color: #4078FF;"></i>',
+    'csv': '<i class="fa-solid fa-file-csv" tyle="color: #4078FF;"></i>',
+  }
+
+
+  // 'invisible' 클래스를 토글하는 함수
+  function toggleVisibility(item, isInvisible) {
+    if (isInvisible) {
+      item.classList.add('invisible');
+      const icon = item.querySelector('.fa-solid');
+      if (icon && icon.classList.contains('fa-folder-open')) {
+        icon.classList.remove('fa-folder-open');
+        icon.classList.add('fa-folder');
+        item.classList.remove('open');
+      }
+    } else {
+      item.classList.remove('invisible');
+    }
+  }
+
+  // 하위 아이템을 숨기거나 표시하는 함수
+  function handleSubItems(item, shouldDisplay) {
+    const targetIds = JSON.parse(item.dataset.subids);
+    targetIds.forEach(id => {
+      const subItem = document.querySelector(`.list-group-item[data-id='${id}']`);
+      if (subItem) {
+        toggleVisibility(subItem, shouldDisplay);
+        // 하위 항목이 토글되었으면, 그 하위 아이템의 subids도 처리
+        if (shouldDisplay) {
+          handleSubItems(subItem, shouldDisplay);
+        }
+      }
+    });
+  }
+
+  // 특정 ID들의 항목을 표시하는 함수
+  function displayTagsById(subids, modal=undefined) {
+    let listItems = null;
+    if (modal) {
+      listItems = document.querySelectorAll('#toc_modal .list-group-item');
+    } else {
+      listItems = document.querySelectorAll('#toc .list-group-item');
+    }
+    
+    listItems.forEach(item => {
+      const itemId = parseInt(item.dataset.id, 10);
+      
+      // 클릭된 ID가 포함된 아이템만 처리
+      if (subids.includes(itemId)) {
+        const isCurrentlyInvisible = item.classList.contains('invisible');
+        const shouldDisplay = !isCurrentlyInvisible;  // 서브 요소가 가려져 있을 경우, shouldDisplay에 false가 담김
+        
+        toggleVisibility(item, shouldDisplay);
+        
+        // 하위 항목을 표시하려면, 하위 아이템이 보이도록 처리
+        if (shouldDisplay) {
+          handleSubItems(item, shouldDisplay);
+        }
+      }
+    });
+  }
+
+  // 아이콘을 변경하는 함수
+  function toggleFolderIcon(item, isOpen) {
+    const icon = item.querySelector('.fa-solid');
+    if (icon) {
+      if (isOpen) {
+        icon.classList.remove('fa-folder');
+        icon.classList.add('fa-folder-open');
+      } else {
+        icon.classList.remove('fa-folder-open');
+        icon.classList.add('fa-folder');
+      }
+    }
+  }
+
+  function openFile(filename, isVideo = false, isAudio = false, files = []) {
+    const url = `${_URL}/cloudstorage/view/${filename}`;
+    
+    if (isVideo) {
+      // 동영상 플레이어 창 열기
+        const videoPage = `
+        <html>
+          <head><title>동영상 플레이어</title></head>
+          <body style="margin:0; overflow:hidden;">
+            <video id="videoPlayer" controls autoplay style="width: 100%; height: 100vh;">
+              <source src="${url}" type="video/mp4">
+              브라우저가 비디오 태그를 지원하지 않습니다.
+            </video>
+            <script>
+              document.addEventListener('DOMContentLoaded', function () {
+                const video = document.getElementById('videoPlayer');
+                video.requestFullscreen?.();
+              });
+          </body>
+        </html>`;
+      const videoWindow = window.open("", "_blank");
+      videoWindow.document.write(videoPage);
+    } else if (isAudio) {
+      // 오디오 플레이어 창 열기
+      const temp = filename.split('.').pop();
+      const ext = temp === 'm4a' ? 'mp4' : temp;
+      const audioPage = `
+        <html>
+          <head><title>오디오 플레이어</title></head>
+          <body>
+            <audio controls autoplay style="width: 100%;">
+              <source src="${url}" type="audio/${ext}">
+              브라우저가 오디오 태그를 지원하지 않습니다.
+            </audio>
+          </body>
+        </html>`;
+      
+      const audioWindow = window.open("", "_blank");
+      audioWindow.document.write(audioPage);
+    } else if (files.length > 0) {
+      // 일반 파일 열기
+      const imagePage = `
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                background: #111;
+                overflow: hidden;
+                height: 100%;
+              }
+
+              .main-swiper {
+                width: 100vw;
+                height: 92vh;
+              }
+
+              .thumb-swiper {
+                height: 8vh;
+                padding: 10px 0;
+              }
+
+              .swiper-slide {
+                overflow: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+
+              .zoomable {
+                height: 100%;
+                width: auto;
+                max-width: none;
+                max-height: none;
+                cursor: grab;
+                transition: transform 0.2s ease;
+              }
+
+              .thumb-swiper .swiper-slide {
+                opacity: 0.4;
+                transition: opacity 0.3s ease;
+                cursor: pointer;
+              }
+
+              .thumb-swiper .swiper-slide-thumb-active {
+                opacity: 1;
+              }
+
+              .swiper-button-next,
+              .swiper-button-prev {
+                background-color: rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.2s ease, background-color 0.2s ease;
+              }
+
+              .swiper-button-next:hover,
+              .swiper-button-prev:hover {
+                transform: scale(1.2);
+                background-color: rgba(255, 255, 255, 0.5);
+              }
+
+              .swiper-button-next::after,
+              .swiper-button-prev::after {
+                font-size: 1.4rem;
+                color: white;
+              }
+
+              .swiper-scrollbar {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                height: 8px;
+                margin: 4px 16px;
+              }
+
+              .swiper-scrollbar-drag {
+                background: linear-gradient(135deg, #00c6ff, #0072ff);
+                border-radius: 10px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="swiper main-swiper">
+              <div class="swiper-wrapper">
+                ${files.map((el, i) => `
+                  <div class="swiper-slide">
+                    <img src="${el}" alt="사진${i}" class="zoomable" ondblclick="toggleFullscreen(this)">
+                  </div>`).join('')}
+              </div>
+              <div class="swiper-button-next"></div>
+              <div class="swiper-button-prev"></div>
+              <div class="swiper-scrollbar"></div>
+            </div>
+
+            <div class="swiper thumb-swiper">
+              <div class="swiper-wrapper">
+                ${files.map((el, i) => `
+                  <div class="swiper-slide">
+                    <img src="${el}" alt="썸네일${i}" style="height: 100%; object-fit: contain;" />
+                  </div>`).join('')}
+              </div>
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></scr` + `ipt>
+            <script>
+              const thumbSwiper = new Swiper('.thumb-swiper', {
+                spaceBetween: 10,
+                slidesPerView: 25,
+                freeMode: true,
+                watchSlidesProgress: true,
+              });
+
+              const mainSwiper = new Swiper('.main-swiper', {
+                loop: true,
+                spaceBetween: 10,
+                navigation: {
+                  nextEl: '.swiper-button-next',
+                  prevEl: '.swiper-button-prev',
+                },
+                scrollbar: {
+                  el: '.swiper-scrollbar',
+                  draggable: true,
+                },
+                keyboard: {
+                  enabled: true,
+                  onlyInViewport: true,
+                },
+                thumbs: {
+                  swiper: thumbSwiper,
+                },
+                speed: 500,
+              });
+
+              // 줌 + 드래그
+              document.querySelectorAll('.zoomable').forEach(img => {
+                const container = img.closest('.swiper-slide');
+                let scale = 1;
+
+                img.addEventListener('wheel', (e) => {
+                  e.preventDefault();
+                  scale += e.deltaY < 0 ? 0.1 : -0.1;
+                  scale = Math.max(1, Math.min(5, scale));
+                  img.style.transform = \`scale(\${scale})\`;
+                });
+
+                let isDragging = false, startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+
+                img.addEventListener('mousedown', (e) => {
+                  isDragging = true;
+                  container.style.cursor = 'grabbing';
+                  startX = e.pageX;
+                  startY = e.pageY;
+                  scrollLeft = container.scrollLeft;
+                  scrollTop = container.scrollTop;
+                });
+
+                img.addEventListener('mouseup', () => {
+                  isDragging = false;
+                  container.style.cursor = 'grab';
+                });
+
+                img.addEventListener('mouseleave', () => {
+                  isDragging = false;
+                  container.style.cursor = 'grab';
+                });
+
+                img.addEventListener('mousemove', (e) => {
+                  if (!isDragging) return;
+                  e.preventDefault();
+                  const dx = e.pageX - startX;
+                  const dy = e.pageY - startY;
+                  container.scrollLeft = scrollLeft - dx;
+                  container.scrollTop = scrollTop - dy;
+                });
+              });
+
+              function toggleFullscreen(elem) {
+                if (!document.fullscreenElement) {
+                  elem.requestFullscreen?.();
+                } else {
+                  document.exitFullscreen?.();
+                }
+              }
+            </scr` + `ipt>
+          </body>
+        </html>
+        `;
+      const imageWindow = window.open("", '_blank');
+      imageWindow.document.write(imagePage);
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
+  async function script_renderAchievementEvaluationScreen() {
+    let params = null;
+    let fieldArr = [];
+    let achievementArr = [];
+    let evaluationArr = [];
+    let classArr = [];
+    let studentsAchievementData = [];
+    let toc_modal_flag = true;
+    let clickedElemId = null;
+    let student_id = null;
+    let achievement_id = null;
+    let directories = null;
+    const $submitBtn = document.getElementById('submitBtn');
+    const $year = document.getElementById('year');
+    const $semester = document.getElementById('semester');
+    const $grade = document.getElementById('grade');
+    const $class = document.getElementById('class');
+    const $subject = document.getElementById('subject');
+    const $field = document.getElementById('field');
+    const $achievement = document.getElementById('standard');
+    const $table = document.getElementById('menu_g_table');
+    const $btn1 = document.getElementById('btnG1'); // 평가근거자료 버튼
+    const $btn2 = document.getElementById('btnG2'); // 저장 버튼
+    const $btn3 = document.getElementById('btnG3'); // 삭제 버튼
+
+    const renderAchievementEvaluationTable = info => {
+      let lastIdx = 0;
+      const tableHTML = info.map(({ student_id, achievement_id, name, level, description, evidence_count }) => {
+        lastIdx++;
+        return `
+          <tr data-sid="${student_id}" data-aid="${achievement_id}">
+            <td scope="row" data-id="${lastIdx}" class="text-center"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+            <td class="text-center">${lastIdx}</td>
+            <td>${name}</td>
+            <td>
+              <select class="form-select form-select-sm select-width-full">
+                ${[
+                  `<option value=""></option>`,
+                  ...evaluationArr.map(el => `
+                    <option value="${el.step}" ${level === el.level_name ? "selected" : ""}>
+                      ${el.level_name}
+                    </option>
+                  `)
+                ].join('').concat(`<option value="${evaluationArr.length + 1}">임의입력</option>`)}
+              </select>
+            </td>
+            <td>
+              <textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false" disabled>${description ? description : ""}</textarea>
+            </td>
+            <td class="text-center">${VISIBLE_STATUS_MAP[!!evidence_count]}</td>
+          </tr>
+        `;
+      }).join('');
+      $("#menu_g_tbody").html(tableHTML);
+      $("#student_count").text($("#menu_g_tbody tr").length);
+
+      $("#menu_g_tbody").on("change", "input[type='checkbox']", function() {
+        if ($("#menu_g_tbody input:checked").length === 1) {
+          updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false]); 
+        } else {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]); 
+        }
+      });
+
+      const batchHTML = [`<option value="0">-성취기준별 평가 선택적용-</option>`, ...evaluationArr.map(el => `<option value="${el.step}">${el.level_name}</option>`)].join('').concat(`<option value="${evaluationArr.length + 1}">임의입력</option>`);
+      $("#batchApply").html(batchHTML);
+    }
+
+    const parseTableRowsToObjects = () => { // 테이블 tbody의 행(tr)을 순회하며 추출한 정보로 객체 리터럴을 만들고 이들을 요소로 갖는 배열을 반환하는 함수
+      const data = $("#menu_g_tbody tr").map(function (idx, el) {
+        const sid = $(this).attr("data-sid");
+        const aid = $(this).attr("data-aid");
+        return {
+          student_id: sid,
+          achievement_id: aid,
+          name: $(this).find("td:nth-child(3)").text().trim(),
+          level: $(this).find("td:nth-child(4) select option:selected").text().trim(),
+          description: $(this).find("td:nth-child(5) textarea").val().trim(),
+        }
+      }).get();
+
+      return data;
+    }
+
+    const get_students_achievement_results = async () => {
+      const class_val = $("#class").val();
+      const class_id = classArr[classArr.findIndex(el => el[0] === class_val)][1];
+      const achievement_val = $("#standard").val();
+      const { criterion, evaluation_item, id } = achievementArr[achievementArr.findIndex(el => el['criterion'] === achievement_val)];
+
+      params = new URLSearchParams();
+      params.append('class_id', class_id);
+      params.append('achievement_id', id);
+      
+      try {
+        const response = await fetch(`${_URL}/neis/get_students_achievement_results/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, info } = res;
+        console.log(message);
+        // console.log(info);
+        renderAchievementEvaluationTable(info);
+        studentsAchievementData = parseTableRowsToObjects();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    $("#menu_g_tbody").on("change", "select", function() {
+      if ($(this).val() > evaluationArr.length) {
+        $(this).parent().next().find("textarea").removeAttr("disabled").val("").focus();
+      } else {
+        $(this).parent().next().find("textarea").attr("disabled", true).val(evaluationArr[$(this).val() - 1]?.description || "");
+      }
+    });
+
+    $("#batchApply").on("change", function() {
+      const optionVal = $("#batchApply").val()
+      if (optionVal === '0') { return; }
+      if ($("#menu_g_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        $("#batchApply option").eq(0).attr("selected", true);
+        return;
+      }
+      $("#menu_g_tbody input:checked").each(function() {
+        $(this).closest("tr").find("select:first").val(optionVal).trigger("change");
+      });
+    });
+
+    $grade.addEventListener('change', async (event) => {
+      try {
+        const response = await fetch(`${_URL}/neis/get_subjects_by_grade/${$grade.value}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { grade, subjects, classes } = res;
+        classArr = classes;
+        // console.log(classArr);
+        populateSelectOptionsAndSetDisabled(classArr.map(el => el[0]), $class);
+        populateSelectOptionsAndSetDisabled(subjects, $subject);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $class.addEventListener('change', () => {
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true]);
+    })
+
+    $subject.addEventListener('change', async (event) => {
+      params = new URLSearchParams();
+      params.append('grade', $grade.value);
+      params.append('subject', $subject.value);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_fields_by_subject/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { subject, fields } = res;
+        if (fields.length > 1) {
+          fields.shift();
+        }
+        fieldArr = fields.map(el => [el[0], el[2]]);
+        populateSelectOptionsAndSetDisabled(fields.map(el => el[0]), $field, fields[0][0] == '-없음-' ? true : false);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $field.addEventListener('change', async () => {
+      if ($field.value === '-없음-') {
+        updateButtonStatesWithStyles([$submitBtn, true]);
+      } else {
+        try {
+          const field_val = $("#field").val();
+          const fid = fieldArr[fieldArr.findIndex(el => el[0] == field_val)][1];
+
+          const response = await fetch(`${_URL}/neis/get_achievement_criteria_by_field_id/${fid.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          const { message, criteria } = res;
+          achievementArr = criteria;
+          // console.log(achievementArr); // [[성취기준, 평가요소, 성취기준id], ..]
+          populateSelectOptionsAndSetDisabled(achievementArr.map(el => el['criterion']), $achievement);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+        updateButtonStatesWithStyles([$submitBtn, false]);
+      }
+    });
+
+    $achievement.addEventListener('change', async () => {
+      const achievement_val = $("#standard").val();
+      // console.log("achievementArr: ", achievementArr);
+      const { criterion, evaluation_item, id } = achievementArr[achievementArr.findIndex(el => el['criterion'] === achievement_val)];
+      $("#menu_g_content div.achievementStandardsAndAssessment div").eq(1).text(criterion);
+      $("#menu_g_content div.achievementStandardsAndAssessment div").eq(3).text(evaluation_item);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_evaluation_criteria_by_achievement_id/${id}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, criteria } = res;
+        console.log(message);
+        // console.log(criteria);
+        evaluationArr = criteria;
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true]);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $submitBtn.addEventListener('click', async (event) => { // 조회 버튼 클릭 시
+      event.preventDefault();
+      get_students_achievement_results();
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_active_school_info/`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { school, year, semester } = res;
+        params = new URLSearchParams();
+        params.append('school', school);
+        params.append('year', year);
+        params.append('semester', semester);
+    
+        const url = `${_URL}/cloudstorage/directoryAllContents/?${params.toString()}`;
+    
+        const response_2 = await fetch(url, { method: 'GET' });
+        if (!response_2.ok) {
+          throw new Error(`Error: ${response_2.status}`);
+        }
+        if (response_2.status === 204) {
+          console.log('No Content');
+          return;
+        }
+
+        const res_2 = await response_2.json();
+        // console.log(res_2.message);
+
+        const directoryTree = res_2.message.map((item, idx) => {
+          const isFile = item.includes('.');
+          const num = item.split('/').length - 1; 
+          const _path = item.split('/').pop();
+          return {
+            id: idx + 1,
+            path: item,
+            pathForDisplay: _path,
+            subdirectoryDepth: num,
+            type: isFile ? 'file' : 'directory',
+            // type: 'directory',
+            children: [],
+          };
+        });
+
+        directoryTree.forEach((elem) => {
+          const children = directoryTree.filter(item => 
+            item.path.startsWith(`${elem.path}/`) && item.path !== elem.path
+            && !item.path.split(`${elem.path}/`)[1].includes('/')
+          );
+          const children_ids = children.map(child => child.id);
+          elem.children = children_ids;
+        });
+
+        directories = directoryTree;
+
+        const html_for_toc = directoryTree
+          // .filter(item => item.type === 'directory')
+          .map(({ id, path, type, children, pathForDisplay, subdirectoryDepth }) => `
+            <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${subdirectoryDepth > 5 ? 'invisible' : ''}">
+              ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth, path, type)}
+            </a>
+          `).join('');
+
+        const $toc_modal = document.getElementById('toc_modal');   
+        $toc_modal.innerHTML = html_for_toc;
+
+        $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
+            el.style.color = '#9A9FA8';
+            el.parentElement.style.color = 'black';
+            el.parentElement.style.fontWeight = "400";
+          });
+
+        if (!toc_modal_flag) {
+          return
+        }   
+        
+        $toc_modal.addEventListener('click', function(e) {
+          e.preventDefault();
+          $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
+            el.style.color = '#9A9FA8';
+            el.parentElement.style.color = 'black';
+            el.parentElement.style.fontWeight = "400";
+          });
+          const elem = e.target.closest('.list-group-item');
+          if (elem) {
+            clickedElemId = elem.dataset.id;
+            elem.querySelector('i').style.color = "#4078FF";
+            elem.style.color = "#4078FF";
+            elem.style.fontWeight = "bold";
+            const subIds = JSON.parse(elem.dataset.subids);
+            if (subIds.length > 0) {
+              if (!elem.classList.contains('open')) {
+                toggleFolderIcon(elem, true);
+                elem.classList.add('open');
+              } else {
+                toggleFolderIcon(elem, false);
+                elem.classList.remove('open');
+              }
+              displayTagsById(subIds, true);
+              $("#toc_modal_confirm").removeClass("btn-primary").addClass("btn-secondary").addClass("disabled");
+            } else {
+              $("#toc_modal_confirm").removeClass("btn-secondary").addClass("btn-primary").removeClass("disabled");
+            }
+          }
+        });
+        toc_modal_flag = false;
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $btn2.addEventListener('click', async () => { // 저장 버튼 클릭 시
+      const data = parseTableRowsToObjects();
+      const isEqual = JSON.stringify(studentsAchievementData) === JSON.stringify(data);
+      if (isEqual) {
+        alert("변경된 내용이 없습니다.");
+        return
+      }
+
+      if (!confirm("변경된 내용을 저장하시겠습니까?")) {
+        return
+      }
+
+      try {
+        const url = `${_URL}/neis/update_student_achievement_levels/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(`${res.message}: , created: ${res.created}, updated: ${res.updated}, total: ${res.total}`);
+        alert("저장을 완료했습니다.");
+        get_students_achievement_results();
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+    });    
+
+    $btn3.addEventListener('click', () => { // 삭제 버튼 클릭 시 
+      if ($("#menu_g_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        return;
+      }
+
+      if (!confirm("해당자료를 삭제하시겠습니까?\n등록 또는 수정된 항목은 반영되지 않으며 삭제처리만 반영됩니다.")) {
+        return
+      }
+
+      $("#menu_g_tbody input:checked").each(function(idx, el) {
+        $(el).closest("tr").find("td:nth-child(4) select").val("");
+        $(el).closest("tr").find("td:nth-child(5) textarea").val("");
+      });
+    });
+
+    $("#toc_modal_confirm").on("click", async function () {
+      const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
+      const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
+      const data = {
+        'student_id': student_id, 
+        'achievement_id': achievement_id,
+        'resource_path': path,
+        'ext': file_ext,
+      }
+
+      console.log(data);
+
+      try {
+        const url = `${_URL}/neis/create_evaluation_evidence/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(res.message);
+        alert("저장을 완료했습니다.");
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+      $("#searchResourcesModal").modal('hide');
+    });
+
+    try {
+      const response = await fetch(`${_URL}/neis/get_active_grades/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { year, semester, active_grades } = res;
+      populateSelectOptionsAndSetDisabled(year, $year, true);
+      populateSelectOptionsAndSetDisabled(semester, $semester, true);
+      populateSelectOptionsAndSetDisabled(active_grades, $grade);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+
+    const updateBtnsBasedOnSelection = () => {
+      if ($("#menu_g_tbody input:checked").length === 1) {
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false]); 
+      } else {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]); 
+      }
+    }
+
+    const sideEffect = () => {
+      updateBtnsBasedOnSelection();
+    };
+
+    toggleAllTableCheckboxes('#menu_g_table', sideEffect);
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(3)", function() {
+      const path = $(this).text();
+      const file_ext = path.split('.').pop().toLowerCase();
+      const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'];
+      const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
+      const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
+      const code_exts = ['html', 'css', 'js', 'py'];
+      const office_exts = ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx'];
+
+      if (video_exts.includes(file_ext)) {
+        openFile(path, true, false);
+      } else if (audio_exts.includes(file_ext)) {
+        openFile(path, false, true);  // 비디오 파일
+      } else if (code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
+        openFile(path)
+      } else if (image_exts.includes(file_ext)) {  
+        openFile(path);
+      } 
+    });
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(1)", async function() { // 삭제 아이콘 클릭 시
+      if (confirm(`삭제하시겠습니까? 자료를 삭제해도 원격저장소에 저장된 원자료는 삭제되지 않습니다.`)) {
+        try {
+          const url = `${_URL}/neis/delete_evaluation_evidence_by_id/`;
+          const data = {
+            eid: $(this).closest("tr").attr("data-eid"),
+          }
+          const options = {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log("message: ", res.message);
+          console.log("deleted_id: ", res.deleted_id);
+
+          // 요청 성공 시 아래 코드 실행
+          $(this).closest("tr").remove();
+        } catch (error) {
+          console.error('Error: ', error);
+          alert("삭제 중 오류가 발생하였습니다.");
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(2)", async function() { // 양방향 화살표 아이콘 클릭 시
+      if ($("#toc_modal_confirm").hasClass("disabled")) { return }
+
+      const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
+      const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
+      
+      const data = {
+        eid: $(this).closest("tr").attr("data-eid"),
+        resource_path: path,
+        ext: file_ext,
+      }
+
+      if (confirm(`평가근거자료를 다음으로 수정하시겠습니까?: ${path}`)) {
+        try {
+          const url = `${_URL}/neis/update_evaluation_evidence_resource/`;
+          const options = {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log(res.message);
+          
+          // 요청 성공 시 아래 코드 실행
+          $(this).closest("tr").find("td:nth-child(3)").text(path);
+        } catch (error) {
+          console.error('Error:', error);
+          alert(error);
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    const $searchResourcesModal = document.getElementById('searchResourcesModal');
+    if ($searchResourcesModal) {
+      $searchResourcesModal.addEventListener('show.bs.modal', async (event) => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = $searchResourcesModal.querySelector('.modal-title')
+        const modalBody = $searchResourcesModal.querySelector('.modal-body')
+        const student_name = $("#menu_g_tbody input:checked").parent().next().next().text();
+        modalTitle.textContent = `${student_name}의 평가근거자료 선택`;
+
+        student_id = $("#menu_g_tbody input:checked").closest("tr").attr("data-sid");
+        achievement_id = $("#menu_g_tbody input:checked").closest("tr").attr("data-aid");
+
+        params = new URLSearchParams();
+        params.append('student_id', student_id);
+        params.append('achievement_id', achievement_id);
+        
+        try {
+          const response = await fetch(`${_URL}/neis/get_evaluation_evidence_by_student_and_achievement/?${params.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          const { message, info } = res;
+          console.log(message);
+          // console.log(info);
+          const tableHtml = info.map(({evidence_id, resource_path, created_at}) => {
+            return `
+              <tr data-eid="${evidence_id}">
+                <td><i class="fa-solid fa-trash"></i></td>
+                <td><i class="fa-solid fa-right-left"></i></td>
+                <td>${resource_path}</td>
+                <td>${created_at}</td>
+              </tr>
+            `
+          }).join('');
+          $("#menu_g_modal_tbody").html(tableHtml);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      });
+    }    
   }
 
   function renderFieldAssessmentResultsTable() {
     // 학생이 특정한 과목의 한 영역(field)에 부속된 평가요소를 어느 수준까지 달성했는지 평가결과를 기록 및 관리하는 테이블을 렌더링 --> MENU.H
     let html = null;
     html = `
-    <div id="menu_h_content" class="col col-xl-12">
-      <div class="table-banner" style="top: -0.3rem;">
-        <button type="button" class="btn btn-sm btn-secondary">평가근거자료 업로드</button>
-        <button type="button" class="btn btn-sm btn-secondary">저장</button>
-        <button type="button" class="btn btn-sm btn-secondary">출력</button>
-        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
-      </div>
-      <table id="menu_h_table" class="table table-hover caption-top table-bordered">
-        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
-          <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
-            <select class="form-select form-select-sm select-width-xl"></select>
-            <select class="form-select form-select-sm select-width-xl"></select>
+      <div id="menu_h_content" class="col col-xl-12">
+        <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
+          <div>
+            <button type="button" class="btn btn-sm btn-secondary">평가근거자료</button>
+            <button type="button" class="btn btn-sm btn-secondary">저장</button>
+            <button type="button" class="btn btn-sm btn-secondary">삭제</button>
           </div>
-        </caption>
-        <thead>
-          <tr>
-            ${renderSelectAllCheckboxButton(3)}
-            <th scope="col" style="width: 7%;">반/번호</th>
-            <th scope="col" style="width: 7%;">성명</th>
-            <th scope="col" style="width: 17%;">성취기준</th>
-            <th scope="col" style="width: 16%;">평가요소</th>
-            <th scope="col" style="width: 10%;">단계</th>
-            <th scope="col" style="width: 30%;">평가결과</th>
-          </tr>
-        </thead>
-        <tbody id="menu_h_tbody">
-          ${renderEmptyTbodyWithMessage(7)}
-        </tbody>
-      </table>
-    </div>
+        </div>
+        <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
+          <select class="form-select form-select-sm select-width-xl"></select>
+          <select class="form-select form-select-sm select-width-xl"></select>
+        </div>
+        <div style="display: flex; flex-direction: column; height: 70vh; overflow-y: auto;">
+          <table id="menu_h_table" class="table table-hover table-bordered">
+            <thead>
+              <tr>
+                ${renderSelectAllCheckboxButton(3)}
+                <th scope="col" style="width: 7%;">반/번호</th>
+                <th scope="col" style="width: 7%;">성명</th>
+                <th scope="col" style="width: 17%;">성취기준</th>
+                <th scope="col" style="width: 16%;">평가요소</th>
+                <th scope="col" style="width: 10%;">단계</th>
+                <th scope="col" style="width: 30%;">평가결과</th>
+              </tr>
+            </thead>
+            <tbody id="menu_h_tbody">
+              ${renderEmptyTbodyWithMessage(7)}
+            </tbody>
+          </table>
+        </div>
+      </div>
     `;
     return html;
   }
+
+  async function script_renderFieldAssessmentResultsTable () {
+
+  }
+
 
   function renderSubjectAssessmentResultsTable() {
     // 학생이 특정 교과에 배당된 모든 평가요소에 대해 어느 수준까지 성취했는지 그 평가결과를 기록 및 관리하는 테이블을 렌더링
@@ -2533,9 +3544,8 @@
     html = `
     <div id="menu_i_content" class="col col-xl-12">
       <div class="table-banner" style="top: -0.3rem;">
-        <button type="button" class="btn btn-sm btn-secondary">평가근거자료 업로드</button>
+        <button type="button" class="btn btn-sm btn-secondary">평가근거자료</button>
         <button type="button" class="btn btn-sm btn-secondary">저장</button>
-        <button type="button" class="btn btn-sm btn-secondary">출력</button>
         <button type="button" class="btn btn-sm btn-secondary">삭제</button>
       </div>
       <table id="menu_i_table" class="table table-hover caption-top table-bordered">
@@ -2578,7 +3588,6 @@
         <button type="button" class="btn btn-sm btn-secondary">ChatGPT</button>
         <button type="button" class="btn btn-sm btn-secondary">저장</button>
         <button type="button" class="btn btn-sm btn-secondary">삭제</button>
-        <button type="button" class="btn btn-sm btn-secondary">출력</button>
       </div>
       <table id="menu_j_table" class="table table-hover caption-top table-bordered">
         <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
@@ -2782,6 +3791,7 @@
         script_renderAssessmentCriteriaTable();
         return;
       case MENU.G:
+        script_renderAchievementEvaluationScreen();
         return;
       case MENU.H:
         return;
