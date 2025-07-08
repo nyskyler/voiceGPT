@@ -19,7 +19,7 @@ import traceback
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
-from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria, EvaluationResult, EvaluationEvidence
+from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria, EvaluationResult, EvaluationEvidence, Observation, ObservationEvidence, ObservationClassification
 from pathlib import Path
 from PIL import Image, ExifTags
 from datetime import datetime, timedelta, timezone
@@ -318,6 +318,7 @@ def analyzeStudentListByClassInfo():
     pattern = os.path.join(target_path, f"*{normalized_grade}*.csv")
     for filename in glob.glob(pattern):
       try:
+        print(filename)
         with open(filename, encoding='cp949') as f:
           reader = csv.reader(f)
           header = next(reader, None)  # 헤더 row (없으면 None)
@@ -452,7 +453,7 @@ def processGradeClassAndStudentRecords():
 
       # Step 3: 학급명 csv 파일 찾기  
       target_path = os.path.join(
-        str(root_dir), "NEIS", school, str(year), f"{semester}학기"
+        str(root_dir), "NEIS", school, str(year), f"{semester}학기", "학생명렬표"
       )
 
       normalized_grade = normalize_path(grade, "NFD")
@@ -1679,3 +1680,560 @@ def update_evaluation_evidence_resource():
       "error": "서버 오류 발생",
       "details": str(e)
     }), 500
+  
+
+@bp.route("/get_grade_class_students_assessment_areas_and_subject_id/", methods=['GET'])
+@login_required
+def get_grade_class_students_assessment_areas_and_subject_id():
+  grade_str = request.args.get('grade')
+  class_name = request.args.get('class')  # 실제로는 'class_name'으로 받는 게 더 낫습니다
+  subject_str = request.args.get('subject')
+
+  if not (grade_str and class_name and subject_str):
+    return error_response("필수 파라미터가 누락되었습니다.", 400, {
+      "grade": grade_str,
+      "class": class_name,
+      "subject": subject_str
+    })
+
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return error_response("활성화된 학교 정보가 없습니다.", 401)
+
+  context = SchoolContext(school_info, grade_str, subject_str)
+  err = context.resolve()
+  if err:
+    return err  # 혹은 예외로 처리해도 좋음
+
+  try:
+    gc = GradeClass.query.options(
+      selectinload(GradeClass.students)
+    ).filter_by(
+      school_grade_id=context.school_grade.id,
+      class_name=class_name
+    ).first()
+
+    if not gc or not gc.students:
+      return jsonify({
+        "message": "등록된 학급 또는 소속된 학생이 없습니다.",
+        "info": []
+      }), 200
+
+    student_info = [[student.id, student.name] for student in sorted(gc.students, key=lambda s: s.name)]
+    fields_info = [[field.id, field.area] for field in context.grade_subject.assessment_areas]
+    
+    return jsonify({
+      "message": "관찰기록 기본자료 조회 완료",
+      "student_info": student_info,
+      "fields_info": fields_info,
+      "subject_id": context.grade_subject.id
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/getStudentObservationsBySubject/", methods=['GET'])
+@login_required
+def getStudentObservationsBySubject():
+  sid = request.args.get('student_id')
+  gsid = request.args.get('grade_subject_id')
+  main_option = request.args.get('main_select')
+  sub_option = request.args.get('sub_select')  # 문자열로 들어옴 (예: '0')
+  # print("sub_option: ", sub_option)
+  # print("sub_option_type: ", type(sub_option))
+
+  if not (sid and gsid):
+    return error_response("필수 파라미터가 누락되었습니다.", 400, {
+      "student_id": sid,
+      "grade_subject_id": gsid
+    })
+
+  try:
+    sid = int(sid)
+    gsid = int(gsid)
+  except ValueError:
+    return error_response("ID는 정수여야 합니다.", 400)
+
+  try:
+    query = Observation.query.filter_by(student_id=sid, grade_subject_id=gsid)
+
+    if main_option != '전체':
+      try:
+        classification_enum = ObservationClassification(main_option)
+        query = query.filter_by(classification=classification_enum)
+      except ValueError:
+        return error_response(f"'{main_option}'은 유효하지 않은 분류 항목입니다.", 400)
+
+      if classification_enum == ObservationClassification.evaluation and sub_option != '0':
+        query = query.filter_by(area_id=int(sub_option))
+
+    observations = query.order_by(Observation.created_at.asc()).all()
+
+    obs_info = [
+      {
+        'oid': ob.id,
+        'desc': ob.description,
+        'category': ob.classification.value,
+        'aid': ob.area_id,
+        'created_at': ob.created_at.strftime("%Y-%m-%d") if ob.created_at else None,
+        'evidence_count': len(ob.evidences) if ob.evidences else 0
+      }
+      for ob in observations
+    ]
+
+    return jsonify({
+      "message": "학생 관찰기록 조회 완료",
+      "observation_info": obs_info
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/manageObservationsBatch/", methods=['POST'])
+@login_required
+def manageObservationsBatch():
+  try:
+    data = request.get_json()
+    # if not data or not isinstance(data, list):
+    #   return jsonify({"error": "데이터 형식이 잘못되었습니다. 리스트가 필요합니다."}), 400
+
+    sid = request.args.get('student_id')
+    gsid = request.args.get('grade_subject_id')
+    main = request.args.get('main_select')
+    sub = request.args.get('sub_select')
+     
+    existing_obs = None
+
+    if not (sid and gsid and main and sub):
+      return error_response("필수 파라미터가 누락되었습니다.", 400, {
+        "student_id": sid,
+        "grade_subject_id": gsid,
+        "main_select": main,
+        "sub_select": sub
+      })
+
+    try:
+      sid = int(sid)
+      gsid = int(gsid)
+      sub = 0 if sub == '전체' else int(sub)
+    except ValueError:
+      return error_response("ID는 정수여야 합니다.", 400)
+
+    # 기존 관찰기록을 dict 형태로 가져오기 (id → Observation 객체)
+
+    if main == '전체':
+      existing_obs = {
+        ob.id: ob for ob in Observation.query.filter_by(student_id=sid, grade_subject_id=gsid).all()
+      }
+    elif main == '평가내용' and sub != 0:
+      existing_obs = {
+        ob.id: ob for ob in Observation.query.filter_by(student_id=sid, grade_subject_id=gsid, classification=ObservationClassification(main), area_id=sub).all()
+      }
+    else:
+      existing_obs = {
+        ob.id: ob for ob in Observation.query.filter_by(student_id=sid, grade_subject_id=gsid, classification=ObservationClassification(main)).all()
+      }
+      
+    received_ids = set()
+
+    for item in data:
+      try:
+        oid_raw, created_str, desc, classification, area_id_raw = itemgetter(
+          'id', 'created_at', 'desc', 'classification', 'area_id'
+        )(item)
+      except KeyError:
+        return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+      # 변환
+      try:
+        oid = int(oid_raw)
+        area_id = int(area_id_raw) if area_id_raw not in (None, '', '0') else None
+        class_enum = ObservationClassification(classification)
+        created_at = datetime.strptime(created_str, '%Y-%m-%d')
+      except (ValueError, TypeError) as e:
+        return jsonify({"error": "형식 오류: id, area_id는 정수, created_at은 'YYYY-MM-DD' 형식, classification은 올바른 값이어야 합니다."}), 400
+
+      if oid == 0:
+        # 새 레코드 생성
+        new_obs = Observation(
+          student_id=sid,
+          grade_subject_id=gsid,
+          description=desc,
+          classification=class_enum,
+          area_id=area_id,
+          created_at=created_at
+        )
+        db.session.add(new_obs)
+      elif oid in existing_obs:
+        # 기존 항목 업데이트
+        obs_item = existing_obs[oid]
+        obs_item.description = desc
+        obs_item.classification = class_enum
+        obs_item.area_id = area_id
+        obs_item.created_at = created_at
+        received_ids.add(oid)
+
+    # 누락된 기존 레코드 삭제 (클라이언트가 보내지 않은 것)
+    for oid, obs_item in existing_obs.items():
+      if oid not in received_ids:
+        db.session.delete(obs_item)
+
+    db.session.commit()
+
+    return jsonify({
+      "message": "관찰내용 저장 및 수정 완료"
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/get_observation_evidence_by_observation_id/", methods=['GET'])
+@login_required
+def get_observation_evidence_by_observation_id():
+  oid_raw = request.args.get('observation_id')
+
+  if not oid_raw:
+    return error_response("Missing required parameters.", 400, {
+      "observation_id": oid_raw
+    })
+
+  try:
+    oid = int(oid_raw)
+  except ValueError:
+    return error_response("observation_id는 정수여야 합니다.", 400)
+
+  try:
+    obs = Observation.query.options(
+      selectinload(Observation.evidences)
+    ).filter_by(
+      id=oid
+    ).first()
+
+    # 관찰내용이 없거나 관찰근거자료가 없는 경우
+    if not obs or not obs.evidences:
+      return jsonify({
+        "message": "관찰근거자료가 없습니다.",
+        "info": []
+      }), 200
+
+    result = []
+    for evidence in sorted(obs.evidences, key=lambda e: e.created_at or e.id, reverse=True):
+      result.append({
+        "evidence_id": evidence.id, 
+        "resource_path": evidence.resource_path,
+        "resource_type": evidence.resource_type,
+        "created_at": evidence.created_at.strftime("%Y.%m.%d.") if evidence.created_at else "",
+        "updated_at": evidence.updated_at.strftime("%Y.%m.%d.") if evidence.updated_at else "",
+        "evidence_count": True if evidence else False,
+      })
+
+    return jsonify({
+      "message": "관찰근거자료 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/create_observation_evidence/", methods=['POST'])
+@login_required
+def create_observation_evidence():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다."}), 400
+
+    # 안전하게 필드 추출
+    try:
+      oid_raw, file_path, file_ext = itemgetter(
+        'observation_id', 'resource_path', 'ext'
+      )(data)
+    except KeyError:
+      return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+    # 정수 변환
+    try:
+      oid = int(oid_raw)
+    except ValueError:
+      return jsonify({"error": "oid는 정수여야 합니다."}), 400
+
+    # 확장자 → 타입 분류
+    file_type = None
+    media_types = {
+      'image': ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'],
+      'video': ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'],
+      'audio': ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'],
+      'doc': ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx']
+    }
+
+    ext = file_ext.lower()
+    for k in media_types:
+      if ext in media_types[k]:
+        file_type = k
+        break
+
+    if file_type is None:
+      return jsonify({"error": "지원되지 않는 파일 형식입니다."}), 400
+
+    obs = Observation.query.filter_by(id=oid).first()
+
+    if not obs:
+      return jsonify({"error": "관찰내용이 생성되지 않았습니다."}), 404
+
+    evidence = ObservationEvidence(
+      observation_id=obs.id,
+      resource_path=file_path,
+      resource_type=file_type
+    )
+
+    db.session.add(evidence)
+    db.session.commit()
+
+    return jsonify({
+      "message": "관찰근거자료 저장 완료"
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/delete_observation_evidence_by_id/", methods=['DELETE'])
+@login_required
+def delete_observation_evidence_by_id():
+  try:
+    data = request.get_json()
+    if not isinstance(data, dict):
+      return jsonify({"error": "Invalid request format. Expected a JSON object."}), 400
+
+    eid_raw = data.get('eid')
+    try:
+      eid = int(eid_raw)
+    except (TypeError, ValueError):
+      return error_response("evaluation_id는 정수여야 합니다.", 400)
+
+    evidence = ObservationEvidence.query.filter_by(id=eid).first()
+
+    if not evidence:
+      return error_response(f"id가 {eid}인 관찰근거자료를 찾지 못했습니다.", 404)
+
+    db.session.delete(evidence)
+    db.session.commit()
+
+    return jsonify({
+      "message": "삭제 완료",
+      "deleted_id": eid,
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/update_observation_evidence_resource/", methods=['PATCH'])
+@login_required
+def update_observation_evidence_resource():
+  try:
+    data = request.get_json()
+    if not isinstance(data, dict):
+      return jsonify({"error": "Invalid request format. Expected a JSON object."}), 400
+
+    try:
+      eid_raw, resource_path, file_ext = itemgetter(
+          'eid', 'resource_path', 'ext')(data)
+    except (KeyError, TypeError):
+      return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+    try:
+      eid = int(eid_raw)
+    except (TypeError, ValueError):
+      return error_response("evaluation_id는 정수여야 합니다.", 400)
+
+    ext = file_ext.lower()
+    file_type = None
+    media_types = {
+      'image': ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'],
+      'video': ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'],
+      'audio': ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'],
+      'doc': ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx']
+    }
+
+    for k in media_types:
+      if ext in media_types[k]:
+        file_type = k
+        break
+
+    if file_type is None:
+      return jsonify({"error": "지원되지 않는 파일 형식입니다."}), 400
+
+    evidence = ObservationEvidence.query.filter_by(id=eid).first()
+    if not evidence:
+      return error_response(f"id가 {eid}인 관찰근거자료를 찾을 수 없습니다.", 404)
+
+    evidence.resource_path = resource_path
+    evidence.resource_type = file_type
+
+    db.session.commit()
+
+    return jsonify({
+      "message": "관찰근거자료 수정 완료",
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/manageObservationsBatchBySids/", methods=['POST'])
+@login_required
+def manageObservationsBatchBySids():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, list):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다. 리스트가 필요합니다."}), 400
+
+    sids_raw = request.args.get('student_ids')
+    gsid_raw = request.args.get('grade_subject_id')
+
+    if not (sids_raw and gsid_raw):
+      return error_response("필수 파라미터가 누락되었습니다.", 400, {
+        "student_ids": sids_raw,
+        "grade_subject_id": gsid_raw
+      })
+
+    # student_ids는 '1,2,3' 같은 문자열로 전달됨
+    try:
+      sids = [int(sid.strip()) for sid in sids_raw.split(',')]
+      gsid = int(gsid_raw)
+    except ValueError:
+      return error_response("ID는 정수여야 합니다.", 400)
+
+    for sid in sids:
+      for item in data:
+        try:
+          created_str, desc, classification, area_id_raw = itemgetter(
+            'created_at', 'desc', 'classification', 'area_id'
+          )(item)
+        except KeyError:
+          return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+        try:
+          created_at = datetime.strptime(created_str, '%Y-%m-%d')
+          area_id = int(area_id_raw) if area_id_raw not in (None, '', '0') else None
+          class_enum = ObservationClassification(classification)
+        except (ValueError, TypeError):
+          return jsonify({
+            "error": "형식 오류: area_id는 정수, created_at은 'YYYY-MM-DD' 형식, classification은 지정된 Enum 값이어야 합니다."
+          }), 400
+
+        # 중복 방지용 체크 (선택적)
+        exists = Observation.query.filter_by(
+          student_id=sid,
+          grade_subject_id=gsid,
+          description=desc,
+          classification=class_enum,
+          area_id=area_id,
+          created_at=created_at
+        ).first()
+
+        if exists:
+          continue  # 동일한 항목이 있다면 skip
+
+        new_obs = Observation(
+          student_id=sid,
+          grade_subject_id=gsid,
+          description=desc,
+          classification=class_enum,
+          area_id=area_id,
+          created_at=created_at
+        )
+        db.session.add(new_obs)
+
+    db.session.commit()
+
+    return jsonify({
+      "message": "관찰기록 일괄입력 저장 완료"
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+
+    
+@bp.route("/get_image_resource_paths_by_student_and_subjectId/", methods=['GET'])
+@login_required
+def get_image_resource_paths_by_student_and_subjectId():
+  sid_raw = request.args.get('student_id')
+  gsid_raw = request.args.get('grade_subject_id')
+
+  if not (sid_raw and gsid_raw):
+    return error_response("필수 파라미터가 누락되었습니다.", 400, {
+        "student_id": sid_raw,
+        "grade_subject_id": gsid_raw
+    })
+
+  try:
+    sid = int(sid_raw)
+    gsid = int(gsid_raw)
+  except ValueError:
+    return error_response("student_id와 grade_subject_id는 정수여야 합니다.", 400)
+
+  try:
+    obss = Observation.query.options(
+      selectinload(Observation.evidences)
+    ).filter_by(
+      student_id=sid,
+      grade_subject_id=gsid
+    ).all()
+
+    # 관찰내용이 없거나 evidence가 전부 비어있는 경우
+    if not obss or not any(obs.evidences for obs in obss):
+      return jsonify({
+        "message": "관찰근거자료가 없습니다.",
+        "info": []
+      }), 200
+
+    result = []
+
+    for obs in obss:
+      for evidence in sorted(obs.evidences, key=lambda e: e.created_at or e.id):
+        if evidence.resource_type != 'image':
+          continue
+        result.append(evidence.resource_path)
+
+    return jsonify({
+      "message": "관찰근거자료 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))

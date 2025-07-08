@@ -326,10 +326,10 @@ class SubjectDevelopment(db.Model):
 
 # 관찰 분류 ENUM
 class ObservationClassification(enum.Enum):
-  lesson = '수업 내용'
-  evaluation = '평가 내용'
-  uncategorized = '미분류'
-
+  lesson = '수업내용'
+  evaluation = '평가내용'
+  uncategorized = '미선택'
+  
 
 # 관찰내용 모델
 class Observation(db.Model):
@@ -346,3 +346,16 @@ class Observation(db.Model):
   student = db.relationship('Student', back_populates='observations')
   grade_subject = db.relationship('GradeSubject', back_populates='observations')
   area = db.relationship('AssessmentArea', back_populates='observations')
+  evidences = db.relationship('ObservationEvidence', back_populates='observation', cascade="all, delete")
+
+# 관찰근거 모델
+class ObservationEvidence(db.Model):
+  __tablename__ = 'observation_evidence'
+  id = db.Column(db.Integer, primary_key=True)
+  observation_id = db.Column(db.Integer, db.ForeignKey('observation.id'), nullable=False)
+  resource_path = db.Column(db.String(255), nullable=False)
+  resource_type = db.Column(db.String(20))  # Optional: 'image', 'video', 'audio'
+  created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(tz('Asia/Seoul')))
+  updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(tz('Asia/Seoul')), onupdate=lambda: datetime.now(tz('Asia/Seoul')))
+
+  observation = db.relationship('Observation', back_populates='evidences')

@@ -698,6 +698,15 @@
     }); 
   }
 
+  function escapeHTML(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   async function article(){
     const state = store.getState();
     async function fetchThumbnail(url) {
@@ -737,7 +746,7 @@
           <div class="card ${border == 'none' ? '' : border} mb-2">
             <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
               <div class="thumbnails" data-url="${el.imgUrl}"}></div>
-              <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${el.desc}</div>
+              <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${escapeHTML(el.desc)}</div>
               <button type="button" class="btn-close delete_message" aria-label="Close"></button>
             </div>
           </div>
@@ -1345,17 +1354,13 @@
       if (!!store.getState().subject) {
         const _author = 'user';
         const _desc = event.target.message.value;
-        // const _desc = desc
-        //   .replace(/</g, "&lt;")
-        //   .replace(/>/g, "&gt;");
-        // console.log(_desc);
         
         const currentModel = document.getElementById('currentModel').textContent.toLowerCase();
         if (currentModel.startsWith('dall')) {
-          store.dispatch({type:'IMG_CREATE', author:_author, desc:_desc});
+          store.dispatch({type:'IMG_CREATE', author:_author, desc: _desc});
         } else {
           // console.log('dall!');
-          store.dispatch({type:'CREATE', author:_author, desc:_desc});
+          store.dispatch({type:'CREATE', author:_author, desc: _desc});
         }
         Initialize_textareaTag(null); 
       } else {
