@@ -298,7 +298,7 @@ class SemesterSummary(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
   grade_subject_id = db.Column(db.Integer, db.ForeignKey('grade_subject.id'), nullable=False)
-  description = db.Column(db.Text, nullable=False)
+  description = db.Column(db.Text, nullable=True)
   created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(tz('Asia/Seoul')))
   updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(tz('Asia/Seoul')), onupdate=lambda: datetime.now(tz('Asia/Seoul')))
 
@@ -329,7 +329,7 @@ class ObservationClassification(enum.Enum):
   lesson = '수업내용'
   evaluation = '평가내용'
   uncategorized = '미선택'
-  
+
 
 # 관찰내용 모델
 class Observation(db.Model):

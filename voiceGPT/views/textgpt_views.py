@@ -84,6 +84,13 @@ def question():
   _range = int(data['range'])
   _subject_id = data['subject_id']
   _images = data['images']
+
+  # print("model: ", _model)
+  # print("content: ", _content)
+  # print("system: ", _system)
+  # print("range: ", _range)
+  # print("subject_id: ", _subject_id)
+  # print("images: ", _images)
   
   if not _images:
     # data['system']이 빈 문자열이 아니라면 _messages 배열에 객체로 맨 앞에 추가해야 함.
@@ -358,6 +365,13 @@ def upload():
   _system = data['system']
   _images = data['images']
   # print(f'_images: {_images}')
+
+  # print("subject: ", subject)
+  # print("model: ", model)
+  # print("range: ", _range)
+  # print("contents: ", contents)
+  # print("system: ", _system)
+  # print("images: ", _images)
 
   if not isinstance(contents, list):
     return jsonify({'erorr': 'Content must be a list'}), 400
@@ -855,3 +869,34 @@ def delete_image(filename):
       return jsonify({'error': 'Server error', 'message': str(e)}), 500
     
   return jsonify({'error': 'Image not found'}), 404 # 이미지가 존재하지 않을 경우 처리
+
+
+@bp.route("/get_subject_info_by_title/<string:_title>", methods=['GET'])
+@login_required
+def get_subject_info_by_title(_title):
+  try:
+    # 검색어가 title에 포함된 Subject를 필터링
+    subject = Subject.query.filter_by(title=_title).first()
+
+    if not subject:
+      return jsonify({
+        "message": "해당 이름의 GPT 주제가 없습니다.",
+        "info": []
+      }), 200
+    
+    info = {
+      "subject_id": subject.id,
+      "system": subject.system,
+      "model": subject.model,
+      "range": subject.range,
+    }
+    
+    return jsonify({
+      "message": "GPT 주제 조회 완료",
+      "info": info
+    }), 200
+    
+  except SQLAlchemyError as e:
+    return jsonify({'error': 'Database error', 'message': str(e)}), 500
+  except Exception as e:
+    return jsonify({'error': 'Server error', 'message': str(e)}), 500

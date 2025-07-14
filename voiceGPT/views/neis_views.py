@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, url_for, render_template, flash, request, 
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, aliased
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy import func
 from operator import itemgetter 
 from collections import defaultdict
@@ -19,7 +19,7 @@ import traceback
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
-from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria, EvaluationResult, EvaluationEvidence, Observation, ObservationEvidence, ObservationClassification
+from ..models import SchoolYearInfo, SchoolGrade, SubjectEnum, GradeSubject, GradeClass, Student, student_class_association, AssessmentArea, AchievementCriterion, EvaluationCriteria, EvaluationResult, EvaluationEvidence, Observation, ObservationEvidence, ObservationClassification, SemesterSummary
 from pathlib import Path
 from PIL import Image, ExifTags
 from datetime import datetime, timedelta, timezone
@@ -2237,3 +2237,242 @@ def get_image_resource_paths_by_student_and_subjectId():
   except Exception as e:
     print(traceback.format_exc())
     return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/get_students_semester_summary_by_class_and_subject/", methods=['GET'])
+@login_required
+def get_students_semester_summary_by_class_and_subject():
+  grade_str = request.args.get('grade')
+  class_name = request.args.get('class')
+  subject_str = request.args.get('subject')
+
+  if not (grade_str and class_name and subject_str):
+    return error_response("필수 파라미터가 누락되었습니다.", 400, {
+      "grade": grade_str,
+      "class": class_name,
+      "subject": subject_str
+    })
+
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return error_response("활성화된 학교 정보가 없습니다.", 401)
+
+  context = SchoolContext(school_info, grade_str, subject_str)
+  err = context.resolve()
+  if err:
+    return err
+
+  try:
+    target_gsid = context.grade_subject.id
+
+    gc = GradeClass.query.options(
+      selectinload(GradeClass.students)
+        .selectinload(Student.semester_summaries),
+      with_loader_criteria(SemesterSummary, SemesterSummary.grade_subject_id == target_gsid)
+    ).filter_by(
+      school_grade_id=context.school_grade.id,
+      class_name=class_name,
+    ).first()
+
+    if not gc or not gc.students:
+      return jsonify({
+        "message": "등록된 학급 또는 소속된 학생이 없습니다.",
+        "info": []
+      }), 200
+
+    student_info = []
+    for student in sorted(gc.students, key=lambda s: s.name):
+      matched_summary = next((s for s in student.semester_summaries if s.grade_subject_id == target_gsid), None)
+      student_info.append({
+        "student_id": student.id,
+        "student_name": student.name,
+        "summary_id": matched_summary.id if matched_summary else 0,
+        "summary_desc": matched_summary.description if matched_summary else None
+      })
+
+    aas = AssessmentArea.query.filter_by(subject_id=context.school_grade.id).all()
+    areaIds = [aa.id for aa in aas]
+
+    return jsonify({
+      "message": "학기말 종합의견 조회 완료",
+      "student_info": student_info,
+      "subject_id": target_gsid,
+      "areaIds": areaIds
+    }), 200
+
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return error_response("DB 처리 중 오류 발생", 500, str(e))
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+
+
+@bp.route("/upsert_semester_summary_by_student_and_subject/", methods=['POST'])
+@login_required
+def upsert_semester_summary_by_student_and_subject():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, list):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다. 리스트가 필요합니다."}), 400
+
+    gsid_raw = request.args.get('grade_subject_id')
+    if not gsid_raw:
+      return error_response("필수 파라미터가 누락되었습니다.", 400, {
+        "grade_subject_id": gsid_raw
+      })
+
+    try:
+      gsid = int(gsid_raw)
+    except ValueError:
+      return error_response("grade_subject_id는 정수여야 합니다.", 400)
+
+    for item in data:
+      try:
+        id_raw, sid_raw, desc = itemgetter('id', 'sid', 'desc')(item)
+      except KeyError:
+        return jsonify({"error": "필수 항목이 누락되었습니다."}), 400
+
+      try:
+        sid = int(sid_raw)
+        summary_id = int(id_raw)
+        if not isinstance(desc, str):
+          raise TypeError
+      except (ValueError, TypeError):
+        return jsonify({"error": "ID는 정수, description은 문자열이어야 합니다."}), 400
+
+      if summary_id == 0 and sid != 0: 
+        # 새로운 의견 생성
+        new_summary = SemesterSummary(
+          student_id=sid,
+          grade_subject_id=gsid,
+          description=desc.strip()
+        )
+        db.session.add(new_summary)
+      else:
+        # 기존 의견 수정
+        existing_summary = SemesterSummary.query.filter_by(id=summary_id).first()
+        if not existing_summary:
+          return error_response(f"ID가 {summary_id}인 학기말종합의견을 찾을 수 없습니다.", 404)
+        existing_summary.description = desc.strip()
+
+    db.session.commit()
+
+    return jsonify({
+      "message": "학기말종합의견 저장 완료"
+    }), 200
+
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+
+
+@bp.route("/getAssessmentResultsByStudentIdsAndAreaIds/", methods=['GET'])
+@login_required
+def getAssessmentResultsByStudentIdsAndAreaIds():
+  try:
+    sids_raw = request.args.get('student_ids')
+    aids_raw = request.args.get('evaluation_ids')
+
+    if not (sids_raw and aids_raw):
+      return error_response("필수 파라미터가 누락되었습니다.", 400, {
+        "student_ids": sids_raw,
+        "evaluation_ids": aids_raw
+      })
+
+    try:
+      sids = [int(sid.strip()) for sid in sids_raw.split(',')]
+      aids = [int(aid.strip()) for aid in aids_raw.split(',')]
+    except ValueError:
+      return error_response("ID는 정수여야 합니다.", 400)
+
+    result = {}
+
+    for sid in sids:
+      collected_descriptions = []
+
+      for aid in aids:
+        acs = AchievementCriterion.query.options(
+          selectinload(AchievementCriterion.evaluation_results),
+          with_loader_criteria(EvaluationResult, EvaluationResult.student_id == sid)
+        ).filter_by(
+          area_id=aid
+        ).all()
+
+        for ac in acs:
+          for res in ac.evaluation_results:
+            if res.student_id == sid:
+              if res.description:
+                collected_descriptions.append(res.description.strip())
+
+      result[sid] = ' '.join(collected_descriptions).strip()
+
+    return jsonify({
+      "message": "교과평가일괄 조회 완료",
+      "result": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+  
+
+@bp.route("/get_student_assessment_results_by_areaIds/", methods=['GET'])
+@login_required
+def get_student_assessment_results_by_areaIds():
+  try:
+    sid_raw = request.args.get('student_id')
+    aids_raw = request.args.get('area_ids')
+
+    if not (sid_raw and aids_raw):
+      return error_response("필수 파라미터가 누락되었습니다.", 400, {
+        "student_id": sid_raw,
+        "area_ids": aids_raw
+      })
+
+    try:
+      sid = int(sid_raw)
+      aids = [int(aid.strip()) for aid in aids_raw.split(',')]
+    except ValueError:
+      return error_response("ID는 정수여야 합니다.", 400)
+
+    collected_results = []
+
+    for aid in aids:
+      acs = AchievementCriterion.query.options(
+        selectinload(AchievementCriterion.evaluation_results),
+        with_loader_criteria(EvaluationResult, EvaluationResult.student_id == sid)
+      ).filter_by(
+        area_id=aid
+      ).all()
+
+      for ac in acs:
+        for res in ac.evaluation_results:
+          if res.student_id == sid:
+            result = {
+              'area_id': aid,
+              'criterion': ac.criterion,
+              'level': res.level,
+              'description': res.description.strip() if res.description else ''
+            }
+            collected_results.append(result)
+
+    return jsonify({
+      "message": "교과평가일괄 조회 완료",
+      "result": collected_results
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500

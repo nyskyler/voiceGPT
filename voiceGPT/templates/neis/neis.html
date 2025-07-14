@@ -3614,32 +3614,931 @@
     let html = null;
     html = `
     <div id="menu_j_content" class="col col-xl-12">
-      <div class="table-banner" style="top: -0.3rem;">
-        <button type="button" class="btn btn-sm btn-secondary">문자열바꾸기</button>
-        <button type="button" class="btn btn-sm btn-secondary">교과평가일괄복사</button>
-        <button type="button" class="btn btn-sm btn-secondary">ChatGPT</button>
-        <button type="button" class="btn btn-sm btn-secondary">저장</button>
-        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
+        <div>
+          <button id="btnJ1" type="button" class="btn btn-sm btn-secondary" disabled data-bs-toggle="modal" data-bs-target="#strConversionModal" data-bs-whatever="{{ g.user.username }}">문자열바꾸기</button>
+          <button id="btnJ2" type="button" class="btn btn-sm btn-secondary" disabled>교과평가일괄복사</button>
+          <button id="btnJ3" type="button" class="btn btn-sm btn-secondary" disabled>저장</button>
+          <button id="btnJ4" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
+        </div>
       </div>
-      <table id="menu_j_table" class="table table-hover caption-top table-bordered">
-        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
-        </caption>
-        <thead>
-          <tr>
-            ${renderSelectAllCheckboxButton(3)}
-            <th scope="col" style="width: 7%;">반/번호</th>
-            <th scope="col" style="width: 15%;">성명</th>
-            <th scope="col" style="width: 10%;">참고자료</th>
-            <th scope="col" style="width: 65%;">학기말 종합의견</th>
-          </tr>
-        </thead>
-        <tbody id="menu_i_tbody">
-          ${renderEmptyTbodyWithMessage(5)}
-        </tbody>
-      </table>
+      <div style="height: 77vh; overflow-y: auto;" class="d-flex">
+        <table id="menu_j_table" class="table table-hover table-bordered">
+          <thead>
+            <tr>
+              ${renderSelectAllCheckboxButton(2)}
+              <th scope="col" style="width: 5%;">반/번호</th>
+              <th scope="col" style="width: 11%;">성명</th>
+              <th scope="col" style="width: 8%;">참고자료</th>
+              <th scope="col" style="width: 74%;">학기말 종합의견</th>
+            </tr>
+          </thead>
+          <tbody id="menu_j_tbody">
+            ${renderEmptyTbodyWithMessage(5)}
+          </tbody>
+        </table>
+      </div>
+      <!-- 문자열바꾸기를 위한 모달창 -->
+      <div class="modal fade" id="strConversionModal" tabindex="-1" aria-labelledby="strConversionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="strConversionModalLabel">문자열바꾸기</h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="fieldForm">
+                <div class="mb-3">
+                  <label for="strInput" class="col-form-label"><i class="fa-solid fa-text-slash"></i>&nbsp;&nbsp;원래 문자열</label>
+                  <input maxlength="100" id="strInput" name="strInput" class="form-control inputField" aria-label="Message" aria-describedby="send-button" autocomplete="off""></input> 
+                </div>
+                <div class="mb-3">
+                  <label for="strOutput" class="col-form-label"><i class="fa-solid fa-t"></i>&nbsp;&nbsp;변환 문자열</label>
+                  <input maxlength="100" id="strOutput" name="strOutput" class="form-control inputField" aria-label="Message" aria-describedby="send-button" autocomplete="off""></input> 
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+              <button type="button" id="str_modal_confirm" class="btn btn-primary">바꾸기</button>
+            </div>
+          </div>
+        </div>
+      </div>  
+      <!-- 조회/가져오기를 위한 모달창 -->
+      <div class="modal fade" id="fetchGPTModal" tabindex="-1" aria-labelledby="fetchGPTModalLabel">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 80vw; width: 90%;">
+          <div class="modal-content" style="height: 85vh;">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="fetchGPTModalLabel"></h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex flex-column">
+              <div class="table-header sticky-top bg-white p-0 mb-2 d-flex flex-row-reverse">
+                <button id="btnJ8" class="btn btn-sm btn-secondary" disabled>복사(줄바꿈 없음)</button>
+                <button id="btnJ7" class="btn btn-sm btn-secondary" disabled>복사</button>
+                <button id="btnJ6" class="btn btn-sm btn-primary">초기화</button>
+                <button id="btnJ5" class="btn btn-sm btn-secondary" disabled>ChatGPT</button>
+                <button id="btnSpinner" class="btn btn-primary invisible" type="button" disabled>
+                  <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                  <span role="status">ChatGPT</span>
+                </button>
+              </div>
+              <div class="flex-grow-1 d-flex flex-row" style="height: 65vh;">
+                <div class="d-flex flex-column" style="width: 70%;">
+                  <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-start align-items-center">
+                    <div>
+                      <span class="fw-semibold fs-6">관찰내용 </span>
+                      <span class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total </span>
+                      <span id="observation_record_count" class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">0</span>
+                    </div>
+                  </div>
+                  <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; margin-top: 0.2rem; background-color: #f3f4f8; width: 97.5%;" class="mb-2">
+                    <span class="semi-bold" style="font-size: 0.8rem;">&emsp;영역&ensp;</span>
+                    <select id="main_select" class="form-select form-select-sm select-width-lg"></select>
+                    <select id="sub_select" class="form-select form-select-sm select-width-xl"></select>
+                  </div>
+                  <div style="display: flex; flex-direction: column; height: 40%; overflow-y: auto;">
+                    <table id="menu_j_inner_table_1" class="table table-hover table-bordered" style="margin-top: 0; table-layout: fixed; width: 97.5%;">
+                      <colgroup>
+                        <col style="width: 4%;">   <!-- 선택 체크박스 열 -->
+                        <col style="width: 13%;">  <!-- 일자 -->
+                        <col style="width: 53%;">  <!-- 관찰내용 -->
+                        <col style="width: 10%;">  <!-- 영역명 - 첫 번째 셀 -->
+                        <col style="width: 20%;">  <!-- 영역명 - 두 번째 셀 -->
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          ${renderSelectAllCheckboxButton(4)}
+                          <th scope="col" style="width: 13%;">일자</th>
+                          <th scope="col" style="width: 53%;">관찰내용</th>
+                          <th scope="col" style="width: 30%;" colspan="2">영역명</th>
+                        </tr>
+                      </thead>
+                      <tbody id="menu_j_inner_tbody_1">
+                        ${renderEmptyTbodyWithMessage(6)}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="table-header sticky-top bg-white p-0 mt-2 mb-2 d-flex justify-content-start align-items-center">
+                    <div>
+                      <span class="fw-semibold fs-6">교과평가 </span>
+                      <span class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total </span>
+                      <span id="evaluation_record_count" class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">0</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; height: 40%; overflow-y: auto;">
+                    <table id="menu_j_inner_table_2" class="table table-hover table-bordered" style="margin-top: 0; table-layout: fixed; width: 97.5%;">
+                      <colgroup>
+                        <col style="width: 4%;">   <!-- 선택 체크박스 열 -->
+                        <col style="width: 17%;">  <!-- 영역명 -->
+                        <col style="width: 30%;">  <!-- 성취기준 -->
+                        <col style="width: 10%;">  <!-- 평가기준 - 첫 번째 셀 -->
+                        <col style="width: 39%;">  <!-- 평가기준 - 두 번째 셀 -->
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          ${renderSelectAllCheckboxButton(4)}
+                          <th scope="col" style="width: 15%;">영역명</th>
+                          <th scope="col" style="width: 30%;">성취기준</th>
+                          <th scope="col" style="width: 51%;" colspan="2">평가기준</th>
+                        </tr>
+                      </thead>
+                      <tbody id="menu_j_inner_tbody_2">
+                        ${renderEmptyTbodyWithMessage(6)}
+                      </tbody>
+                    </table>
+                  </div>  
+                </div>
+                <div class="d-flex flex-column" style="width: 30%;">
+                  <div class="fs-6 fw-semibold mb-2"><span id="summary_info"></span><span>학기말 종합의견</span></div>
+                  <div id="semesterReport" style="border: 1px solid #6D757D; border-radius: 5px;" class="flex-grow-1"></div>
+                  <div class="d-flex justify-content-end" style="font-size: 0.8rem;"><span id="chars_length"></span><span>/4000</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+              <button type="button" id="gpt_modal_confirm" class="btn btn-primary">반영</button>
+              <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">닫기</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     `;
     return html;
+  }
+
+  async function script_renderSemesterSubjectFeedbackTable() {
+    let params = null;
+    let achievementArr = [];
+    let evaluationArr = [];
+    let fieldArr = [];
+    let classArr = [];
+    let studentId = null;
+    let subjectId = null;
+    let summaryId = null;
+    let subjectName = null;
+    let currentSemester = null;
+    let main_select_val = null;
+    let sub_select_val = null;
+    let isEmpty = true;
+    let ChatGPT = false;
+    let combinedStr = null;
+    let observation_id = null;
+    let gptInfo = null;
+    const gpt_title = 'NEIS 학기말종합의견 작성 도우미';
+    const $submitBtn = document.getElementById('submitBtn');
+    const $year = document.getElementById('year');
+    const $semester = document.getElementById('semester');
+    const $grade = document.getElementById('grade');
+    const $class = document.getElementById('class');
+    const $subject = document.getElementById('subject');
+    const $btn1 = document.getElementById('btnJ1'); // 문자열바꾸기 버튼
+    const $btn2 = document.getElementById('btnJ2'); // 교과평가일괄복사 버튼
+    const $btn3 = document.getElementById('btnJ3'); // 저장 버튼
+    const $btn4 = document.getElementById('btnJ4'); // 삭제 버튼
+    const $btn5 = document.getElementById('btnJ5'); // ChatGPT 버튼
+    const $btn6 = document.getElementById('btnJ6'); // 초기화 버튼
+    const $btn7 = document.getElementById('btnJ7'); // 복사 버튼
+    const $btn8 = document.getElementById('btnJ8'); // 복사(줄바꿈 없음) 버튼
+    const $btn9 = document.getElementById('gpt_modal_confirm'); // 반영 버튼
+
+    const updateBtnsBasedOnSelection = () => {
+      const $checked = $("#menu_j_tbody input:checked");
+      if ($checked.length === 0) {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, false], [$btn4, true]); 
+      } else {
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]);
+      } 
+    }
+
+    const updateInnerBtnsBasedOnSelection = () => {
+      const $checked_1 = $("#menu_j_inner_tbody_1 input:checked"); // 관찰내용 
+      const $checked_2 = $("#menu_j_inner_tbody_2 input:checked"); // 교과평가
+      if ($checked_1.length > 3) {
+        updateButtonStatesWithStyles([$btn5, false], [$btn7, false], [$btn8, false]); 
+      } else if ($checked_1.length + $checked_2.length > 0) {
+        updateButtonStatesWithStyles([$btn5, true], [$btn7, false], [$btn8, false]);
+      } else {
+        updateButtonStatesWithStyles([$btn5, true], [$btn7, true], [$btn8, true]);
+      }
+    }
+
+    const countChars = () => {
+      const length = $("#semesterReport textarea").val().trim().length;
+      $("#chars_length").text(length);
+    }
+
+    const getCombinedStr = () => {
+      const combined_str_1 = $("#menu_j_inner_tbody_1 input:checked").closest("tr").find("td:nth-child(3) > p").map(function() {
+        return $(this).text();
+      }).get().join(' ');
+
+      const combined_str_2 = $("#menu_j_inner_tbody_2 input:checked").closest("tr").find("td:nth-child(5) p").map(function() {
+        return $(this).text();
+      }).get().join(' ');
+
+      return [combined_str_1, combined_str_2].join(' ').trim();
+    }
+
+    const combineStr = (char) => {
+      const combined_str_1 = $("#menu_j_inner_tbody_1 input:checked").closest("tr").find("td:nth-child(3) > p").map(function() {
+        return $(this).text();
+      }).get().join(char);
+
+      const combined_str_2 = $("#menu_j_inner_tbody_2 input:checked").closest("tr").find("td:nth-child(5) p").map(function() {
+        return $(this).text();
+      }).get().join(char);
+
+      const val = $("#semesterReport textarea").val();
+      $("#semesterReport textarea").val([val, combined_str_1, combined_str_2].join(char).trim());
+      countChars();
+
+      if (!$("#menu_j_inner_table_1 button.toggleAllcheckboxes").hasClass('fa-square')) {
+        $("#menu_j_inner_table_1 button.toggleAllcheckboxes").click();
+      }
+
+      if (!$("#menu_j_inner_table_2 button.toggleAllcheckboxes").hasClass('fa-square')) {
+        $("#menu_j_inner_table_2 button.toggleAllcheckboxes").click();
+      }
+    }
+
+    const renderSubjectObservationsTable = (student_info) => {
+      const _height = '2';
+      const table_html = student_info.map(({ aid, category, created_at, desc, oid }) => {
+        const td_4th_html = `
+          <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+            <span style="font-size: 0.75rem; padding: 0px; margin: 0 auto;">${category}</span>  
+          </div>
+        `;
+
+        const td_5th_html = category === '평가내용' ? `
+          ${fieldArr.filter(el => el[0] == aid).map(el => `
+            <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+              <span style="font-size: 0.75rem; padding: 0px; margin: 0 auto;">${el[1]}</span>`).join('')}
+            </div>
+        ` : `
+            <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+              <span style="font-size: 0.75rem; padding: 0px; margin: 0 auto;"></span>  
+            </div>
+        `;
+
+        const rowHtml = `
+          <tr data-id="${oid}">
+            <td scope="col" class="text-center">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;">
+              </div>
+            </td>
+            <td scope="col">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <span style="font-size: 0.75rem; padding: 0px; margin: 0 auto;">${created_at}</span>  
+              </div>
+            </td>
+            <td scope="col">
+              <p style="width: 100%; height: ${_height}rem; line-height: 1rem; overflow: hidden; padding: 0px; margin: 0 auto;">${desc}</p>              
+            </td>
+            <td scope="col">
+              ${td_4th_html}
+            </td>
+            <td scope="col">
+              ${td_5th_html}
+            </td>
+          </tr>
+        `;
+
+        return rowHtml;
+      }).join('');;
+      $("#menu_j_inner_tbody_1").html(table_html);
+    }
+
+    const renderSubjectEvaluationResultTable = (result_info) => {
+      const _height = '2';
+      const table_html = result_info.map(({ area_id, criterion, description, level }) => {
+        const rowHtml = `
+          <tr>
+            <td scope="col" class="text-center">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;">
+              </div>
+            <td scope="col">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <span style="font-size: 0.75rem; padding: 0px; margin: 0 auto;">${fieldArr.filter(el => el[0] == area_id)[0][1]}</span>  
+              </div>
+            </td>
+            <td scope="col">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <p style="width: 100%; height: ${_height}rem; line-height: 1rem; overflow: hidden; padding: 0px; margin: 0 auto;">${criterion}</p>              
+              </div>
+            </td>
+            <td scope="col">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <span style="font-size: 0.75rem; padding: 0px; margin: 0 auto;">${level}</span>  
+              </div>
+            </td>
+            <td scope="col">
+              <div style="display: flex; align-items: center; justify-content: center; height: ${_height}rem; width: 100%; border: none;">
+                <p style="width: 100%; height: ${_height}rem; line-height: 1rem; overflow: hidden; padding: 0px; margin: 0 auto;">${description}</p>  
+              </div>
+            </td>
+          </tr>
+        `;
+        return rowHtml;
+      }).join('');;
+      $("#menu_j_inner_tbody_2").html(table_html);
+    }
+
+    $grade.addEventListener('change', async (event) => {
+      try {
+        const response = await fetch(`${_URL}/neis/get_subjects_by_grade/${$grade.value}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { grade, subjects, classes } = res;
+        classArr = classes;
+        // console.log(classArr);
+        populateSelectOptionsAndSetDisabled(classArr.map(el => el[0]), $class);
+        populateSelectOptionsAndSetDisabled(subjects, $subject);
+        $("#menu_j_tbody").html(renderEmptyTbodyWithMessage(5));
+        $("#student_count").text("0");
+        updateButtonStatesWithStyles(
+          [$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]
+        );
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $class.addEventListener('change', () => {
+      $("#menu_j_tbody").html(renderEmptyTbodyWithMessage(5));
+      $("#student_count").text("0");
+      // $("#menu_n_table_2").css({ "flex-grow" : 1 });
+      updateButtonStatesWithStyles(
+        [$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]
+      );
+    })
+
+    $subject.addEventListener('change', () => {
+      $("#menu_j_tbody").html(renderEmptyTbodyWithMessage(5));
+      $("#student_count").text("0");
+      // $("#menu_n_table_2").css({ "flex-grow" : 1 });
+      updateButtonStatesWithStyles(
+        [$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]
+      );
+    });
+
+    $submitBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      params = new URLSearchParams();
+      params.append('grade', $("#grade").val());
+      params.append('class', $("#class").val());
+      params.append('subject', $("#subject").val());
+      
+      try {
+        const response = await fetch(`${_URL}/neis/get_students_semester_summary_by_class_and_subject/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, student_info, subject_id, areaIds } = res;
+        // console.log(message);
+        // console.log(student_info);
+        // console.log(subject_id);
+        // console.log(areaIds);
+        subjectId = subject_id;
+        subjectName = $("#subject").val();
+        evaluationArr = areaIds;
+        
+        const tableHtml = student_info.map(({student_id, student_name, summary_id, summary_desc }, idx) => {
+          return `
+            <tr data-id="${summary_id}" data-sid="${student_id}">
+              <td class="text-center">
+                <div style="display: flex; align-items: center; justify-content: center; height: 5.9rem; width: 100%; border: 0px solid #ffffff;">
+                  <input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;">
+                </div>
+              </td>
+              <td class="text-center text-decoration-underline">
+                <div style="display: flex; align-items: center; justify-content: center; height: 5.9rem; width: 100%; border: 0px solid #ffffff;">
+                  <span>
+                     ${idx + 1}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <div style="display: flex; align-items: center; height: 5.9rem; width: 100%; border: 0px solid #ffffff;">
+                  <span>
+                    ${student_name}
+                  </span>
+                </div>
+              </td>
+              <td style="padding: 0.5rem 0.3rem 0.5rem 0rem;">
+                <div style="display: flex; align-items: center; justify-content: center; height: 5.9rem; width: 100%; border: 0px solid #ffffff;">
+                  <button type="button" class="btn btn-sm btn-primary summary" data-bs-toggle="modal" data-bs-target="#fetchGPTModal" data-bs-whatever="{{ g.user.username }}">조회/가져오기</button>
+                </div>
+              </td>
+              <td>
+                <textarea rows="5" maxlength="4000" style="background-color: #ffffff; width: 100%; height: 5.9rem; overflow: auto; resize: none;" spellcheck="false">${summary_desc || ''}</textarea>
+              </td>
+            </tr>
+          `
+        }).join('');
+        $("#menu_j_tbody").html(tableHtml);
+        $("#student_count").text($("#menu_j_tbody tr").length);
+        $("#menu_j_tbody").on("change", "td:nth-child(1)", function() {
+          updateBtnsBasedOnSelection();
+        })
+        updateBtnsBasedOnSelection();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $("#str_modal_confirm").on("click", function () { // 문자열바꾸기 모달창의 '바꾸기' 버튼 클릭 시
+      const strInput = $("#strInput").val();
+      const strOutput = $("#strOutput").val();
+      if (strInput === '') {
+        alert("원래 문자열 항목은 필수입니다.");
+        return;
+      }
+
+      // 특수문자 등 정규식 안전 처리
+      function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]<span>\</span>]/g, '<span>\</span>$&amp;');
+      }
+
+      let total_replacements = 0;
+
+      $("#menu_j_tbody input:checked").each(function() {
+        const $textarea = $(this).closest("tr").find("td:nth-child(5) textarea");
+        const target_str = $textarea.val();
+
+        // strInput이 여러 번 나올 수 있으니 교체 횟수 집계
+        const regex = new RegExp(escapeRegExp(strInput), 'g'); // 대소문자 구분, 원하면 'gi'
+        const matches = target_str.match(regex);
+
+        if (matches) {
+          total_replacements += matches.length;
+          $textarea.val(target_str.replace(regex, strOutput));
+        }
+      });
+
+      // 처리 결과 알림
+      alert("총 " + total_replacements + "개의 항목이 변경되었습니다.");
+
+      $("#strConversionModal").modal('hide');
+      $("#strInput").val('');
+      $("#strOutput").val('');
+      $("#menu_j_table button.toggleAllcheckboxes").click();
+    });
+
+    $btn2.addEventListener("click", async () => { // 교과평가일괄복사 클릭 시
+      const params = new URLSearchParams();
+      const studentIds = $("#menu_j_tbody input:checked").closest("tr").map(function() {
+        return $(this).attr("data-sid");
+      }).get();
+
+      // console.log(studentIds);
+      // console.log(evaluationArr);
+      params.append('student_ids', studentIds.join(','));  // ← 핵심: 쉼표 구분
+      params.append('evaluation_ids', evaluationArr.join(',')); // ← 핵심: 쉼표 구분
+
+      try {
+        const response = await fetch(`${_URL}/neis/getAssessmentResultsByStudentIdsAndAreaIds/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, result } = res;
+        console.log(message);
+        // console.log(result);
+
+        Object.keys(result).forEach(el => {
+          const targetId = el;
+          const description = result[el];
+          const targetEl = $(`#menu_j_tbody tr[data-id="${targetId}"]`).find("td:nth-child(5) textarea");
+          targetEl.val(targetEl.val().concat(description));
+        }); 
+
+        $("#menu_j_table button.toggleAllcheckboxes").click();
+        alert("교과평가 일괄복사가 완료되었습니다.");
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $btn3.addEventListener("click", async () => { // 저장 버튼 클릭 시
+      const data = $("#menu_j_tbody tr").map(function () {
+        return {
+          id: parseInt($(this).attr("data-id")) || 0,
+          sid: parseInt($(this).attr("data-sid")) || 0,
+          desc: $(this).find("td:nth-child(5)").find("textarea").val().trim(),
+        };
+      }).get();
+
+      const params = new URLSearchParams();
+      params.append('grade_subject_id', subjectId);
+      // console.log(data);
+
+      try {
+        const url = `${_URL}/neis/upsert_semester_summary_by_student_and_subject/?${params.toString()}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData?.error || `서버 오류: ${response.status}`);
+        }
+
+        const res = await response.json();
+        console.log(res.message);
+        $("#submitBtn").click();
+        alert("학기말종합의견의 저장이 완료되었습니다.");
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`오류 발생: ${error.message}`);
+      }
+    });
+
+    $btn4.addEventListener("click", () => { // 삭제 버튼 클릭 시
+      $("#menu_j_tbody input:checked").closest("tr").find("td:nth-child(5) textarea").val('');
+      $("#menu_j_table button.toggleAllcheckboxes").click();
+    });
+
+    $btn5.addEventListener("click", async () => { // ChatGPT 버튼 클릭 시
+      $("#btnJ5").toggleClass("invisible");
+      $("#btnSpinner").toggleClass("invisible");
+      
+      try {
+        const response = await fetch(`${_URL}/textgpt/get_subject_info_by_title/${gpt_title}`, {
+          method: 'GET',
+        });
+        if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+
+        const res = await response.json();
+        gptInfo = res.info;
+        const { subject_id, system, model, range } = gptInfo;
+        // console.log(res.info);
+        combinedStr = getCombinedStr();
+
+        const question = {
+          'model': model,
+          'system': system,
+          'content': combinedStr,
+          'range': range,
+          'images': [],
+          'subject_id': subject_id,
+        };
+
+        const options = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(question),
+        };
+
+        const response2 = await fetch(_URL + '/textgpt/question/', options);
+        
+        if(!response2.ok){
+          throw new Error(response2.status);
+        }
+
+        const answer = await response2.json();
+        ChatGPT = true;
+        
+        const val = $("#semesterReport textarea").val();
+        $("#semesterReport textarea").val([val, answer.response].join('\n').trim());
+        countChars();
+
+        $("#btnJ5").toggleClass("invisible");
+        $("#btnSpinner").toggleClass("invisible");
+
+        if (!$("#menu_j_inner_table_1 button.toggleAllcheckboxes").hasClass('fa-square')) {
+          $("#menu_j_inner_table_1 button.toggleAllcheckboxes").click();
+        }
+
+        if (!$("#menu_j_inner_table_2 button.toggleAllcheckboxes").hasClass('fa-square')) {
+          $("#menu_j_inner_table_2 button.toggleAllcheckboxes").click();
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    });
+
+    $btn6.addEventListener("click", () => { // 초기화 버튼 클릭 시
+      $("#semesterReport textarea").val("");
+      $("#chars_length").text("0");
+    });
+
+    $btn7.addEventListener("click", () => { // 복사 버튼 클릭 시
+      combineStr('\n');
+    });
+
+    $btn8.addEventListener("click", () => { // 복사(줄바꿈 없음) 버튼 클릭 시
+      combineStr(' ');
+    });
+
+    $btn9.addEventListener("click", async () => { // 반영 버튼 클릭 시
+      const data = [
+        {
+          id: parseInt(summaryId) || 0,
+          sid: parseInt(studentId) || 0,
+          desc: $("#semesterReport textarea").val().trim(),
+        }
+      ];
+
+      const params = new URLSearchParams();
+      params.append('grade_subject_id', subjectId);
+      // console.log(data);
+
+      try {
+        const url = `${_URL}/neis/upsert_semester_summary_by_student_and_subject/?${params.toString()}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData?.error || `서버 오류: ${response.status}`);
+        }
+
+        const res = await response.json();
+        console.log(res.message);
+        $("#fetchGPTModal").modal('hide');
+        $("#submitBtn").click();
+        alert("학기말종합의견의 저장이 완료되었습니다.");
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`오류 발생: ${error.message}`);
+      }
+
+      if (ChatGPT) {
+        try {
+          const latestContents = [
+            {
+              author: 'user',
+              desc: combinedStr,
+              imgUrl: [],
+            },
+            {
+              author: 'assistant',
+              desc: $("#semesterReport textarea").val().trim(),
+              imgUrl: [],
+            }
+          ]
+
+          const { subject_id, system, model, range } = gptInfo;
+          const _body = {
+            "subject": gpt_title, // 여기서는 문자열을 기대하고 있음.
+            "model": model,
+            "range": range, 
+            "system": system,
+            "images": [], 
+            "content": latestContents,
+          };
+          const options = {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(_body),
+          };
+          const response = await fetch(_URL + '/textgpt/upload/', options);
+          if(!response.ok){
+            throw new Error(response.status);
+          }
+          const { message, msgIds, subjectId } = await response.json();
+          // console.log(message);
+          // console.log(msgIds);
+          // console.log(subjectId);
+        } catch(error) {
+          console.error('Error: ', error);
+        }
+      }
+    });
+    
+    async function handleSelectChange() {
+      main_select_val = $("#main_select option:selected").val();
+      sub_select_val = $("#sub_select option:selected").val();
+
+      if (main_select_val === '평가내용') {
+        $("#sub_select").prop("disabled", false);
+        sub_select_val = sub_select_val === '전체' ? 0 : sub_select_val;
+      } else {
+        $("#sub_select")
+          .val($("#sub_select option:first").val())
+          .prop("disabled", true);
+        sub_select_val = 0;   
+      }
+
+      const params = new URLSearchParams();
+      params.append('student_id', studentId);
+      params.append('grade_subject_id', subjectId);
+      params.append('main_select', main_select_val);
+      params.append('sub_select', sub_select_val);
+      
+      try {
+        const response = await fetch(`${_URL}/neis/getStudentObservationsBySubject/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+
+        const res = await response.json();
+        // console.log(res.observation_info);
+
+        if (res.observation_info.length === 0) {
+          $("#menu_j_inner_tbody_1").html(renderEmptyTbodyWithMessage(6, "조회된 데이터가 없습니다."));
+          $("#menu_j_inner_table_1").css({ "flex-grow" : 1 });
+        } else {
+          // 여기에 데이터 렌더링 로직 추가 가능
+          renderSubjectObservationsTable(res.observation_info);
+          $("#menu_j_inner_table_1").css({ "flex-grow" : 0 });
+        }
+
+        $("#menu_j_inner_table_1 button.toggleAllcheckboxes").prop("checked", false);
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    }
+
+    const $fetchGPTModal = document.getElementById('fetchGPTModal');
+    if ($fetchGPTModal) {
+      $fetchGPTModal.addEventListener('show.bs.modal', async (event) => {
+        // Button that triggered the modal
+        const $button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = $button.getAttribute('data-bs-whatever')
+        const modalTitle = $fetchGPTModal.querySelector('.modal-title')
+        const modalBody = $fetchGPTModal.querySelector('.modal-body')
+        
+        modalTitle.textContent = '참고자료조회';
+        const student_name = $button.closest('tr').querySelector('td:nth-child(3) > div').textContent;
+        const report_text = $button.closest('tr').querySelector('td:nth-child(5) > textarea').value;
+        studentId = $button.closest('tr').getAttribute('data-sid');
+        summaryId = $button.closest('tr').getAttribute('data-id');
+        ChatGPT = false;
+        combinedStr = null;
+
+        if ($("#btnJ5").hasClass("invisible")) {
+          $("#btnJ5").toggleClass("invisible");
+          $("#btnSpinner").toggleClass("invisible");
+        }
+        // console.log(studentId);
+        $("#summary_info").text(`${student_name} ${subjectName} ${currentSemester}`);
+
+        params = new URLSearchParams();
+        params.append('grade', $("#grade").val());
+        params.append('class', $("#class").val());
+        params.append('subject', $("#subject").val());
+        
+        try {
+          const response = await fetch(`${_URL}/neis/get_grade_class_students_assessment_areas_and_subject_id/?${params.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          const { fields_info } = res;
+          // console.log(fields_info);
+          fieldArr = fields_info;
+        } catch (error) {
+          console.error('Error:', error);
+        }
+
+        params = new URLSearchParams();
+        params.append('student_id', studentId);
+        params.append('grade_subject_id', subjectId);
+        params.append('main_select', '전체');
+        params.append('sub_select', 0);
+        
+        try {
+          const response = await fetch(`${_URL}/neis/getStudentObservationsBySubject/?${params.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          // console.log(res.observation_info);
+
+          // updateButtonStatesWithStyles(
+          //   [$btn1, false], [$btn2, true], [$btn3, true], 
+          //   [$btn4, true], [$btn5, false], [$btn6, true]
+          // );
+          const main_select_html = `
+            <option value="전체">전체</option>
+            <option value="미선택">미선택</option>
+            <option value="수업내용">수업내용</option>
+            <option value="평가내용">평가내용</option>
+          `;
+          const sub_select_html = fieldArr.map(
+            el => `<option value="${el[0]}">${el[1]}</option>`
+          ).join('');
+          
+          $("#main_select").html(main_select_html).attr("disabled", false);
+          $("#sub_select").html('<option value="전체">전체</option>'.concat(sub_select_html));
+
+          // console.log(res.observation_info);
+          
+          if (res.observation_info.length === 0) {
+            $("#menu_j_inner_tbody_1").html(renderEmptyTbodyWithMessage(5, "조회된 데이터가 없습니다."));
+            $("#menu_j_inner_table_1").css({ "flex-grow" : 1 });
+            $("#observation_record_count").text("0");
+            // isEmpty = true;
+          } else {
+            renderSubjectObservationsTable(res.observation_info);
+            $("#menu_j_inner_table_1").css({ "flex-grow" : 0 });
+            // isEmpty = false;
+            $("#observation_record_count").text($("#menu_j_inner_tbody_1 tr").length);
+          }
+
+          $("#main_select, #sub_select").on("change", handleSelectChange);
+          toggleAllTableCheckboxes('#menu_j_inner_table_1');
+
+        } catch (error) {
+          console.error('Error:', error);
+        }
+
+        params = new URLSearchParams();
+        params.append('student_id', studentId);
+        params.append('area_ids', fieldArr.map(el => el[0]).join(','));  // ← 핵심: 쉼표 구분
+        
+        try {
+          const response = await fetch(`${_URL}/neis/get_student_assessment_results_by_areaIds/?${params.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const { message, result } = await response.json();
+          // console.log(message);
+          // console.log(result);
+
+          if (result.length === 0) {
+            $("#menu_j_inner_tbody_2").html(renderEmptyTbodyWithMessage(5, "조회된 데이터가 없습니다."));
+            $("#menu_j_inner_table_2").css({ "flex-grow" : 1 });
+            $("#evaluation_record_count").text("0");
+            // isEmpty = true;
+          } else {
+            renderSubjectEvaluationResultTable(result);
+            $("#menu_j_inner_table_2").css({ "flex-grow" : 0 });
+            // isEmpty = false;
+            $("#evaluation_record_count").text($("#menu_j_inner_tbody_2 tr").length);
+          }
+          
+          toggleAllTableCheckboxes('#menu_j_inner_table_2');
+        } catch (error) {
+          console.error('Error:', error);
+        }
+
+        $("#semesterReport").html(`<textarea maxlength="4000" style="background-color: #ffffff; font-size: 0.85rem; width: 100%; height: 60vh; overflow: auto; resize: none; border: 0px solid #ffffff;" spellcheck="false">${report_text}</textarea>`);
+        countChars();
+        $("#semesterReport textarea").on("input", countChars);
+        
+        $("#menu_j_inner_tbody_1").on("click", "td:nth-child(1)", updateInnerBtnsBasedOnSelection);
+        $("#menu_j_inner_tbody_2").on("click", "td:nth-child(1)", updateInnerBtnsBasedOnSelection);
+        toggleAllTableCheckboxes('#menu_j_inner_table_1', updateInnerBtnsBasedOnSelection);
+        toggleAllTableCheckboxes('#menu_j_inner_table_2', updateInnerBtnsBasedOnSelection);
+      });
+    }
+
+    const sideEffect = () => {
+      updateBtnsBasedOnSelection();
+    };
+
+    toggleAllTableCheckboxes('#menu_j_table', sideEffect);
+
+    try {
+      const response = await fetch(`${_URL}/neis/get_active_grades/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { year, semester, active_grades } = res;
+      currentSemester = semester;
+      populateSelectOptionsAndSetDisabled(year, $year, true);
+      populateSelectOptionsAndSetDisabled(semester, $semester, true);
+      populateSelectOptionsAndSetDisabled(active_grades, $grade);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   }
 
   function renderAnnualSubjectProgressTable() {
@@ -4427,10 +5326,6 @@
       $("#menu_n_table_2 button.toggleAllcheckboxes").click();
     });
 
-    $btn4.addEventListener("click", async() => { // 일괄입력 버튼 클릭 시
-      
-    });
-
     $btn5.addEventListener("click", async () => { // 저장 버튼 클릭 시
       const str_list = $("#menu_n_tbody_2 tr td:nth-child(3)").map(function () {
         return $(this).find("textarea").val().trim();
@@ -4927,6 +5822,7 @@
       case MENU.I:
         return;
       case MENU.J:
+        script_renderSemesterSubjectFeedbackTable();
         return;
       case MENU.K:
         return;
