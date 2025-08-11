@@ -2545,6 +2545,7 @@
           <button id="btnG1" type="button" class="btn btn-sm btn-secondary" disabled data-bs-toggle="modal" data-bs-target="#searchResourcesModal" data-bs-whatever="{{ g.user.username }}">평가근거자료</button>
           <button id="btnG2" type="button" class="btn btn-sm btn-secondary" disabled>저장</button>
           <button id="btnG3" type="button" class="btn btn-sm btn-secondary" disabled>삭제</button>
+          <button id="btnG4" type="button" class="btn btn-sm btn-secondary" disabled>출력</button>
         </div>
       </div>
       ${html_searchResourcesModal()}
@@ -2942,6 +2943,7 @@
     const $btn1 = document.getElementById('btnG1'); // 평가근거자료 버튼
     const $btn2 = document.getElementById('btnG2'); // 저장 버튼
     const $btn3 = document.getElementById('btnG3'); // 삭제 버튼
+    const $btn4 = document.getElementById('btnG4'); // 출력 버튼
 
     const renderAchievementEvaluationTable = info => {
       let lastIdx = 0;
@@ -2975,10 +2977,13 @@
       $("#student_count").text($("#menu_g_tbody tr").length);
 
       $("#menu_g_tbody").on("change", "input[type='checkbox']", function() {
-        if ($("#menu_g_tbody input:checked").length === 1) {
-          updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false]); 
+        const checkedNum = $("#menu_g_tbody input:checked").length;
+        if (checkedNum === 1) {
+          updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]); 
+        } else if (checkedNum === 0)  {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]); 
         } else {
-          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]); 
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, false], [$btn4, false]); 
         }
       });
 
@@ -3072,7 +3077,7 @@
     });
 
     $class.addEventListener('change', () => {
-      updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true]);
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]);
       $("#menu_g_tbody").html(renderEmptyTbodyWithMessage(6));
     })
 
@@ -3147,7 +3152,7 @@
         console.log(message);
         // console.log(criteria);
         evaluationArr = criteria;
-        updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true]);
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]);
         $("#menu_g_tbody").html(renderEmptyTbodyWithMessage(6));
       } catch (error) {
         console.error('Error:', error);
@@ -3157,7 +3162,7 @@
     $submitBtn.addEventListener('click', async (event) => { // 조회 버튼 클릭 시
       event.preventDefault();
       get_students_achievement_results();
-      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]);
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
 
       try {
         const response = await fetch(`${_URL}/neis/get_active_school_info/`, {
@@ -3319,6 +3324,57 @@
       });
     });
 
+    $btn4.addEventListener('click', async () => { // 출력 버튼 클릭 시
+      if ($("#menu_g_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        return;
+      }
+
+      let data = {};
+      $("#menu_g_tbody input:checked").each(function() {    
+        const student_id = $(this).closest("tr").attr("data-sid");
+        const achievementIds = data[student_id] || [];
+        data[student_id] = [...achievementIds, $(this).closest("tr").attr("data-aid")];
+      });
+      // console.log("data: ", data);
+
+      try {
+        const url = `${_URL}/neis/get_image_resource_paths_by_student_and_achievementIds_Obj/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, info } = res;
+        console.log(message);
+        // console.log(info);
+
+        const result = Object.values(info) // 최상위 value들 (객체)
+          .flatMap(obj => Object.values(obj)) // 각 객체의 value들 (배열)
+          .flat(); // 배열들을 평탄화
+        // console.log(result);
+
+        if (result.length === 0) {
+          alert("등록된 평가근거자료가 없습니다.");
+          $("#menu_g_table button.toggleAllcheckboxes").click();
+          return
+        } 
+
+        const images = result.map(el => `${_URL}/cloudstorage/view/${el}`);
+        // console.log(images);
+        openFile(images[0], false, false, images);
+        $("#menu_g_table button.toggleAllcheckboxes").click();
+      } catch (error) {
+        console.error('Error:', error);
+      }  
+    });
+
     $("#toc_modal_confirm").on("click", async function () { // 모달창의 업로드 버튼 클릭 시
       const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
       const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
@@ -3371,10 +3427,13 @@
     }
 
     const updateBtnsBasedOnSelection = () => {
-      if ($("#menu_g_tbody input:checked").length === 1) {
-        updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false]); 
+      const checkedNum = $("#menu_g_tbody input:checked").length;
+      if (checkedNum === 1) {
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]); 
+      } else if (checkedNum === 0)  {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]); 
       } else {
-        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true]); 
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, false], [$btn4, false]); 
       }
     }
 
@@ -3531,32 +3590,35 @@
     html = `
       <div id="menu_h_content" class="col col-xl-12">
         <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
-          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
+          <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="row_count">0</span></div>
           <div>
-            <button type="button" class="btn btn-sm btn-secondary">평가근거자료</button>
-            <button type="button" class="btn btn-sm btn-secondary">저장</button>
-            <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+            <button id="btnH1" type="button" class="btn btn-sm btn-secondary" disabled data-bs-toggle="modal" data-bs-target="#searchResourcesModal" data-bs-whatever="{{ g.user.username }}">평가근거자료</button>
+            <button id="btnH2" type="button" class="btn btn-sm btn-secondary">저장</button>
+            <button id="btnH3" type="button" class="btn btn-sm btn-secondary">삭제</button>
+            <button id="btnH4" type="button" class="btn btn-sm btn-secondary">출력</button>
           </div>
         </div>
+        ${html_searchResourcesModal()}
         <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
-          <select class="form-select form-select-sm select-width-xl"></select>
-          <select class="form-select form-select-sm select-width-xl"></select>
+          <select id="batchApply" class="form-select form-select-sm select-width-xxl" style="text-overflow: ellipsis; padding-left: 0.5rem; padding-right: 1.5rem;"></select>
+          <select id="batchApply2" class="form-select form-select-sm select-width-xxl" style="text-overflow: ellipsis; padding-left: 0.5rem; padding-right: 1.5rem;" disabled></select>
         </div>
         <div style="display: flex; flex-direction: column; height: 70vh; overflow-y: auto;">
           <table id="menu_h_table" class="table table-hover table-bordered">
             <thead>
               <tr>
                 ${renderSelectAllCheckboxButton(3)}
-                <th scope="col" style="width: 7%;">반/번호</th>
-                <th scope="col" style="width: 7%;">성명</th>
-                <th scope="col" style="width: 17%;">성취기준</th>
-                <th scope="col" style="width: 16%;">평가요소</th>
+                <th scope="col" style="width: 6%;">반/번호</th>
+                <th scope="col" style="width: 8%;">성명</th>
+                <th scope="col" style="width: 18%;">성취기준</th>
+                <th scope="col" style="width: 17%;">평가요소</th>
                 <th scope="col" style="width: 10%;">단계</th>
-                <th scope="col" style="width: 30%;">평가결과</th>
+                <th scope="col" style="width: 32%;">평가결과</th>
+                <th scope="col" style="width: 7%;">평가근거자료</th>
               </tr>
             </thead>
             <tbody id="menu_h_tbody">
-              ${renderEmptyTbodyWithMessage(7)}
+              ${renderEmptyTbodyWithMessage(8)}
             </tbody>
           </table>
         </div>
@@ -3566,7 +3628,726 @@
   }
 
   async function script_renderFieldAssessmentResultsTable () {
+    let params = null;
+    let fieldArr = [];
+    let achievementArr = [];
+    let classArr = [];
+    let studentsAchievementData = [];
+    let toc_modal_flag = true;
+    let clickedElemId = null;
+    let student_id = null;
+    let achievement_id = null;
+    let directories = null;
+    const $submitBtn = document.getElementById('submitBtn');
+    const $year = document.getElementById('year');
+    const $semester = document.getElementById('semester');
+    const $grade = document.getElementById('grade');
+    const $class = document.getElementById('class');
+    const $subject = document.getElementById('subject');
+    const $field = document.getElementById('field');
+    const $achievement = document.getElementById('standard');
+    const $table = document.getElementById('menu_h_table');
+    const $btn1 = document.getElementById('btnH1'); // 평가근거자료 버튼
+    const $btn2 = document.getElementById('btnH2'); // 저장 버튼
+    const $btn3 = document.getElementById('btnH3'); // 삭제 버튼
+    const $btn4 = document.getElementById('btnH4'); // 출력 버튼
 
+    const parseTableRowsToObjects = () => { // 테이블 tbody의 행(tr)을 순회하며 추출한 정보로 객체 리터럴을 만들고 이들을 요소로 갖는 배열을 반환하는 함수
+      const data = $("#menu_h_tbody tr").map(function (idx, el) {
+        const sid = $(this).attr("data-sid");
+        const aid = $(this).attr("data-aid");
+        return {
+          student_id: sid,
+          achievement_id: aid,
+          level: $(this).find("td:nth-last-child(3) select option:selected").text().trim(),
+          description: $(this).find("td:nth-last-child(2) textarea").val().trim(),
+        }
+      }).get();
+
+      return data;
+    }
+
+    const renderAchievementEvaluationTable = async info => {
+      const tableRows = [];
+      let lastIdx = 0;
+
+      for (const { student_id, name, results } of info) {
+        lastIdx++; // 이름이 다를 때만 증가 (info는 학생별 그룹이므로 이곳에서 증가)
+        const rowspan = results.length;
+
+        for (let i = 0; i < results.length; i++) {
+          const { criterion_id, criterion, evaluation_item, level, description, evidence_count } = results[i];
+
+          let evaluationArr = [];
+          try {
+            const response = await fetch(`${_URL}/neis/get_evaluation_criteria_by_achievement_id/${criterion_id}`, {
+              method: 'GET',
+            });
+            if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+            const res = await response.json();
+            evaluationArr = res.criteria;
+          } catch (error) {
+            console.error('Error:', error);
+          }
+
+          const rowHTML = `
+            <tr data-sid="${student_id}" data-aid="${criterion_id}">
+              <td scope="row" class="text-center">
+                <input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;">
+              </td>
+              ${i === 0 ? `
+                <td class="text-center align-middle" rowspan="${rowspan}">${lastIdx}</td>
+                <td class="align-middle" rowspan="${rowspan}">${name}</td>
+              ` : ''}
+              <td style="padding: 0px; max-height: 2.2rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; /* 최대 줄 수 */ -webkit-box-orient: vertical; white-space: normal; /* 여러 줄 표시 허용 */">${criterion}</td>
+              <td class="align-middle" style="padding: 0px; max-height: 2rem;">${evaluation_item}</td>
+              <td>
+                <select class="eval_level form-select form-select-sm select-width-full">
+                  ${[
+                    `<option value=""></option>`,
+                    ...evaluationArr.map(el => `
+                      <option value="${el.step}" ${level === el.level_name ? "selected" : ""}>
+                        ${el.level_name}
+                      </option>
+                    `)
+                  ].join('').concat(`<option value="${evaluationArr.length + 1}">임의입력</option>`)}
+                </select>
+              </td>
+              <td>
+                <textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false" disabled>${description ? description : ""}</textarea>
+              </td>
+              <td class="text-center">${VISIBLE_STATUS_MAP[!!evidence_count]}</td>
+            </tr>
+          `;
+
+          tableRows.push(rowHTML);
+        }
+      }
+
+      $("#menu_h_tbody").html(tableRows.join(''));
+
+      const batchHTML = [`<option value="0">-성취기준 선택-</option>`, ...achievementArr.map(el => `<option value="${el.id}">${el.criterion}</option>`)].join('');
+      $("#batchApply").html(batchHTML);
+
+      $("#batchApply").on("change", function() {
+        const option_val = $(this).val();
+        let option_idx = 1;
+        const evalArr = achievementArr.filter(el => el.id == option_val)?.map(function(el) {
+          let option_html = '';
+          for (const { level_name } of el.evaluation_criteria) {
+            option_html += `<option value="${option_idx}">${level_name}</option>`;
+            option_idx += 1;
+          }
+          return option_html;
+        }).join('');
+        // console.log('evalArr: ', evalArr);
+        const batchHTML2 = [`<option value="0">-성취기준별 평가 선택적용-</option>`, ...evalArr].join('').concat(`<option value="${option_idx}">임의입력</option>`);
+        $("#batchApply2").html(batchHTML2);
+        if (option_val == 0) {
+          $("#batchApply2").prop("disabled", true);
+        } else {
+          $("#batchApply2").prop("disabled", false);
+        }
+      });
+
+      $("#batchApply").change();
+
+      $("#batchApply2").on("change", function() {
+        const achievementId = $("#batchApply").val();
+        const optionVal = $("#batchApply2").val();
+
+        const targets = $(`#menu_h_tbody tr[data-aid="${achievementId}"] input:checked`);
+
+        if (optionVal === '0') { return; }
+        if (targets.length === 0) {
+          alert('선택된 대상이 없습니다.');
+          $("#batchApply2 option").eq(0).attr("selected", true);
+          return;
+        }
+        targets.each(function() {
+          $(this).closest("tr").find("select:first").val(optionVal).trigger("change");
+        });
+      });
+
+      $("#row_count").text($("#menu_h_tbody tr").length);
+
+      $("#menu_h_tbody").on("change", "input[type='checkbox']", function() {
+        const checkedNum = $("#menu_h_tbody input:checked").length
+        if (checkedNum === 0) {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]); 
+        } else if (checkedNum === 1) {
+          updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]); 
+        } else {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, false], [$btn4, false]); 
+        }
+      });
+
+      $("#menu_h_tbody").on("change", "select.eval_level", function() {
+        const achievement_id = $(this).closest("tr").attr("data-aid");
+        const option_val = $(this).find("option:selected").text().trim();
+        const eval_criteria = achievementArr.find(el => el.id == achievement_id)?.evaluation_criteria;
+        const desc = eval_criteria.find(el => el.level_name == option_val)?.description;
+    
+        if ($(this).val() > achievementArr.length) {
+          $(this).parent().next().find("textarea").removeAttr("disabled").val("").focus();
+        } else {
+          $(this).parent().next().find("textarea").attr("disabled", true).val(desc || "");
+        }
+      });
+
+      if (!$("#menu_h_table button.toggleAllcheckboxes").hasClass('fa-square')) {
+        $("#menu_h_table button.toggleAllcheckboxes").click();
+      }
+      studentsAchievementData = parseTableRowsToObjects();
+    };
+       
+    const get_students_achievement_results = async () => {
+      const class_val = $("#class").val();
+      const class_id = classArr[classArr.findIndex(el => el[0] === class_val)][1];
+      const assessment_area_id = fieldArr[fieldArr.findIndex(el => el[0] === $("#field").val())][1];
+
+      params = new URLSearchParams();
+      params.append('class_id', class_id);
+      params.append('assessment_area_id', assessment_area_id);
+
+      // console.log("class_id: ", class_id);
+      // console.log("assessment_area_id: ", assessment_area_id);
+      
+      try {
+        const response = await fetch(`${_URL}/neis/get_students_achievement_results_by_assessment_area/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, info } = res;
+        console.log(message);
+        // console.log(info);
+        renderAchievementEvaluationTable(info);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    $grade.addEventListener('change', async (event) => {
+      try {
+        const response = await fetch(`${_URL}/neis/get_subjects_by_grade/${$grade.value}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { grade, subjects, classes } = res;
+        classArr = classes;
+        // console.log(classArr);
+        populateSelectOptionsAndSetDisabled(classArr.map(el => el[0]), $class);
+        populateSelectOptionsAndSetDisabled(subjects, $subject);
+        $("#menu_h_tbody").html(renderEmptyTbodyWithMessage(8));
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $class.addEventListener('change', () => {
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]);
+      $("#menu_h_tbody").html(renderEmptyTbodyWithMessage(8));
+    })
+
+    $subject.addEventListener('change', async (event) => {
+      params = new URLSearchParams();
+      params.append('grade', $grade.value);
+      params.append('subject', $subject.value);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_fields_by_subject/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { subject, fields } = res;
+        if (fields.length > 1) {
+          fields.shift();
+        }
+        fieldArr = fields.map(el => [el[0], el[2]]);
+        // console.log(fieldArr);
+        populateSelectOptionsAndSetDisabled(fields.map(el => el[0]), $field, fields[0][0] == '-없음-' ? true : false);
+        $("#menu_h_tbody").html(renderEmptyTbodyWithMessage(8));
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $field.addEventListener('change', async () => {
+      if ($field.value === '-없음-') {
+        updateButtonStatesWithStyles([$submitBtn, true]);
+      } else {
+        try {
+          const field_val = $("#field").val();
+          const fid = fieldArr[fieldArr.findIndex(el => el[0] == field_val)][1];
+
+          const response = await fetch(`${_URL}/neis/get_achievement_and_evaluation_criteria_by_field_id/${fid.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          const { message, criteria } = res;
+          achievementArr = criteria;
+          // console.log(achievementArr); // [[성취기준, 평가요소, 성취기준id], ..]
+          // populateSelectOptionsAndSetDisabled(achievementArr.map(el => el['criterion']), $achievement);
+          $("#batchApply").html("");
+          $("#batchApply2").html("").prop("disabled", true);
+
+          $("#menu_h_tbody").html(renderEmptyTbodyWithMessage(8));
+        } catch (error) {
+          console.error('Error:', error);
+        }
+        updateButtonStatesWithStyles([$submitBtn, false]);
+      }
+    });
+
+    $submitBtn.addEventListener('click', async (event) => { // 조회 버튼 클릭 시
+      event.preventDefault();
+      get_students_achievement_results();
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_active_school_info/`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { school, year, semester } = res;
+        params = new URLSearchParams();
+        params.append('school', school);
+        params.append('year', year);
+        params.append('semester', semester);
+    
+        const url = `${_URL}/cloudstorage/directoryAllContents/?${params.toString()}`;
+    
+        const response_2 = await fetch(url, { method: 'GET' });
+        if (!response_2.ok) {
+          throw new Error(`Error: ${response_2.status}`);
+        }
+        if (response_2.status === 204) {
+          console.log('No Content');
+          return;
+        }
+
+        const res_2 = await response_2.json();
+        // console.log(res_2.message);
+
+        const directoryTree = res_2.message.map((item, idx) => {
+          const isFile = item.includes('.');
+          const num = item.split('/').length - 1; 
+          const _path = item.split('/').pop();
+          return {
+            id: idx + 1,
+            path: item,
+            pathForDisplay: _path,
+            subdirectoryDepth: num,
+            type: isFile ? 'file' : 'directory',
+            // type: 'directory',
+            children: [],
+          };
+        });
+
+        directoryTree.forEach((elem) => {
+          const children = directoryTree.filter(item => 
+            item.path.startsWith(`${elem.path}/`) && item.path !== elem.path
+            && !item.path.split(`${elem.path}/`)[1].includes('/')
+          );
+          const children_ids = children.map(child => child.id);
+          elem.children = children_ids;
+        });
+
+        directories = directoryTree;
+
+        const html_for_toc = directoryTree
+          // .filter(item => item.type === 'directory')
+          .map(({ id, path, type, children, pathForDisplay, subdirectoryDepth }) => `
+            <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${subdirectoryDepth > 5 ? 'invisible' : ''}">
+              ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth, path, type)}
+            </a>
+          `).join('');
+
+        const $toc_modal = document.getElementById('toc_modal');   
+        $toc_modal.innerHTML = html_for_toc;
+
+        $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
+            el.style.color = '#9A9FA8';
+            el.parentElement.style.color = 'black';
+            el.parentElement.style.fontWeight = "400";
+          });
+
+        if (!toc_modal_flag) {
+          return
+        }   
+        
+        $toc_modal.addEventListener('click', function(e) {
+          e.preventDefault();
+          $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
+            el.style.color = '#9A9FA8';
+            el.parentElement.style.color = 'black';
+            el.parentElement.style.fontWeight = "400";
+          });
+          const elem = e.target.closest('.list-group-item');
+          if (elem) {
+            clickedElemId = elem.dataset.id;
+            elem.querySelector('i').style.color = "#4078FF";
+            elem.style.color = "#4078FF";
+            elem.style.fontWeight = "bold";
+            const subIds = JSON.parse(elem.dataset.subids);
+            if (subIds.length > 0) {
+              if (!elem.classList.contains('open')) {
+                toggleFolderIcon(elem, true);
+                elem.classList.add('open');
+              } else {
+                toggleFolderIcon(elem, false);
+                elem.classList.remove('open');
+              }
+              displayTagsById(subIds, true);
+              $("#toc_modal_confirm").removeClass("btn-primary").addClass("btn-secondary").addClass("disabled");
+            } else {
+              $("#toc_modal_confirm").removeClass("btn-secondary").addClass("btn-primary").removeClass("disabled");
+            }
+          }
+        });
+        toc_modal_flag = false;
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $btn2.addEventListener('click', async () => { // 저장 버튼 클릭 시
+      const data = parseTableRowsToObjects();
+      const isEqual = JSON.stringify(studentsAchievementData) === JSON.stringify(data);
+      if (isEqual) {
+        alert("변경된 내용이 없습니다.");
+        return
+      }
+
+      if (!confirm("변경된 내용을 저장하시겠습니까?")) {
+        return
+      }
+
+      try {
+        const url = `${_URL}/neis/update_student_achievement_levels/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(`${res.message}: , created: ${res.created}, updated: ${res.updated}, total: ${res.total}`);
+        alert("저장을 완료했습니다.");
+        get_students_achievement_results();
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+    });    
+
+    $btn3.addEventListener('click', () => { // 삭제 버튼 클릭 시 
+      if ($("#menu_h_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        return;
+      }
+
+      if (!confirm("해당자료를 삭제하시겠습니까?\n등록 또는 수정된 항목은 반영되지 않으며 삭제처리만 반영됩니다.")) {
+        return
+      }
+
+      $("#menu_h_tbody input:checked").each(function(idx, el) {
+        $(el).closest("tr").find("td:nth-last-child(3) select").val("");
+        $(el).closest("tr").find("td:nth-last-child(2) textarea").val("");
+      });
+
+      $("#menu_h_table button.toggleAllcheckboxes").click();
+    });
+
+    $btn4.addEventListener('click', async () => { // 출력 버튼 클릭 시
+      if ($("#menu_h_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        return;
+      }
+
+      let data = {};
+      $("#menu_h_tbody input:checked").each(function() {    
+        const student_id = $(this).closest("tr").attr("data-sid");
+        const achievementIds = data[student_id] || [];
+        data[student_id] = [...achievementIds, $(this).closest("tr").attr("data-aid")];
+      });
+      // console.log("data: ", data);
+
+      try {
+        const url = `${_URL}/neis/get_image_resource_paths_by_student_and_achievementIds_Obj/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, info } = res;
+        console.log(message);
+        // console.log(info);
+
+        const result = Object.values(info) // 최상위 value들 (객체)
+          .flatMap(obj => Object.values(obj)) // 각 객체의 value들 (배열)
+          .flat(); // 배열들을 평탄화
+
+        // console.log(result);
+
+        if (result.length === 0) {
+          alert("등록된 평가근거자료가 없습니다.");
+          $("#menu_h_table button.toggleAllcheckboxes").click();
+          return
+        } 
+
+        const images = result.map(el => `${_URL}/cloudstorage/view/${el}`);
+        openFile(images[0], false, false, images);
+        $("#menu_h_table button.toggleAllcheckboxes").click();
+      } catch (error) {
+        console.error('Error:', error);
+      }  
+    });
+
+    const updateBtnsBasedOnSelection = () => {
+      const checkedNum = $("#menu_h_tbody input:checked").length
+      if (checkedNum === 0) {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]); 
+      } else if (checkedNum === 1) {
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]); 
+      } else {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, false], [$btn4, false]); 
+      }
+    }
+
+    const sideEffect = () => {
+      updateBtnsBasedOnSelection();
+    };
+
+    toggleAllTableCheckboxes('#menu_h_table', sideEffect);
+
+    $("#toc_modal_confirm").on("click", async function () { // 모달창의 업로드 버튼 클릭 시
+      const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
+      const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
+      const data = {
+        'student_id': student_id, 
+        'achievement_id': achievement_id,
+        'resource_path': path,
+        'ext': file_ext,
+      }
+
+      // console.log(data);
+      try {
+        const url = `${_URL}/neis/create_evaluation_evidence/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(res.message);
+        // alert("저장을 완료했습니다.");
+        $("#menu_h_tbody input:checked:first").closest("tr").find("td:last").text("O");
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+      $("#searchResourcesModal").modal('hide');
+      $("button.toggleAllcheckboxes").click();
+    });
+
+    try {
+      const response = await fetch(`${_URL}/neis/get_active_grades/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { year, semester, active_grades } = res;
+      populateSelectOptionsAndSetDisabled(year, $year, true);
+      populateSelectOptionsAndSetDisabled(semester, $semester, true);
+      populateSelectOptionsAndSetDisabled(active_grades, $grade);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(3)", function() {
+      const path = $(this).text();
+      const file_ext = path.split('.').pop().toLowerCase();
+      const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'];
+      const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
+      const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
+      const code_exts = ['html', 'css', 'js', 'py'];
+      const office_exts = ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx'];
+
+      if (video_exts.includes(file_ext)) {
+        openFile(path, true, false);
+      } else if (audio_exts.includes(file_ext)) {
+        openFile(path, false, true);  // 비디오 파일
+      } else if (code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
+        openFile(path)
+      } else if (image_exts.includes(file_ext)) {  
+        openFile(path);
+      } 
+    });
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(1)", async function() { // 삭제 아이콘 클릭 시
+      if (confirm(`삭제하시겠습니까? 자료를 삭제해도 원격저장소에 저장된 원자료는 삭제되지 않습니다.`)) {
+        try {
+          const url = `${_URL}/neis/delete_evaluation_evidence_by_id/`;
+          const data = {
+            eid: $(this).closest("tr").attr("data-eid"),
+          }
+          const options = {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log("message: ", res.message);
+          console.log("deleted_id: ", res.deleted_id);
+
+          // 요청 성공 시 아래 코드 실행
+          $(this).closest("tr").remove();
+          if ($("#menu_g_modal_tbody tr").length === 0) {
+            $("#menu_g_tbody input:checked").closest("tr").find("td:nth-child(6)").text("X");
+          }
+        } catch (error) {
+          console.error('Error: ', error);
+          alert("삭제 중 오류가 발생하였습니다.");
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(2)", async function() { // 양방향 화살표 아이콘 클릭 시
+      if ($("#toc_modal_confirm").hasClass("disabled")) { return }
+
+      const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
+      const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
+      
+      const data = {
+        eid: $(this).closest("tr").attr("data-eid"),
+        resource_path: path,
+        ext: file_ext,
+      }
+
+      if (confirm(`평가근거자료를 다음으로 수정하시겠습니까?: ${path}`)) {
+        try {
+          const url = `${_URL}/neis/update_evaluation_evidence_resource/`;
+          const options = {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log(res.message);
+
+          // 요청 성공 시 아래 코드 실행
+          $(this).closest("tr").find("td:nth-child(3)").text(path);
+        } catch (error) {
+          console.error('Error:', error);
+          alert(error);
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    const $searchResourcesModal = document.getElementById('searchResourcesModal');
+    if ($searchResourcesModal) {
+      $searchResourcesModal.addEventListener('show.bs.modal', async (event) => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = $searchResourcesModal.querySelector('.modal-title')
+        const modalBody = $searchResourcesModal.querySelector('.modal-body')
+        
+        let targetRow = $("#menu_h_tbody input:checked").closest("tr");
+        let td_num = null;
+        while(true) {
+          td_num = targetRow.find("td").length;
+          if (td_num != 8) {
+            targetRow = targetRow.prev();
+            continue;
+          } 
+          break;
+        }
+        
+        const student_name = targetRow.find("td").eq(2).text();
+        modalTitle.textContent = `${student_name}의 평가근거자료 선택`;
+
+        student_id = $("#menu_h_tbody input:checked").closest("tr").attr("data-sid");
+        achievement_id = $("#menu_h_tbody input:checked").closest("tr").attr("data-aid");
+
+        params = new URLSearchParams();
+        params.append('student_id', student_id);
+        params.append('achievement_id', achievement_id);
+        
+        try {
+          const response = await fetch(`${_URL}/neis/get_evaluation_evidence_by_student_and_achievement/?${params.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          const { message, info } = res;
+          console.log(message);
+          // console.log(info);
+          const tableHtml = info.map(({evidence_id, resource_path, created_at}) => {
+            return `
+              <tr data-eid="${evidence_id}">
+                <td><i class="fa-solid fa-trash"></i></td>
+                <td><i class="fa-solid fa-right-left"></i></td>
+                <td>${resource_path}</td>
+                <td>${created_at}</td>
+              </tr>
+            `
+          }).join('');
+          $("#menu_g_modal_tbody").html(tableHtml);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      });
+    }   
   }
 
 
@@ -3575,38 +4356,804 @@
     let html = null;
     html = `
     <div id="menu_i_content" class="col col-xl-12">
-      <div class="table-banner" style="top: -0.3rem;">
-        <button type="button" class="btn btn-sm btn-secondary">평가근거자료</button>
-        <button type="button" class="btn btn-sm btn-secondary">저장</button>
-        <button type="button" class="btn btn-sm btn-secondary">삭제</button>
+      <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="row_count">0</span></div>
+        <div>
+          <button id="btnI1" type="button" class="btn btn-sm btn-secondary" disabled data-bs-toggle="modal" data-bs-target="#searchResourcesModal" data-bs-whatever="{{ g.user.username }}">평가근거자료</button>
+          <button id="btnI2" type="button" class="btn btn-sm btn-secondary">저장</button>
+          <button id="btnI3" type="button" class="btn btn-sm btn-secondary">삭제</button>
+          <button id="btnI4" type="button" class="btn btn-sm btn-secondary">출력</button>
+        </div>
       </div>
-      <table id="menu_i_table" class="table table-hover caption-top table-bordered">
-        <caption class="table_caption" style="padding-bottom: 0;">Total <span>0</span>
-          <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
-            <select class="form-select form-select-sm select-width-xl"></select>
-            <select class="form-select form-select-sm select-width-xl"></select>
-            <select class="form-select form-select-sm select-width-xl"></select>
-          </div>
-        </caption>
-        <thead>
-          <tr>
-            ${renderSelectAllCheckboxButton(3)}
-            <th scope="col" style="width: 5%;">반/번호</th>
-            <th scope="col" style="width: 6%;">성명</th>
-            <th scope="col" style="width: 8%;">영역</th>
-            <th scope="col" style="width: 16%;">성취기준</th>
-            <th scope="col" style="width: 15%;">평가요소</th>
-            <th scope="col" style="width: 9%;">단계</th>
-            <th scope="col" style="width: 28%;">평가결과</th>
-          </tr>
-        </thead>
-        <tbody id="menu_i_tbody">
-          ${renderEmptyTbodyWithMessage(8)}
-        </tbody>
-      </table>
-    </div>
+      ${html_searchResourcesModal()}
+      <div style="padding: 0.5rem 0.5rem 0.5rem 0.5rem; background-color: #f3f4f8;">
+        <select id="batchApply" class="form-select form-select-sm select-width-xxl" style="text-overflow: ellipsis; padding-left: 0.5rem; padding-right: 1.5rem;"></select>
+        <select id="batchApply2" class="form-select form-select-sm select-width-xxl" style="text-overflow: ellipsis; padding-left: 0.5rem; padding-right: 1.5rem;" disabled></select>
+        <select id="batchApply3" class="form-select form-select-sm select-width-xxl" style="text-overflow: ellipsis; padding-left: 0.5rem; padding-right: 1.5rem;" disabled></select>
+      </div>
+      <div style="display: flex; flex-direction: column; height: 73vh; overflow-y: auto;">
+        <table id="menu_i_table" class="table table-hover table-bordered">
+          <thead>
+            <tr>
+              ${renderSelectAllCheckboxButton(3)}
+              <th scope="col" style="width: 5%;">반/번호</th>
+              <th scope="col" style="width: 6%;">성명</th>
+              <th scope="col" style="width: 7%;">영역</th>
+              <th scope="col" style="width: 16%;">성취기준</th>
+              <th scope="col" style="width: 15%;">평가요소</th>
+              <th scope="col" style="width: 8%;">단계</th>
+              <th scope="col" style="width: 24%;">평가결과</th>
+              <th scope="col" style="width: 6%;">평가근거자료</th>
+            </tr>
+          </thead>
+          <tbody id="menu_i_tbody">
+            ${renderEmptyTbodyWithMessage(9)}
+          </tbody>
+        </table>
+      </div>
     `;
     return html;
+  }
+
+  async function script_renderSubjectAssessmentResultsTable() {
+    let params = null;
+    let fieldArr = [];
+    let achievementArr = [];
+    let classArr = [];
+    let subjectArr = [];
+    let studentsAchievementData = [];
+    let toc_modal_flag = true;
+    let clickedElemId = null;
+    let student_id = null;
+    let achievement_id = null;
+    let subjectId = null;
+    let subject_ids = [];
+    let directories = null;
+    const $submitBtn = document.getElementById('submitBtn');
+    const $year = document.getElementById('year');
+    const $semester = document.getElementById('semester');
+    const $grade = document.getElementById('grade');
+    const $class = document.getElementById('class');
+    const $subject = document.getElementById('subject');
+    const $achievement = document.getElementById('standard');
+    const $table = document.getElementById('menu_i_table');
+    const $btn1 = document.getElementById('btnI1'); // 평가근거자료 버튼
+    const $btn2 = document.getElementById('btnI2'); // 저장 버튼
+    const $btn3 = document.getElementById('btnI3'); // 삭제 버튼
+    const $btn4 = document.getElementById('btnI4'); // 출력 버튼
+
+    const parseTableRowsToObjects = () => { // 테이블 tbody의 행(tr)을 순회하며 추출한 정보로 객체 리터럴을 만들고 이들을 요소로 갖는 배열을 반환하는 함수
+      const data = $("#menu_i_tbody tr").map(function (idx, el) {
+        const sid = $(this).attr("data-sid");
+        const aid = $(this).attr("data-aid");
+        return {
+          student_id: sid,
+          achievement_id: aid,
+          level: $(this).find("td:nth-last-child(3) select option:selected").text().trim(),
+          description: $(this).find("td:nth-last-child(2) textarea").val().trim(),
+        }
+      }).get();
+
+      return data;
+    }
+
+    const resetBatchApplyBoxes = () => { // batchApply 1, 2, 3의 활성 상태를 초기화
+      $("#batchApply").html("");
+      $("#batchApply2").html("");
+      $("#batchApply3").html("");
+      $("#batchApply").prop("disabled", false);
+      $("#batchApply2").prop("disabled", true);
+      $("#batchApply3").prop("disabled", true);
+    }
+
+    const renderAchievementEvaluationTable = async info => {
+      let tableRows = '';
+      let lastIdx = 0;
+
+      for (const { student_id, name, results } of info) {
+        lastIdx++; // 학생별 index 증가
+        let rowspan = 0;
+        for (const [field_name, _] of fieldArr) {
+          rowspan += results[field_name].length;
+        }
+
+        let i = 0;
+
+        for (const [field_name, _] of fieldArr) {
+          let fieldIdx = 0;
+          const field_rowspan = results[field_name].length;
+
+          for (const { criterion_id, criterion, evaluation_item, level, description, evidence_count } of results[field_name]) {
+            i++;
+            fieldIdx++;
+
+            // 비동기 fetch 대기
+            let evaluationArr = [];
+            try {
+              const response = await fetch(`${_URL}/neis/get_evaluation_criteria_by_achievement_id/${criterion_id}`, {
+                method: 'GET',
+              });
+              if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+              const res = await response.json();
+              evaluationArr = res.criteria || [];
+            } catch (error) {
+              console.error('Error:', error);
+            }
+
+            tableRows += `
+              <tr data-sid="${student_id}" data-aid="${criterion_id}">
+                <td scope="row" class="text-center">
+                  <input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;">
+                </td>
+                ${i === 1 ? `
+                  <td class="text-center align-middle" rowspan="${rowspan}">${lastIdx}</td>
+                  <td class="align-middle" rowspan="${rowspan}">${name}</td>
+                ` : ''}
+                ${fieldIdx === 1 ? `
+                  <td class="align-middle" rowspan="${field_rowspan}">${field_name}</td>
+                ` : ''}
+                <td style="padding: 0px; max-height: 2.2rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal;">
+                  ${criterion}
+                </td>
+                <td class="align-middle" style="padding: 0px; max-height: 2rem;">${evaluation_item}</td>
+                <td>
+                  <select class="eval_level form-select form-select-sm select-width-full">
+                    ${[
+                      `<option value=""></option>`,
+                      ...evaluationArr.map(el => `
+                        <option value="${el.step}" ${level === el.level_name ? "selected" : ""}>
+                          ${el.level_name}
+                        </option>
+                      `)
+                    ].join('').concat(`<option value="${evaluationArr.length + 1}">임의입력</option>`)}
+                  </select>
+                </td>
+                <td>
+                  <textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false" disabled>${description || ""}</textarea>
+                </td>
+                <td class="text-center">${VISIBLE_STATUS_MAP[!!evidence_count]}</td>
+              </tr>
+            `;
+          }
+        }
+      }
+
+      $("#menu_i_tbody").html(tableRows);
+
+      const batchHTML = [`<option value="0">-영역명 선택-</option>`, ...fieldArr.map(el => `<option value="${el[1]}">${el[0]}</option>`)].join('');
+      $("#batchApply").html(batchHTML);
+
+      $("#batchApply").on("change", async function () {
+        // console.log('option_Val: ', $("#batchApply option:selected").val());
+        if ($("#batchApply").val() === '0') {
+          const batchHTML2 = '<option value="0">-성취기준 선택-</option>';
+          const batchHTML3 = '<option value="0">-성취기준별 평가 선택적용-</option>';
+          $("#batchApply2").html(batchHTML2);
+          $("#batchApply2").prop("disabled", true);
+          $("#batchApply3").html(batchHTML3);
+          $("#batchApply3").prop("disabled", true);
+          return
+        } else {
+          try {
+            const fid = $("#batchApply option:selected").val();
+            const response = await fetch(`${_URL}/neis/get_achievement_and_evaluation_criteria_by_field_id/${fid.toString()}`, {
+              method: 'GET',
+            });
+            if (!response.ok) {
+              throw new Error(`서버 오류: ${response.status}`);
+            }
+            
+            const res = await response.json();
+            const { message, criteria } = res;
+            achievementArr = criteria;
+            // console.log('achievementArr: ', achievementArr); // [[성취기준, 평가요소, 성취기준id], ..]
+            
+            const batchHTML2 = [`<option value="0">-성취기준 선택-</option>`, ...achievementArr.map(el => `<option value="${el.id}">${el.criterion}</option>`)].join('');
+            $("#batchApply2").html(batchHTML2);
+            $("#batchApply2").prop("disabled", false);
+            const batchHTML3 = '<option value="0">-성취기준별 평가 선택적용-</option>';
+            $("#batchApply3").html(batchHTML3);
+            $("#batchApply3").prop("disabled", true);
+          } catch (error) {
+            console.error('Error:', error);
+          }
+        }
+      });
+
+      $("#batchApply").change();
+
+      $("#batchApply2").on("change", function() {
+        const option_val = $(this).val();
+        let option_idx = 1;
+        const evalArr = achievementArr.filter(el => el.id == option_val)?.map(function(el) {
+          let option_html = '';
+          for (const { level_name } of el.evaluation_criteria) {
+            option_html += `<option value="${option_idx}">${level_name}</option>`;
+            option_idx += 1;
+          }
+          return option_html;
+        }).join('');
+        // console.log('evalArr: ', evalArr);
+        const batchHTML3 = [`<option value="0">-성취기준별 평가 선택적용-</option>`, ...evalArr].join('').concat(`<option value="${option_idx}">임의입력</option>`);
+        $("#batchApply3").html(batchHTML3);
+        if (option_val == 0) {
+          $("#batchApply3").prop("disabled", true);
+        } else {
+          $("#batchApply3").prop("disabled", false);
+        }
+      });
+
+      $("#batchApply3").on("change", function() {
+        const achievementId = $("#batchApply2").val();
+        const optionVal = $("#batchApply3").val();
+        if (optionVal === '0') { return; }
+
+        const targets = $(`#menu_i_tbody tr[data-aid="${achievementId}"] input:checked`);
+        if (targets.length === 0) {
+          alert('선택된 대상이 없습니다.');
+          $("#batchApply3 option").eq(0).attr("selected", true);
+          return;
+        }
+        targets.each(function() {
+          $(this).closest("tr").find("select:first").val(optionVal).trigger("change");
+        });
+      });
+
+      $("#row_count").text($("#menu_i_tbody tr").length);
+
+      $("#menu_i_tbody").on("change", "input[type='checkbox']", function() {
+        const checkedNum = $("#menu_i_tbody input:checked").length
+        if (checkedNum === 0) {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]); 
+        } else if (checkedNum === 1) {
+          updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]); 
+        } else {
+          updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, false], [$btn4, false]); 
+        }
+      });
+
+      $("#menu_i_tbody").on("change", "select.eval_level", function() {
+        const achievement_id = $(this).closest("tr").attr("data-aid");
+        const option_val = $(this).find("option:selected").text().trim();
+        const eval_criteria = achievementArr.find(el => el.id == achievement_id)?.evaluation_criteria;
+        const desc = eval_criteria.find(el => el.level_name == option_val)?.description;
+    
+        if ($(this).val() > achievementArr.length) {
+          $(this).parent().next().find("textarea").removeAttr("disabled").val("").focus();
+        } else {
+          $(this).parent().next().find("textarea").attr("disabled", true).val(desc || "");
+        }
+      });
+
+      if (!$("#menu_i_table button.toggleAllcheckboxes").hasClass('fa-square')) {
+        $("#menu_i_table button.toggleAllcheckboxes").click();
+      }
+      studentsAchievementData = parseTableRowsToObjects();
+    };
+       
+    const get_students_achievement_results = async () => {
+      const class_val = $("#class").val();
+      const class_id = classArr[classArr.findIndex(el => el[0] === class_val)][1];
+      // const assessment_area_id = fieldArr[fieldArr.findIndex(el => el[0] === $("#field").val())][1];
+
+      params = new URLSearchParams();
+      params.append('class_id', class_id);
+      params.append('subject_id', subjectId);
+      
+      try {
+        const response = await fetch(`${_URL}/neis/get_students_achievement_results_by_subjectId/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, info } = res;
+        console.log(message);
+        // console.log(info);
+        renderAchievementEvaluationTable(info);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    $grade.addEventListener('change', async (event) => {
+      try {
+        const response = await fetch(`${_URL}/neis/get_subjects_by_grade/${$grade.value}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { grade, subjects, subjectIds, classes } = res;
+        classArr = classes;
+        subject_ids = subjectIds;
+        subjectArr = subjects.map((el, idx) => [el, subject_ids[idx]]);
+        // console.log("classArr: ", classArr);
+        // console.log("subjectIds: ", subject_ids);
+        // console.log("subjectArr: ", subjectArr);
+        populateSelectOptionsAndSetDisabled(classArr.map(el => el[0]), $class);
+        populateSelectOptionsAndSetDisabled(subjects, $subject);
+        $("#menu_i_tbody").html(renderEmptyTbodyWithMessage(9));
+        resetBatchApplyBoxes();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $class.addEventListener('change', () => {
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]);
+      $("#menu_i_tbody").html(renderEmptyTbodyWithMessage(9));
+      resetBatchApplyBoxes();
+    })
+
+    $subject.addEventListener('change', async (event) => {
+      subjectId = subjectArr.filter(el => el[0] === $subject.value)?.flat()[1];
+      // console.log("subjectId: ", subjectId);
+      params = new URLSearchParams();
+      params.append('grade', $grade.value);
+      params.append('subject', $subject.value);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_fields_by_subject/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { subject, fields } = res;
+        if (fields.length > 1) {
+          fields.shift();
+        }
+        fieldArr = fields.map(el => [el[0], el[2]]);
+        // console.log(fieldArr);
+        // populateSelectOptionsAndSetDisabled(fields.map(el => el[0]), $field, fields[0][0] == '-없음-' ? true : false);
+        $("#menu_i_tbody").html(renderEmptyTbodyWithMessage(9));
+        resetBatchApplyBoxes();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $submitBtn.addEventListener('click', async (event) => { // 조회 버튼 클릭 시
+      event.preventDefault();
+      get_students_achievement_results();
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
+
+      try {
+        const response = await fetch(`${_URL}/neis/get_active_school_info/`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { school, year, semester } = res;
+        params = new URLSearchParams();
+        params.append('school', school);
+        params.append('year', year);
+        params.append('semester', semester);
+    
+        const url = `${_URL}/cloudstorage/directoryAllContents/?${params.toString()}`;
+    
+        const response_2 = await fetch(url, { method: 'GET' });
+        if (!response_2.ok) {
+          throw new Error(`Error: ${response_2.status}`);
+        }
+        if (response_2.status === 204) {
+          console.log('No Content');
+          return;
+        }
+
+        const res_2 = await response_2.json();
+        // console.log(res_2.message);
+
+        const directoryTree = res_2.message.map((item, idx) => {
+          const isFile = item.includes('.');
+          const num = item.split('/').length - 1; 
+          const _path = item.split('/').pop();
+          return {
+            id: idx + 1,
+            path: item,
+            pathForDisplay: _path,
+            subdirectoryDepth: num,
+            type: isFile ? 'file' : 'directory',
+            // type: 'directory',
+            children: [],
+          };
+        });
+
+        directoryTree.forEach((elem) => {
+          const children = directoryTree.filter(item => 
+            item.path.startsWith(`${elem.path}/`) && item.path !== elem.path
+            && !item.path.split(`${elem.path}/`)[1].includes('/')
+          );
+          const children_ids = children.map(child => child.id);
+          elem.children = children_ids;
+        });
+
+        directories = directoryTree;
+
+        const html_for_toc = directoryTree
+          // .filter(item => item.type === 'directory')
+          .map(({ id, path, type, children, pathForDisplay, subdirectoryDepth }) => `
+            <a href='#' data-id="${id}" data-subids="${JSON.stringify(children)}" class="list-group-item ${subdirectoryDepth > 5 ? 'invisible' : ''}">
+              ${getStyledDirectoryName(pathForDisplay, subdirectoryDepth, path, type)}
+            </a>
+          `).join('');
+
+        const $toc_modal = document.getElementById('toc_modal');   
+        $toc_modal.innerHTML = html_for_toc;
+
+        $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
+            el.style.color = '#9A9FA8';
+            el.parentElement.style.color = 'black';
+            el.parentElement.style.fontWeight = "400";
+          });
+
+        if (!toc_modal_flag) {
+          return
+        }   
+        
+        $toc_modal.addEventListener('click', function(e) {
+          e.preventDefault();
+          $toc_modal.querySelectorAll('.list-group-item > i').forEach(el => {
+            el.style.color = '#9A9FA8';
+            el.parentElement.style.color = 'black';
+            el.parentElement.style.fontWeight = "400";
+          });
+          const elem = e.target.closest('.list-group-item');
+          if (elem) {
+            clickedElemId = elem.dataset.id;
+            elem.querySelector('i').style.color = "#4078FF";
+            elem.style.color = "#4078FF";
+            elem.style.fontWeight = "bold";
+            const subIds = JSON.parse(elem.dataset.subids);
+            if (subIds.length > 0) {
+              if (!elem.classList.contains('open')) {
+                toggleFolderIcon(elem, true);
+                elem.classList.add('open');
+              } else {
+                toggleFolderIcon(elem, false);
+                elem.classList.remove('open');
+              }
+              displayTagsById(subIds, true);
+              $("#toc_modal_confirm").removeClass("btn-primary").addClass("btn-secondary").addClass("disabled");
+            } else {
+              $("#toc_modal_confirm").removeClass("btn-secondary").addClass("btn-primary").removeClass("disabled");
+            }
+          }
+        });
+        toc_modal_flag = false;
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $btn2.addEventListener('click', async () => { // 저장 버튼 클릭 시
+      const data = parseTableRowsToObjects();
+      const isEqual = JSON.stringify(studentsAchievementData) === JSON.stringify(data);
+      if (isEqual) {
+        alert("변경된 내용이 없습니다.");
+        return
+      }
+
+      if (!confirm("변경된 내용을 저장하시겠습니까?")) {
+        return
+      }
+
+      try {
+        const url = `${_URL}/neis/update_student_achievement_levels/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(`${res.message}: , created: ${res.created}, updated: ${res.updated}, total: ${res.total}`);
+        alert("저장을 완료했습니다.");
+        get_students_achievement_results();
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+    });    
+
+    $btn3.addEventListener('click', () => { // 삭제 버튼 클릭 시 
+      if ($("#menu_i_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        return;
+      }
+
+      if (!confirm("해당자료를 삭제하시겠습니까?\n등록 또는 수정된 항목은 반영되지 않으며 삭제처리만 반영됩니다.")) {
+        return
+      }
+
+      $("#menu_i_tbody input:checked").each(function(idx, el) {
+        $(el).closest("tr").find("td:nth-last-child(3) select").val("");
+        $(el).closest("tr").find("td:nth-last-child(2) textarea").val("");
+      });
+
+      $("#menu_i_table button.toggleAllcheckboxes").click();
+    });
+
+    $btn4.addEventListener('click', async () => { // 출력 버튼 클릭 시
+      if ($("#menu_i_tbody input:checked").length === 0) {
+        alert('선택된 대상이 없습니다.');
+        return;
+      }
+
+      let data = {};
+      $("#menu_i_tbody input:checked").each(function() {    
+        const student_id = $(this).closest("tr").attr("data-sid");
+        const achievementIds = data[student_id] || [];
+        data[student_id] = [...achievementIds, $(this).closest("tr").attr("data-aid")];
+      });
+      // console.log("data: ", data);
+
+      try {
+        const url = `${_URL}/neis/get_image_resource_paths_by_student_and_achievementIds_Obj/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, info } = res;
+        console.log(message);
+        // console.log(info);
+
+        const result = Object.values(info) // 최상위 value들 (객체)
+          .flatMap(obj => Object.values(obj)) // 각 객체의 value들 (배열)
+          .flat(); // 배열들을 평탄화
+
+        // console.log(result);
+
+        if (result.length === 0) {
+          alert("등록된 평가근거자료가 없습니다.");
+          $("#menu_i_table button.toggleAllcheckboxes").click();
+          return
+        } 
+
+        const images = result.map(el => `${_URL}/cloudstorage/view/${el}`);
+        openFile(images[0], false, false, images);
+        $("#menu_i_table button.toggleAllcheckboxes").click();
+      } catch (error) {
+        console.error('Error:', error);
+      }  
+    });
+
+    const updateBtnsBasedOnSelection = () => {
+      const checkedNum = $("#menu_i_tbody input:checked").length
+      if (checkedNum === 0) {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]); 
+      } else if (checkedNum === 1) {
+        updateButtonStatesWithStyles([$btn1, false], [$btn2, false], [$btn3, false], [$btn4, false]); 
+      } else {
+        updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, false], [$btn4, false]); 
+      }
+    }
+
+    const sideEffect = () => {
+      updateBtnsBasedOnSelection();
+    };
+
+    toggleAllTableCheckboxes('#menu_i_table', sideEffect);
+
+    $("#toc_modal_confirm").on("click", async function () { // 모달창의 업로드 버튼 클릭 시
+      const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
+      const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
+      const data = {
+        'student_id': student_id, 
+        'achievement_id': achievement_id,
+        'resource_path': path,
+        'ext': file_ext,
+      }
+
+      // console.log(data);
+      try {
+        const url = `${_URL}/neis/create_evaluation_evidence/`;
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        console.log(res.message);
+        // alert("저장을 완료했습니다.");
+        $("#menu_i_tbody input:checked:first").closest("tr").find("td:last").text("O");
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error);
+      }
+      $("#searchResourcesModal").modal('hide');
+      $("button.toggleAllcheckboxes").click();
+    });
+
+    try {
+      const response = await fetch(`${_URL}/neis/get_active_grades/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { year, semester, active_grades } = res;
+      populateSelectOptionsAndSetDisabled(year, $year, true);
+      populateSelectOptionsAndSetDisabled(semester, $semester, true);
+      populateSelectOptionsAndSetDisabled(active_grades, $grade);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(3)", function() {
+      const path = $(this).text();
+      const file_ext = path.split('.').pop().toLowerCase();
+      const image_exts = ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp'];
+      const video_exts = ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'];
+      const audio_exts = ['mp3', 'aac', 'm4a', 'ogg', 'wav', 'flac', 'webm'];
+      const code_exts = ['html', 'css', 'js', 'py'];
+      const office_exts = ['hwp', 'hwpx', 'pdf', 'ppt', 'pptx'];
+
+      if (video_exts.includes(file_ext)) {
+        openFile(path, true, false);
+      } else if (audio_exts.includes(file_ext)) {
+        openFile(path, false, true);  // 비디오 파일
+      } else if (code_exts.includes(file_ext) || office_exts.includes(file_ext)) {
+        openFile(path)
+      } else if (image_exts.includes(file_ext)) {  
+        openFile(path);
+      } 
+    });
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(1)", async function() { // 삭제 아이콘 클릭 시
+      if (confirm(`삭제하시겠습니까? 자료를 삭제해도 원격저장소에 저장된 원자료는 삭제되지 않습니다.`)) {
+        try {
+          const url = `${_URL}/neis/delete_evaluation_evidence_by_id/`;
+          const data = {
+            eid: $(this).closest("tr").attr("data-eid"),
+          }
+          const options = {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log("message: ", res.message);
+          console.log("deleted_id: ", res.deleted_id);
+
+          // 요청 성공 시 아래 코드 실행
+          $(this).closest("tr").remove();
+          if ($("#menu_g_modal_tbody tr").length === 0) {
+            $("#menu_i_tbody input:checked").closest("tr").find("td:nth-last-child(1)").text("X");
+          }
+        } catch (error) {
+          console.error('Error: ', error);
+          alert("삭제 중 오류가 발생하였습니다.");
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    $("#menu_g_modal_tbody").on("click", "tr td:nth-child(2)", async function() { // 양방향 화살표 아이콘 클릭 시
+      if ($("#toc_modal_confirm").hasClass("disabled")) { return }
+
+      const { path } = directories.filter(el => el.id === parseInt(clickedElemId))[0];
+      const file_ext = path.includes('.') ? path.split('.').pop() : undefined;
+      
+      const data = {
+        eid: $(this).closest("tr").attr("data-eid"),
+        resource_path: path,
+        ext: file_ext,
+      }
+
+      if (confirm(`평가근거자료를 다음으로 수정하시겠습니까?: ${path}`)) {
+        try {
+          const url = `${_URL}/neis/update_evaluation_evidence_resource/`;
+          const options = {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          };
+
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          console.log(res.message);
+
+          // 요청 성공 시 아래 코드 실행
+          $(this).closest("tr").find("td:nth-child(3)").text(path);
+        } catch (error) {
+          console.error('Error:', error);
+          alert(error);
+        }
+      } else {
+        alert("작업을 취소하셨습니다.")
+      }
+    });
+
+    const $searchResourcesModal = document.getElementById('searchResourcesModal');
+    if ($searchResourcesModal) {
+      $searchResourcesModal.addEventListener('show.bs.modal', async (event) => {
+        // Button that triggered the modal
+        const button = event.relatedTarget
+        // Extract info from data-bs-* attributes
+        const recipient = button.getAttribute('data-bs-whatever')
+        const modalTitle = $searchResourcesModal.querySelector('.modal-title')
+        const modalBody = $searchResourcesModal.querySelector('.modal-body')
+        
+        let targetRow = $("#menu_i_tbody input:checked").closest("tr");
+        let td_num = null;
+        while(true) {
+          td_num = targetRow.find("td").length;
+          if (td_num != 9) {
+            targetRow = targetRow.prev();
+            continue;
+          } 
+          break;
+        }
+        
+        const student_name = targetRow.find("td").eq(2).text();
+        modalTitle.textContent = `${student_name}의 평가근거자료 선택`;
+
+        student_id = $("#menu_i_tbody input:checked").closest("tr").attr("data-sid");
+        achievement_id = $("#menu_i_tbody input:checked").closest("tr").attr("data-aid");
+
+        params = new URLSearchParams();
+        params.append('student_id', student_id);
+        params.append('achievement_id', achievement_id);
+        
+        try {
+          const response = await fetch(`${_URL}/neis/get_evaluation_evidence_by_student_and_achievement/?${params.toString()}`, {
+            method: 'GET',
+          });
+          if (!response.ok) {
+            throw new Error(`서버 오류: ${response.status}`);
+          }
+          const res = await response.json();
+          const { message, info } = res;
+          console.log(message);
+          // console.log(info);
+          const tableHtml = info.map(({evidence_id, resource_path, created_at}) => {
+            return `
+              <tr data-eid="${evidence_id}">
+                <td><i class="fa-solid fa-trash"></i></td>
+                <td><i class="fa-solid fa-right-left"></i></td>
+                <td>${resource_path}</td>
+                <td>${created_at}</td>
+              </tr>
+            `
+          }).join('');
+          $("#menu_g_modal_tbody").html(tableHtml);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      });
+    }   
   }
 
   function renderSemesterSubjectFeedbackTable() {
@@ -3817,7 +5364,7 @@
     const updateInnerBtnsBasedOnSelection = () => {
       const $checked_1 = $("#menu_j_inner_tbody_1 input:checked"); // 관찰내용 
       const $checked_2 = $("#menu_j_inner_tbody_2 input:checked"); // 교과평가
-      if ($checked_1.length > 3) {
+      if ($checked_1.length > 2) {
         updateButtonStatesWithStyles([$btn5, false], [$btn7, false], [$btn8, false]); 
       } else if ($checked_1.length + $checked_2.length > 0) {
         updateButtonStatesWithStyles([$btn5, true], [$btn7, false], [$btn8, false]);
@@ -4384,8 +5931,8 @@
         const recipient = $button.getAttribute('data-bs-whatever')
         const modalTitle = $fetchGPTModal.querySelector('.modal-title')
         const modalBody = $fetchGPTModal.querySelector('.modal-body')
-        
         modalTitle.textContent = '참고자료조회';
+        
         const student_name = $button.closest('tr').querySelector('td:nth-child(3) > div').textContent;
         const report_text = $button.closest('tr').querySelector('td:nth-child(5) > textarea').value;
         studentId = $button.closest('tr').getAttribute('data-sid');
@@ -5555,11 +7102,7 @@
             return
           } 
           const images = info.map(el => `${_URL}/cloudstorage/view/${el}`);
-          if (images.length === 1) {
-            openFile(images[0]);
-          } else {
-            openFile(images[0], false, false, images);
-          }
+          openFile(images[0], false, false, images);
           $("#menu_n_table_1 button.toggleAllcheckboxes").click();
         } catch (error) {
           console.error('Error:', error);
@@ -5818,8 +7361,10 @@
         script_renderAchievementEvaluationScreen();
         return;
       case MENU.H:
+        script_renderFieldAssessmentResultsTable();
         return;
       case MENU.I:
+        script_renderSubjectAssessmentResultsTable();
         return;
       case MENU.J:
         script_renderSemesterSubjectFeedbackTable();

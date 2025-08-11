@@ -3,7 +3,7 @@ from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.orm import selectinload, with_loader_criteria
-from sqlalchemy import func
+from sqlalchemy import func, tuple_
 from operator import itemgetter 
 from collections import defaultdict
 import os
@@ -827,11 +827,13 @@ def get_subjects_by_grade(_grade):
       return jsonify({"error": "SchoolGrade not found."}), 400
     
     subjects = [gs.subject.value for gs in school_grade.subjects]
+    subjectIds = [gs.id for gs in school_grade.subjects]
     classes = [[cs.class_name, cs.id] for cs in school_grade.classes]
     
     return jsonify({
       "grade": _grade,
       "subjects": subjects,
+      "subjectIds": subjectIds,
       "classes": sorted(classes, reverse = True)
     }), 200
 
@@ -1051,6 +1053,70 @@ def get_achievement_criteria_by_field_id(fid):
 
     return jsonify({
       "message": "성취기준 조회 완료",
+      "criteria": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+  
+
+@bp.route("/get_achievement_and_evaluation_criteria_by_field_id/<string:fid>", methods=['GET'])
+@login_required
+def get_achievement_and_evaluation_criteria_by_field_id(fid):
+  """
+  분야 ID(fid)를 받아 해당 분야의 성취기준 및 평가기준 목록을 반환합니다.
+  반환 데이터:
+  {
+    "message": "성취기준 및 평가기준 조회 완료",
+    "criteria": [
+      {
+        "id": 1,
+        "criterion": "성취기준 내용",
+        "evaluation_criteria": [
+            {"level_name": "상", "description": "설명..."},
+            {"level_name": "중", "description": "설명..."}
+        ]
+      },
+      ...
+    ]
+  }
+  """
+  try:
+    # 1. 분야 ID 유효성 검사
+    try:
+      area_id = int(fid)
+    except ValueError:
+      return jsonify({"error": "유효하지 않은 분야 ID입니다."}), 400
+
+    # 2. 분야 존재 여부 확인
+    area = db.session.get(AssessmentArea, area_id)
+    if not area:
+      return jsonify({"error": "해당 분야가 존재하지 않습니다."}), 404
+
+    # 3. 성취기준 + 하위 평가기준 로드
+    criteria = (
+      AchievementCriterion.query
+      .options(selectinload(AchievementCriterion.evaluation_criteria))
+      .filter_by(area_id=area_id)
+      .all()
+    )
+
+    # 4. 결과 변환
+    result = [
+      {
+        "id": c.id,
+        "criterion": c.criterion,
+        "evaluation_criteria": [
+          {"level_name": ec.level_name, "description": ec.description}
+          for ec in c.evaluation_criteria
+        ]
+      }
+      for c in criteria
+    ]
+
+    return jsonify({
+      "message": "성취기준 및 평가기준 조회 완료",
       "criteria": result
     }), 200
 
@@ -1369,6 +1435,203 @@ def get_students_achievement_results():
     print(traceback.format_exc())
     return error_response("서버 오류 발생", 500, str(e))
   
+
+# 영역별 특정 학급 학생들의 성적 조회 엔드포인트
+@bp.route("/get_students_achievement_results_by_assessment_area/", methods=['GET'])
+@login_required
+def get_students_achievement_results_by_assessment_area():
+  class_id = request.args.get('class_id')
+  assessment_area_id = request.args.get('assessment_area_id')
+
+  if not (class_id and assessment_area_id):
+    return error_response("Missing required parameters.", 400, {
+      "class_id": class_id,
+      "assessment_area_id": assessment_area_id
+    })
+
+  try:
+    class_id = int(class_id)
+    assessment_area_id = int(assessment_area_id)
+  except ValueError:
+    return error_response("class_id 및 assessment_area_id는 정수여야 합니다.", 400)
+
+  # 평가 영역 조회
+  aa = AssessmentArea.query.options(
+    selectinload(AssessmentArea.criteria)
+  ).filter_by(id=assessment_area_id).first()
+
+  if not aa:
+    return error_response("해당 영역을 찾을 수 없습니다.", 404)
+
+  criteria_list = aa.criteria
+  criterion_id_set = {c.id for c in criteria_list}
+
+  try:
+    # 학급과 학생 + 평가결과 로딩
+    gc = GradeClass.query.options(
+      selectinload(GradeClass.students)
+      .selectinload(Student.evaluation_results),
+      selectinload(GradeClass.students)
+      .selectinload(Student.evaluation_results)
+      .selectinload(EvaluationResult.achievement_criterion),
+      selectinload(GradeClass.students)
+      .selectinload(Student.evaluation_results)
+      .selectinload(EvaluationResult.evidences),
+    ).filter_by(id=class_id).first()
+
+    if not gc:
+      return error_response("해당 학급을 찾을 수 없습니다.", 404)
+
+    result = []
+
+    for student in gc.students:
+      if not student.is_enrolled:
+        continue
+
+      # 학생의 평가 결과 중 이 평가영역에 해당하는 성취기준만 필터링
+      relevant_results = [
+        r for r in student.evaluation_results
+        if r.achievement_criterion_id in criterion_id_set
+      ]
+
+      # 성취기준 ID 기준으로 평가결과 매핑
+      result_by_criterion_id = {r.achievement_criterion_id: r for r in relevant_results}
+
+      student_result = {
+        "student_id": student.id,
+        "name": student.name,
+        "results": []
+      }
+
+      for criterion in criteria_list:
+        r = result_by_criterion_id.get(criterion.id)
+        student_result["results"].append({
+          "criterion_id": criterion.id,
+          "criterion": criterion.criterion,
+          "evaluation_item": criterion.evaluation_item,
+          "level": r.level if r else None,
+          "description": r.description if r else None,
+          "evidence_count": len(r.evidences) if r else 0
+        })
+
+      result.append(student_result)
+
+    return jsonify({
+      "message": "학급 학생 및 영역별 성적 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+
+
+# 교과별 특정 학급 학생들의 성적 조회 엔드포인트
+@bp.route("/get_students_achievement_results_by_subjectId/", methods=['GET'])
+@login_required
+def get_students_achievement_results_by_subjectId():
+  class_id = request.args.get('class_id')
+  subject_id = request.args.get('subject_id')
+
+  # 필수 파라미터 검증
+  if not (class_id and subject_id):
+    return error_response("Missing required parameters.", 400, {
+      "class_id": class_id,
+      "subject_id": subject_id
+    })
+
+  try:
+    class_id = int(class_id)
+    subject_id = int(subject_id)
+  except ValueError:
+    return error_response("class_id 및 subject_id는 정수여야 합니다.", 400)
+
+  try:
+    # 교과별 평가 영역 및 성취기준 조회
+    aas = (
+      AssessmentArea.query
+      .options(selectinload(AssessmentArea.criteria))
+      .filter_by(subject_id=subject_id)
+      .all()
+    )
+
+    if not aas:
+        return error_response("해당 교과의 평가영역을 찾을 수 없습니다.", 404)
+
+    # [(영역명, 성취기준객체), ...] 형태로 구성
+    criteria_list = [
+      (aa.area, criterion)
+      for aa in aas
+      for criterion in aa.criteria
+    ]
+    criterion_id_set = {criterion.id for _, criterion in criteria_list}
+
+    # 학급 + 학생 + 평가결과(성취기준 + 증거자료) 로딩
+    gc = (
+      GradeClass.query
+      .options(
+        selectinload(GradeClass.students)
+        .selectinload(Student.evaluation_results)
+        .selectinload(EvaluationResult.achievement_criterion),
+        selectinload(GradeClass.students)
+        .selectinload(Student.evaluation_results)
+        .selectinload(EvaluationResult.evidences)
+      )
+      .filter_by(id=class_id)
+      .first()
+    )
+
+    if not gc:
+      return error_response("해당 학급을 찾을 수 없습니다.", 404)
+
+    result = []
+
+    for student in gc.students:
+      if not student.is_enrolled:
+        continue
+
+      # 이 학생의 평가 결과 중 해당 교과 성취기준만 필터링
+      relevant_results = [
+        r for r in student.evaluation_results
+        if r.achievement_criterion_id in criterion_id_set
+      ]
+
+      # 성취기준 ID → 평가결과 매핑
+      result_by_criterion_id = {
+        r.achievement_criterion_id: r for r in relevant_results
+      }
+
+      # 학생 결과 구조
+      student_result = {
+        "student_id": student.id,
+        "name": student.name,
+        "results": defaultdict(list)  # area별로 자동 리스트 생성
+      }
+
+      for area, criterion in criteria_list:
+        r = result_by_criterion_id.get(criterion.id)
+        student_result["results"][area].append({
+          "criterion_id": criterion.id,
+          "criterion": criterion.criterion,
+          "evaluation_item": criterion.evaluation_item,
+          "level": r.level if r else None,
+          "description": r.description if r else None,
+          "evidence_count": len(r.evidences) if r else 0
+        })
+
+      # defaultdict → 일반 dict 변환
+      student_result["results"] = dict(student_result["results"])
+      result.append(student_result)
+
+    return jsonify({
+      "message": "학급 학생 및 교과별 성적 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+
 
 @bp.route("/get_evaluation_criteria_by_achievement_id/<string:aid>", methods=['GET'])
 @login_required
@@ -2236,8 +2499,74 @@ def get_image_resource_paths_by_student_and_subjectId():
 
   except Exception as e:
     print(traceback.format_exc())
-    return error_response("서버 오류 발생", 500, str(e))
-  
+    return error_response("서버 오류 발생", 500, str(e))  
+
+
+@bp.route("/get_image_resource_paths_by_student_and_achievementIds_Obj/", methods=['POST'])
+@login_required
+def get_image_resource_paths_by_student_and_achievementIds_Obj():
+  try:
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+      return jsonify({"error": "데이터 형식이 잘못되었습니다. 객체 리터럴이 필요합니다."}), 400
+
+    # 요청된 모든 (student_id, achievement_id) 쌍 수집
+    pairs = []
+    for sid_str, achievement_ids in data.items():
+      try:
+        sid = int(sid_str)
+      except ValueError:
+        return jsonify({"error": f"유효하지 않은 student_id: {sid_str}"}), 400
+
+      if not isinstance(achievement_ids, list):
+        return jsonify({"error": f"학생 {sid}의 성취기준 목록이 배열이 아닙니다."}), 400
+
+      for ach_id in achievement_ids:
+        try:
+          ach_id_int = int(ach_id)
+        except ValueError:
+          return jsonify({"error": f"유효하지 않은 achievement_id: {ach_id}"}), 400
+        pairs.append((sid, ach_id_int))
+
+    if not pairs:
+      return jsonify({"error": "조회할 데이터가 없습니다."}), 400
+
+    # 결과 초기화
+    result = {str(sid): {str(ach_id): [] for ach_id in ach_list}
+              for sid, ach_list in ((s, ids) for s, ids in data.items())}
+
+    # 한 번의 쿼리로 모든 데이터 가져오기
+    ers = (
+      EvaluationResult.query
+      .join(EvaluationResult.evidences)
+      .filter(tuple_(EvaluationResult.student_id,
+                      EvaluationResult.achievement_criterion_id).in_(pairs))
+      .filter(EvaluationEvidence.resource_type == 'image')
+      .order_by(EvaluationResult.student_id,
+                EvaluationResult.achievement_criterion_id,
+                EvaluationEvidence.created_at.nullslast(), EvaluationEvidence.id)
+      .with_entities(EvaluationResult.student_id,
+                      EvaluationResult.achievement_criterion_id,
+                      EvaluationEvidence.resource_path)
+      .all()
+    )
+
+    # Python에서 그룹핑
+    for sid, ach_id, path in ers:
+      result[str(sid)][str(ach_id)].append(path)
+
+    return jsonify({
+      "message": "평가근거자료 조회 완료",
+      "info": result
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return jsonify({
+      "error": "서버 오류 발생",
+      "details": str(e)
+    }), 500
+
 
 @bp.route("/get_students_semester_summary_by_class_and_subject/", methods=['GET'])
 @login_required
