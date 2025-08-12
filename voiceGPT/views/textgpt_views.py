@@ -10,6 +10,7 @@ import uuid
 import base64
 import io
 import base64
+import traceback
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
@@ -317,39 +318,103 @@ def generate_image():
     db.session.commit()
 
     return jsonify({"revised_prompt": revised_prompt, "msgIds": msgIds}), 200
-
-    # image_b64 = response.data[0].b64_json
-    # image_data = base64.b64decode(image_b64)
-    # revised_prompt = response.data[0].revised_prompt
-
-    # with open(image_path, 'wb') as f:
-    #   f.write(image_data)
-
-    # image_file = io.BytesIO(image_data)
-    # img = Image.open(image_file)
-    # img.thumbnail((256, 256))
-    # thumbnail_path = upload_folder / f't_{file_name}'
-    # img.save(thumbnail_path)
-
-    # message_image = MsgImage(
-    #   imagePath=file_name,
-    #   thumbnailPath=f't_{file_name}',
-    # )
-
-    # db.session.add(message_image)
-    # #db.session.flush()  # 바로 commit하지 않고 현재 세션 내에서 ID를 불러옴
-    # db.session.commit()
-
-    # msgIds = []
-    # msgIds.append(f't_{file_name}')
-
-    # return jsonify({"revised_prompt": revised_prompt, "msgIds": msgIds}), 200
   except SQLAlchemyError as e:
     db.session.rollback()
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     db.session.rollback()
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+  
+
+@bp.route("/generate_image_by_responsesAPI/", methods=["POST"])
+@login_required
+def generate_image_by_responsesAPI():
+  try:
+    data = request.get_json()
+
+    if not data or "model" not in data or "prompt" not in data:
+      return jsonify({'error': 'Invalid input'}), 400
+
+    upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+
+    response = None
+    revised_prompt = None
+
+    # 현재 시각 (파일명에 사용)
+    formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    images_list = data.get('images', [])
+    if images_list:  # 이미지 편집 요청
+      img_file = images_list[0]
+      source_filename = img_file.split('/')[-1]
+      source_filename = ''.join(source_filename.split('t_')[1:])
+      file_path = upload_folder / source_filename
+
+      if not file_path.exists():
+        return jsonify({'error': f'File does not exist: {file_path}'}), 400
+
+      is_valid, error_msg = validate_image(str(file_path))
+      if not is_valid:
+        return jsonify({'error': f'Invalid image: {error_msg}'}), 400
+      
+      with open(str(file_path), "rb") as img_file:
+        response = client.images.edit(
+          model="gpt-image-1",
+          image=img_file,
+          prompt=data['prompt']
+        )
+      
+    else:  # 새 이미지 생성
+      response = client.images.generate(
+        model="gpt-image-1",
+        prompt=data['prompt']
+      )
+
+    # print("response: ", response)
+    msgIds = []
+    for item in response.data:
+      image_b64 = item.b64_json
+      image_data = base64.b64decode(image_b64)
+      revised_prompt = item.revised_prompt
+      formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+      file_name = f'{g.user.username}_{formatted_now}_{uuid.uuid4().hex}.png'
+      image_path = upload_folder / file_name
+
+      # 파일 저장
+      file_name = f'{g.user.username}_{formatted_now}_{uuid.uuid4().hex}.png'
+      image_path = upload_folder / file_name
+      with open(image_path, 'wb') as f:
+        f.write(image_data)
+
+      # 썸네일 생성
+      image_file = io.BytesIO(image_data)
+      img = Image.open(image_file)
+      img.thumbnail((256, 256))
+      thumbnail_name = f't_{file_name}'
+      thumbnail_path = upload_folder / thumbnail_name
+      img.save(thumbnail_path)
+
+      # DB 저장
+      message_image = MsgImage(
+        imagePath=file_name,
+        thumbnailPath=thumbnail_name,
+      )
+      db.session.add(message_image)
+      msgIds.append(thumbnail_name)
+
+    db.session.commit()
+
+    return jsonify({"revised_prompt": revised_prompt, "msgIds": msgIds}), 200
+
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({'error': 'Database error', 'message': str(e)}), 500
+  except Exception as e:
+    db.session.rollback()
+    print(traceback.format_exc())
+    return jsonify({'error': 'Server error', 'message': str(e)}), 500
+
 
 @bp.route("/upload/", methods=["POST"])
 @login_required
@@ -436,7 +501,8 @@ def upload():
   except Exception as e:
     db.session.rollback()
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
-  
+
+
 @bp.route("/upload_generated_image/", methods=["POST"])
 @login_required
 def upload_generated_image():
@@ -524,6 +590,7 @@ def upload_generated_image():
     db.session.rollback()
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
     
+
 @bp.route("/chatlist/<string:searchWord>", methods=['GET'])
 @login_required
 def searchlist(searchWord):
@@ -543,6 +610,7 @@ def searchlist(searchWord):
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
 
+
 @bp.route("/chatlist/", methods=['GET'])
 @login_required
 def chatlist():
@@ -558,6 +626,7 @@ def chatlist():
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
     
+
 @bp.route("/content/<string:itemId>", methods=['GET'])
 @login_required
 def content(itemId):
@@ -572,6 +641,7 @@ def content(itemId):
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+
 
 @bp.route("/delete/message/", methods=['DELETE'])
 @login_required
@@ -626,6 +696,7 @@ def delete_messages():
     print(f"Unexpected error: {e}")
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
 
+
 @bp.route("/delete/<string:itemId>", methods=['DELETE'])
 @login_required
 def delete(itemId):
@@ -640,6 +711,7 @@ def delete(itemId):
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
   
+
 @bp.route("/update/system/", methods=['PUT'])
 @login_required
 def update():
@@ -671,6 +743,7 @@ def update():
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
   
+
 @bp.route("/update/dalle_setting/", methods=['PUT'])
 @login_required
 def update_dalle():
@@ -725,6 +798,7 @@ def deleteImagesOutdated():
 
       db.session.delete(item)
     db.session.commit()
+
 
 @bp.route("/upload_image/", methods=["POST"])
 @login_required
@@ -813,6 +887,7 @@ def upload_image():
   return jsonify({'msgIds': msgIds}), 200
   # return jsonify({'status': 'success'}), 200
 
+
 @bp.route("/get_thumbnail/<string:filename>", methods=["GET"])
 @login_required
 def get_thumbnail(filename):
@@ -820,6 +895,7 @@ def get_thumbnail(filename):
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
   except FileNotFoundError:
     abort(404)
+
 
 @bp.route("/get_image/<string:filename>", methods=["GET"])
 def get_image(filename):
@@ -837,6 +913,7 @@ def get_image(filename):
   except FileNotFoundError:
     print("FileNotFound!")
     abort(404)
+
 
 @bp.route("/deleteImage/<string:filename>", methods=["DELETE"])
 @login_required

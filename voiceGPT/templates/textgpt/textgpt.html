@@ -402,11 +402,7 @@
             <div class="modal-body">
               <form id="dalleForm">
                 <p class="fs-6"><i class="fa-regular fa-square-check"></i>&nbsp;&nbsp;DALL-E 모델</p>
-                <div class="mb-3" style="display: flex; justify-content: space-evenly;">
-                  <input type="radio" class="btn-check" name="dallemodels" id="dall-e-3" autocomplete="off">
-                  <label class="btn" for="dall-e-3">DALL-E-3</label>
-                  <input type="radio" class="btn-check" name="dallemodels" id="dall-e-2" autocomplete="off">
-                  <label class="btn" for="dall-e-2">DALL-E-2</label>
+                <div id="imageModelSelection" class="mb-3" style="display: flex; justify-content: space-evenly;">
                 </div>
                 <label for="numberRange" class="form-label"><i class="fa-solid fa-n"></i>&nbsp;&nbsp;생성되는 이미지의 개수(1~10)</label>
                 <input type="range" class="form-range" min="1" max="10" step="1" id="numberRange" value="1">
@@ -596,11 +592,23 @@
 {% block script %}
 <script type="module">
   const MODELS = {
-    'model1': 'gpt-4.1',
-    'model2': 'gpt-4.1-mini',
+    'model1': 'gpt-5',
+    'model2': 'gpt-4.1',
     'model3': 'o4-mini',
   }
-  const defaultModel = MODELS['model2'];
+
+  const IMAGE_MODELS = {
+    'model1': 'dall-e-2',
+    'model2': 'dall-e-3',
+  }
+
+  const special_characters = {
+    'image_generation': '!!',
+    'web_search': '??',
+    'file_input': '>>',
+  }
+
+  const defaultModel = MODELS['model1'];
   document.querySelector('body').classList.replace('mt-4', 'mt-2');
   import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
   
@@ -1040,6 +1048,47 @@
           contents: newContents,
           disabled: btnFlag, 
         });
+      } else if (action.author === 'user2') {
+        // 사용자가 메시지를 생성하고 CREATE type 발생 시 ChatGPT에 응답 요청을 보내고, 그 응답을 받아 연쇄적으로 dispatch 호출
+        newContents.push({author:'user', desc:action.desc, imgUrl:state.images});
+        (async () => {
+          try {
+            const question = {
+              'model': state.model,
+              'images': latestImages, // 캡처된 images 배열을 사용
+              'prompt': action.desc.slice(2).trim(),
+            };
+
+            console.log(latestImages);
+
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(question),
+            };
+
+            const response = await fetch(_URL + '/textgpt/generate_image_by_responsesAPI/', options);
+            if(!response.ok){
+              throw new Error(response.status);
+            }
+            const answer = await response.json();
+            const imgUrlArray = [];
+            for (const msgId of answer.msgIds) {
+              imgUrlArray.push(_URL + `/textgpt/get_image/${msgId}`);
+            }
+            // console.log(imgUrlArray);
+            store.dispatch({type:'IMG_CREATE', author:'assistant', desc:answer.revised_prompt || '', images: imgUrlArray});
+          } catch(error) {
+            console.error('Error: ', error);
+          }
+        })();
+        const btnFlag = action.author === 'user2' ? true : false;
+        newState = Object.assign({}, state, {
+          contents: newContents,
+          disabled: btnFlag, 
+        });
       } else if(action.author === 'assistant'){
         newContents.push({author:action.author, desc:action.desc, imgUrl:action.images});
         // 가장 최근의 질문과 응답을 데이터베이스에 저장하기 위하여 서버측에 fetch 호출
@@ -1309,6 +1358,15 @@
       `
     }).join('');
     $modelsDiv.innerHTML = modelHTML;
+
+    const imageModelHTML = Object.entries(IMAGE_MODELS).map(item => {
+      return `
+        <input type="radio" class="btn-check" name="dallemodels" id="${item[1]}" autocomplete="off">
+        <label class="btn" for="${item[1].toLowerCase()}">${item[1]}</label>
+      `
+    }).join('');
+    $("#imageModelSelection").html(imageModelHTML);
+
     const $myInput = document.getElementById('myInput');
     // 메시지 입력창에서 줄바꿈이 일어났을 때 스크롤 내 높이를 조정해 사용자가 입력하는 내용을 볼 수 있도록 함.
     $myInput.addEventListener('input', () => {
@@ -1353,13 +1411,31 @@
       event.preventDefault();
       if (!!store.getState().subject) {
         const _author = 'user';
-        const _desc = event.target.message.value;
+        const _desc = event.target.message.value.trim();
         
-        const currentModel = document.getElementById('currentModel').textContent.toLowerCase();
-        if (currentModel.startsWith('dall')) {
+        const currentModel = document.getElementById('currentModel').textContent.toLowerCase().trim();
+        const imageModelFlag = Object.values(IMAGE_MODELS).includes(currentModel);
+        const addtionalFeaturesFlag = Object.values(special_characters).some(el => _desc.startsWith(el));
+        
+        if (imageModelFlag) {
           store.dispatch({type:'IMG_CREATE', author:_author, desc: _desc});
+        } else if (addtionalFeaturesFlag) {
+          const featureKey = Object.keys(special_characters).find(key => _desc.startsWith(special_characters[key]));
+          switch (featureKey) {
+            case 'image_generation':
+              console.log('이미지 생성 기능 실행');
+              store.dispatch({type:'IMG_CREATE', author:'user2', desc: _desc});
+              break;
+            case 'web_search':
+              console.log('웹 검색 기능 실행');
+              break;
+            case 'file_input':
+              console.log('파일 입력 기능 실행');
+              break;
+            default:
+              console.log('알 수 없는 기능');
+          }
         } else {
-          // console.log('dall!');
           store.dispatch({type:'CREATE', author:_author, desc: _desc});
         }
         Initialize_textareaTag(null); 
