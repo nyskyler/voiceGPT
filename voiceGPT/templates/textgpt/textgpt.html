@@ -754,6 +754,7 @@
           <div class="card ${border == 'none' ? '' : border} mb-2">
             <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
               <div class="thumbnails" data-url="${el.imgUrl}"}></div>
+              ${el.imgUrl.length > 0 && el.author === 'assistant' ? `<span style="position: absolute; top: 1.2rem; left: 1.3rem;"><input class="imgCheckBoxes form-check-input" type="checkbox" aria-label="..."></span>` : ''}              
               <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${escapeHTML(el.desc)}</div>
               <button type="button" class="btn-close delete_message" aria-label="Close"></button>
             </div>
@@ -763,6 +764,17 @@
       `).join('');
 
     document.getElementById('article').innerHTML = content;
+    
+    // .imgCheckBoxes 이벤트 처리 코드
+    // $(".imgCheckBoxes").on("click", function() {
+    //   const flag = $(this).is(':checked');
+    //   $(".imgCheckBoxes:checked").prop("checked", false);
+    //   $(this).prop("checked", flag);
+    //   if (flag) {
+    //     console.log($(this).parent().next().attr("data-id"));
+    //   }
+    // });
+
     // MathJax 처리
     if (window.MathJax) {
       MathJax.typesetPromise(); 
@@ -901,9 +913,9 @@
       // 사용자 질문 또는 ChatGPT 응답으로 인한 CREATE 발생 시 contents에 내용을 추가하여 렌더링함
       const newContents = [...state.contents];
       const latestImages = [...state.images]; // images 상태를 클로저로 캡처
-      if(action.author === 'user'){
+      if(action.author.startsWith('user')){
         // 사용자가 메시지를 생성하고 CREATE type 발생 시 ChatGPT에 응답 요청을 보내고, 그 응답을 받아 연쇄적으로 dispatch 호출
-        newContents.push({author:action.author, desc:action.desc, imgUrl:state.images});
+        newContents.push({author:'user', desc:action.desc, imgUrl:state.images});
         (async () => {
           try {
             const question = {
@@ -921,7 +933,23 @@
               },
               body: JSON.stringify(question),
             };
-            const response = await fetch(_URL + '/textgpt/question/', options);
+            
+            let url_for_request = null;
+            switch(action.author) {
+              case 'user':
+                url_for_request = _URL + '/textgpt/question/';
+                break;
+              case 'user2':
+                url_for_request = _URL + '/textgpt/pdf_file_input/';
+                break;
+              case 'user3':
+                url_for_request = _URL + '/textgpt/web_search/';
+                break;
+              default:
+                url_for_request = _URL + '/textgpt/question/';
+            }
+
+            const response = await fetch(url_for_request, options);
             if(!response.ok){
               throw new Error(response.status);
             }
@@ -931,7 +959,7 @@
             console.error('Error: ', error);
           }
         })();
-        const btnFlag = action.author === 'user' ? true : false;
+        const btnFlag = action.author.startsWith('user') ? true : false;
         newState = Object.assign({}, state, {
           contents: newContents,
           disabled: btnFlag, 
@@ -1053,14 +1081,17 @@
         newContents.push({author:'user', desc:action.desc, imgUrl:state.images});
         (async () => {
           try {
+            const messageIds = $(".imgCheckBoxes:checked").parent().next().map(function() {
+              return $(this).attr("data-id");
+            }).get();
+            
             const question = {
               'model': state.model,
               'images': latestImages, // 캡처된 images 배열을 사용
               'prompt': action.desc.slice(2).trim(),
+              'msgIds': messageIds,
             };
-
-            console.log(latestImages);
-
+            
             const options = {
               method: 'POST',
               headers: {
@@ -1069,10 +1100,11 @@
               body: JSON.stringify(question),
             };
 
-            const response = await fetch(_URL + '/textgpt/generate_image_by_responsesAPI/', options);
+            const response = await fetch(_URL + '/textgpt/generate_image_by_imageAPI/', options);
             if(!response.ok){
               throw new Error(response.status);
             }
+
             const answer = await response.json();
             const imgUrlArray = [];
             for (const msgId of answer.msgIds) {
@@ -1426,11 +1458,13 @@
               console.log('이미지 생성 기능 실행');
               store.dispatch({type:'IMG_CREATE', author:'user2', desc: _desc});
               break;
-            case 'web_search':
-              console.log('웹 검색 기능 실행');
-              break;
             case 'file_input':
               console.log('파일 입력 기능 실행');
+              store.dispatch({type:'CREATE', author:'user2', desc: _desc});
+              break;
+            case 'web_search':
+              console.log('웹 검색 기능 실행');
+              store.dispatch({type:'CREATE', author:'user3', desc: _desc});
               break;
             default:
               console.log('알 수 없는 기능');

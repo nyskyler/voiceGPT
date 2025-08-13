@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
 from openai import OpenAI
 import os
 import json
@@ -9,6 +10,7 @@ import copy
 import uuid
 import base64
 import io
+import re
 import base64
 import traceback
 from .. import db
@@ -18,6 +20,7 @@ from ..models import User, Subject, Message, RoleEnum, MsgImage
 from pathlib import Path
 from PIL import Image, ExifTags
 from datetime import datetime, timedelta
+from urllib.parse import urlparse, unquote
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("chatgpt_api_key")
@@ -28,6 +31,7 @@ authorized_users = config['USER']['MEMBER']
 user_list = [user.strip() for user in authorized_users.split(',') if user.strip()]
 
 client = OpenAI()
+root_dir = Path('/Volumes/X31')
 bp = Blueprint('textgpt', __name__, url_prefix='/textgpt')
 timeLeft = 10
 
@@ -67,7 +71,7 @@ def message_to_dict(message):
 @login_required
 def test():
   if g.user.username not in user_list:
-    flash('textGPT는 인가받은 사용자만 이용가능합니다. 관리자에게 문의하세요.')
+    flash('ChatGPT는 인가받은 사용자만 이용가능합니다. 관리자에게 문의하세요.')
     return redirect(url_for('main.index'))
   return render_template('textgpt/textgpt.html')
 
@@ -146,6 +150,143 @@ def question():
   response = completion.choices[0].message.content
   return json.dumps({"response": response}, ensure_ascii=False), 200
 
+
+def extract_after_view(url: str) -> str:
+  """
+  URL의 path에서 'view' 세그먼트 다음 경로를 반환.
+  예: http://.../cloudstorage/view/obsidian/voiceGPT.pdf -> 'obsidian/voiceGPT.pdf'
+  'view'가 없으면 '' 반환.
+  """
+  parsed = urlparse(url)
+  # URL-인코딩 경로 복원
+  path = unquote(parsed.path)
+  segments = [seg for seg in path.split('/') if seg]
+
+  try:
+    idx = segments.index('view')
+  except ValueError:
+    return ''
+  return '/'.join(segments[idx + 1:])
+
+
+def _secure_join_under_root(root: Path, relative_unix_path: str) -> Path:
+  """
+  relative_unix_path를 root 아래 안전하게 결합한 절대 경로를 반환.
+  루트 밖으로 벗어나면 ValueError 발생.
+  """
+  root_resolved = root.resolve()
+  # URL에서 온 경로는 POSIX 기준이므로 슬래시로 나뉜 것을 그대로 사용
+  candidate = (root_resolved / Path(relative_unix_path)).resolve()
+  try:
+    candidate.relative_to(root_resolved)
+  except ValueError:
+    # 루트 밖으로 벗어난 경우
+    raise ValueError("Path traversal detected")
+  return candidate
+
+
+@bp.route("/pdf_file_input/", methods=["POST"])
+@login_required
+def pdf_file_input():
+  req_json = request.get_json(silent=True)
+
+  if not req_json or not all(k in req_json for k in ('model', 'content')):
+    return jsonify({'error': 'Invalid input', 'message': "Required keys: 'model', 'content'"}), 400
+
+  _model = req_json.get('model')
+  _content = req_json.get('content')
+
+  if not isinstance(_model, str) or not _model.strip():
+    return jsonify({'error': 'Invalid input', 'message': "'model' must be a non-empty string"}), 400
+  if not isinstance(_content, str) or not _content.strip():
+      return jsonify({'error': 'Invalid input', 'message': "'content' must be a non-empty string"}), 400
+
+  _URL_TAG_PATTERN = re.compile(r'>>\s*(https?://[^\s<>]+)\s*<<', re.IGNORECASE)
+
+  # 1) URL 추출
+  urls = _URL_TAG_PATTERN.findall(_content)
+
+  # 2) URL 패턴 제거한 본문 텍스트
+  text = _URL_TAG_PATTERN.sub('', _content).strip()
+
+  # 3) URL -&gt; 파일 경로 변환
+  #    - /view/ 뒤의 경로만 사용
+  #    - root_dir 아래로 안전하게 결합
+  #    - 중복 제거(순서 보존)
+  seen = set()
+  rel_paths = []
+  errors = []
+  for url in urls:
+    rel = extract_after_view(url)
+    if not rel:
+      errors.append({'url': url, 'error': "URL path doesn't contain '/view/' or nothing follows it"})
+      continue
+    # 선행/후행 슬래시 제거
+    rel = rel.strip('/')
+    # 중복 제거
+    if rel in seen:
+      continue
+    seen.add(rel)
+    # 보안 결합
+    try:
+      candidate = _secure_join_under_root(root_dir, rel)
+    except ValueError:
+      errors.append({'url': url, 'error': 'Path traversal attempt or invalid path'})
+      continue
+
+    if not candidate.exists():
+      errors.append({'url': url, 'error': 'File not found'})
+      continue
+    if not candidate.is_file():
+      errors.append({'url': url, 'error': 'Path is not a file'})
+      continue
+
+    rel_paths.append(candidate)
+
+  # 파일 관련 에러가 하나라도 있으면 상세 정보와 함께 404 반환
+  # (필요에 따라 부분 성공 허용으로 바꿀 수 있음)
+  if errors:
+    return jsonify({'error': 'File resolution error', 'details': errors}), 404
+
+  content_list = []
+  if text:
+    content_list.append({"type": "text", "text": text})
+
+  # 4) 파일들을 base64로 인코딩해 content_list에 추가
+  for file_path in rel_paths:
+    try:
+      file_bytes = file_path.read_bytes()
+    except Exception as e:
+      return jsonify({'error': 'File read error', 'file': str(file_path), 'message': str(e)}), 500
+
+    base64_string = base64.b64encode(file_bytes).decode("utf-8")
+    content_list.append({
+      "type": "file",
+      "file": {
+        "filename": file_path.name,
+        "file_data": f"data:application/pdf;base64,{base64_string}",
+      }
+    })
+
+  # 5) Chat Completions 호출
+  try:
+    completion = client.chat.completions.create(
+      model=_model,
+      messages=[
+        {
+          "role": "user",
+          "content": content_list
+        },
+      ],
+    )
+    content = completion.choices[0].message.content
+    # JSON 응답
+    return jsonify({"response": content}), 200
+  except Exception as e:
+    print(traceback.format_exc())
+    return jsonify({'error': 'Server error', 'message': str(e)}), 500
+ 
+
 def validate_image(file_path):
   # Check if the file is a PNG
   if not file_path.lower().endswith('.png'):
@@ -164,6 +305,15 @@ def validate_image(file_path):
 
   return True, "Image is valid."
 
+
+def validate_image_2(file_path):
+  # Check if the file is a PNG
+  if not file_path.lower().endswith('.png'):
+    return False, "File is not a PNG image."
+  
+  return True, "Image is valid."
+
+
 def check_transparency(file_path):
   try:
     with Image.open(file_path) as img:
@@ -179,6 +329,13 @@ def check_transparency(file_path):
   except Exception as e:
     print(f"An error occurred: {e}")
     return False, f"{e}"
+  
+@bp.route("/get_file_path/", methods=["GET"])
+@login_required
+def get_file_path():
+  messageIds = request.args.get('messageIds')
+  pass
+
 
 @bp.route("/generate_image/", methods=["POST"])
 @login_required
@@ -326,67 +483,137 @@ def generate_image():
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
   
 
-@bp.route("/generate_image_by_responsesAPI/", methods=["POST"])
+@bp.route("/generate_image_by_imageAPI/", methods=["POST"])
 @login_required
-def generate_image_by_responsesAPI():
+def generate_image_by_imageAPI():
   try:
     data = request.get_json()
-
     if not data or "model" not in data or "prompt" not in data:
       return jsonify({'error': 'Invalid input'}), 400
 
     upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
-
-    response = None
     revised_prompt = None
+    imagePathes = []  # [(Path, has_transparency_bool), ...]
 
-    # 현재 시각 (파일명에 사용)
-    formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # ---------------------------
+    # 내부 함수: 이미지 경로 검증
+    # ---------------------------
+    def process_image_path(path: Path):
+      if not path.exists():
+        return None
+      is_valid, _ = validate_image_2(str(path))
+      if not is_valid:
+        return None
+      has_transparency, _ = check_transparency(str(path))
+      return (path, has_transparency)
 
+    # ---------------------------
+    # msgIds_list 처리
+    # ---------------------------
+    msgIds_list = data.get('msgIds', [])
+    print("msgIds_list: ", msgIds_list)
+    for msgId in msgIds_list:
+      try:
+        msgId_int = int(msgId)
+      except ValueError:
+        continue
+      msg = (
+        Message.query.options(selectinload(Message.msg_images))
+        .filter_by(id=msgId_int)
+        .first()
+      )
+      if not msg or not msg.msg_images:
+        continue
+      img_path = upload_folder / msg.msg_images[0].imagePath
+      result = process_image_path(img_path)
+      if result:
+        imagePathes.append(result)
+
+    # ---------------------------
+    # images_list 처리
+    # ---------------------------
     images_list = data.get('images', [])
-    if images_list:  # 이미지 편집 요청
-      img_file = images_list[0]
+    for img_file in images_list:
       source_filename = img_file.split('/')[-1]
       source_filename = ''.join(source_filename.split('t_')[1:])
-      file_path = upload_folder / source_filename
+      img_path = upload_folder / source_filename
+      result = process_image_path(img_path)
+      if result:
+        imagePathes.append(result)
 
-      if not file_path.exists():
-        return jsonify({'error': f'File does not exist: {file_path}'}), 400
+    # ---------------------------
+    # API 호출
+    # ---------------------------
+    num_of_images = len(imagePathes)
 
-      is_valid, error_msg = validate_image(str(file_path))
-      if not is_valid:
-        return jsonify({'error': f'Invalid image: {error_msg}'}), 400
-      
-      with open(str(file_path), "rb") as img_file:
-        response = client.images.edit(
-          model="gpt-image-1",
-          image=img_file,
-          prompt=data['prompt']
-        )
-      
-    else:  # 새 이미지 생성
+    if num_of_images == 0:
+      # 새 이미지 생성
       response = client.images.generate(
         model="gpt-image-1",
         prompt=data['prompt']
       )
 
-    # print("response: ", response)
+    elif num_of_images == 1:
+      # 단일 이미지 편집
+      with open(str(imagePathes[0][0]), "rb") as img_file:
+        response = client.images.edit(
+            model="gpt-image-1",
+            image=img_file,
+            prompt=data['prompt']
+        )
+
+    else:
+      # 다중 이미지 처리
+      true_count = sum(flag for _, flag in imagePathes)
+      true_indices = [i for i, (_, flag) in enumerate(imagePathes) if flag]
+
+      if true_count == 0:
+        # 모든 이미지 불투명
+        open_files = [open(str(f), "rb") for f, _ in imagePathes]
+        try:
+          response = client.images.edit(
+            model="gpt-image-1",
+            image=open_files,
+            prompt=data['prompt']
+          )
+        finally:
+          for f in open_files:
+            f.close()
+
+      elif true_count == 1 and num_of_images == 2:
+        # 하나는 mask, 하나는 원본
+        true_index = true_indices[0]
+        false_index = 1 - true_index
+        with open(str(imagePathes[false_index][0]), "rb") as img_file, \
+              open(str(imagePathes[true_index][0]), "rb") as mask_file:
+          response = client.images.edit(
+            model="gpt-image-1",
+            image=img_file,
+            mask=mask_file,
+            prompt=data['prompt'],
+          )
+      else:
+        print("step: 4")
+        return jsonify({'error': 'Invalid file set for imageAPI.'}), 400
+
+    # ---------------------------
+    # 응답 저장 & DB 기록
+    # ---------------------------
     msgIds = []
     for item in response.data:
       image_b64 = item.b64_json
       image_data = base64.b64decode(image_b64)
       revised_prompt = item.revised_prompt
+
       formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
       file_name = f'{g.user.username}_{formatted_now}_{uuid.uuid4().hex}.png'
       image_path = upload_folder / file_name
 
-      # 파일 저장
-      file_name = f'{g.user.username}_{formatted_now}_{uuid.uuid4().hex}.png'
-      image_path = upload_folder / file_name
+      # 원본 저장
       with open(image_path, 'wb') as f:
         f.write(image_data)
 
-      # 썸네일 생성
+      # 썸네일 저장
       image_file = io.BytesIO(image_data)
       img = Image.open(image_file)
       img.thumbnail((256, 256))
@@ -410,6 +637,7 @@ def generate_image_by_responsesAPI():
     db.session.rollback()
     print(traceback.format_exc())
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
+
   except Exception as e:
     db.session.rollback()
     print(traceback.format_exc())
