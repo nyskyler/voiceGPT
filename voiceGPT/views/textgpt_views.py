@@ -3,15 +3,16 @@ from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 from openai import OpenAI
-import os
+from typing import Optional, Dict, Any
 import json
+import ast
+import os
 import configparser
 import copy
 import uuid
 import base64
 import io
 import re
-import base64
 import traceback
 from .. import db
 from dotenv import load_dotenv
@@ -35,10 +36,12 @@ root_dir = Path('/Volumes/X31')
 bp = Blueprint('textgpt', __name__, url_prefix='/textgpt')
 timeLeft = 10
 
+
 # Function to encode the image
 def encode_image(image_path):
   with open(image_path, "rb") as image_file:
     return base64.b64encode(image_file.read()).decode("utf-8")
+
 
 def subject_to_dict(subject):
   return {
@@ -74,6 +77,7 @@ def test():
     flash('ChatGPT는 인가받은 사용자만 이용가능합니다. 관리자에게 문의하세요.')
     return redirect(url_for('main.index'))
   return render_template('textgpt/textgpt.html')
+
 
 @bp.route("/question/", methods=["POST"])
 @login_required
@@ -285,6 +289,106 @@ def pdf_file_input():
   except Exception as e:
     print(traceback.format_exc())
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+  
+
+def to_dict_if_valid(s: str) -> Optional[Dict[str, Any]]:
+  """문자열이 dict(JSON 또는 파이썬 리터럴) 형식이면 dict 반환."""
+  if not isinstance(s, str):
+    return None
+  s = s.strip()
+
+  # JSON 시도
+  try:
+    obj = json.loads(s)
+    if isinstance(obj, dict):
+      return obj
+  except json.JSONDecodeError:
+    pass
+
+  # Python literal 시도
+  try:
+    obj = ast.literal_eval(s)
+    if isinstance(obj, dict):
+      return obj
+  except (ValueError, SyntaxError):
+    pass
+
+  return None
+
+
+def extract_and_remove(s: str, left: str = "[[", right: str = "]]", normalize: bool = False):
+  """문자열에서 left~right 사이 내용을 추출하고 나머지를 반환."""
+  start = s.find(left)
+  if start == -1:
+    return ("", s)
+  end = s.find(right, start + len(left))
+  if end == -1:
+    return ("", s)
+
+  extracted = s[start + len(left): end]
+  remaining = s[:start] + s[end + len(right):]
+
+  if normalize:
+    remaining = re.sub(r"\s+", " ", remaining)  # 연속 공백 제거
+    remaining = re.sub(r"\s+([,.;:!?~])", r"\1", remaining)  # 구두점 앞 공백 제거
+    remaining = remaining.strip()
+
+  return extracted, remaining
+
+
+@bp.route("/web_search/", methods=["POST"])
+@login_required
+def web_search():
+  try:
+    req_json = request.get_json(silent=True)
+    if not req_json or not all(k in req_json for k in ('model', 'content')):
+      return jsonify({'error': 'Invalid input', 'message': "Required keys: 'model', 'content'"}), 400
+
+    _model = req_json.get('model')
+    _content = req_json.get('content')
+
+    if not isinstance(_model, str) or not _model.strip():
+      return jsonify({'error': 'Invalid input', 'message': "'model' must be a non-empty string"}), 400
+    if not isinstance(_content, str) or not _content.strip():
+      return jsonify({'error': 'Invalid input', 'message': "'content' must be a non-empty string"}), 400
+
+    # [[...]] 내부 dict 추출
+    dict_for_tools = {"type": "web_search_preview"}
+    extracted, remaining = extract_and_remove(_content[2:], normalize=True)
+
+    print("extracted: ", extracted)
+    print("remaining: ", remaining)
+
+    if extracted:
+      parsed_dict = to_dict_if_valid(extracted)
+      if parsed_dict:
+        user_location = {}
+        for key in ("country", "city", "region"):
+          if key in parsed_dict:
+            user_location[key] = parsed_dict[key]
+        if user_location:
+          user_location["type"] = "approximate"
+          dict_for_tools["user_location"] = user_location
+
+        if "search_context_size" in parsed_dict:
+          val = parsed_dict["search_context_size"]
+          if isinstance(val, str) and val in ("low", "medium", "high"):
+            dict_for_tools["search_context_size"] = val
+    
+    print("dict_for_tools: ", dict_for_tools)
+    
+    # API 호출
+    response = client.responses.create(
+      model=_model.strip(),
+      tools=[dict_for_tools],
+      input=remaining
+    )
+
+    return jsonify({"response": response.output_text}), 200
+
+  except Exception as e:
+    current_app.logger.error("web_search error: %s", traceback.format_exc())
+    return jsonify({'error': 'Server error', 'message': str(e)}), 500
  
 
 def validate_image(file_path):
@@ -330,12 +434,6 @@ def check_transparency(file_path):
     print(f"An error occurred: {e}")
     return False, f"{e}"
   
-@bp.route("/get_file_path/", methods=["GET"])
-@login_required
-def get_file_path():
-  messageIds = request.args.get('messageIds')
-  pass
-
 
 @bp.route("/generate_image/", methods=["POST"])
 @login_required
@@ -1001,6 +1099,7 @@ def update_dalle():
     return jsonify({'error': 'Database error', 'message': str(e)}), 500
   except Exception as e:
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+
 
 def deleteImagesOutdated():
   now = datetime.now()
