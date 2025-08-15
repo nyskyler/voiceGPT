@@ -224,6 +224,31 @@
   ul.gpt_ul {
     font-size: 0.8rem;
   }
+  /* 코드 블록 스타일 */
+  pre code {
+    display: block;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: #1e1e1e; /* VSCode 다크 모드 배경 */
+    color: #dcdcdc; /* 기본 폰트 색상 */
+    font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+  }
+
+  /* 줄 번호 스타일 */
+  .hljs-ln-numbers {
+    text-align: right;
+    color: #888;
+    border-right: 1px solid #444;
+    vertical-align: top;
+    padding-right: 10px;
+    user-select: none;
+  }
+
+  .hljs-ln-code {
+    padding-left: 10px;
+  }
 
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
@@ -593,8 +618,8 @@
 <script type="module">
   const MODELS = {
     'model1': 'gpt-5',
-    'model2': 'gpt-4.1',
-    'model3': 'o4-mini',
+    'model2': 'gpt-5-mini',
+    'model3': 'gpt-5-nano',
   }
 
   const IMAGE_MODELS = {
@@ -706,14 +731,19 @@
     }); 
   }
 
-  function escapeHTML(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+  // marked 기본 설정
+  marked.setOptions({
+    gfm: true,
+    breaks: true,
+    headerIds: false,
+    mangle: false,
+    highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
+      }
+      return hljs.highlightAuto(code).value;
+    }
+  });
 
   async function article(){
     const state = store.getState();
@@ -748,50 +778,45 @@
     const border = localStorage.getItem('border');
     const theme = localStorage.getItem('theme');
     const width = localStorage.getItem('width') || 9;
-    const content = state.contents.map(el => `
-      <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
-        <div class="col-md-${el.author === 'user' ? 6 : width} col-11">
-          <div class="card ${border == 'none' ? '' : border} mb-2">
-            <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
-              <div class="thumbnails" data-url="${el.imgUrl}"}></div>
-              ${el.imgUrl.length > 0 && el.author === 'assistant' ? `<span style="position: absolute; top: 1.2rem; left: 1.3rem;"><input class="imgCheckBoxes form-check-input" type="checkbox" aria-label="..."></span>` : ''}              
-              <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="white-space: pre-line; margin: 0;">${el.author === 'user' ? '' : '<i class="fa-solid fa-robot"></i>&nbsp;&nbsp;'}${escapeHTML(el.desc)}</div>
-              <button type="button" class="btn-close delete_message" aria-label="Close"></button>
+    const content = state.contents.map(el => {
+      // Markdown 파싱
+      let renderedDesc = marked.parse(el.desc);
+
+      return `
+        <div class="row mb-3 ${el.author === 'user' ? 'justify-content-end' : 'justify-content-start'}">
+          <div class="col-md-${el.author === 'user' ? 6 : width} col-11">
+            <div class="card ${border == 'none' ? '' : border} mb-2">
+              <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
+                <div class="thumbnails" data-url="${el.imgUrl}"></div>
+                ${el.imgUrl.length > 0 && el.author === 'assistant'
+                  ? `<span style="position: absolute; top: 1.2rem; left: 1.3rem;">
+                      <input class="imgCheckBoxes form-check-input" type="checkbox" aria-label="...">
+                    </span>`
+                  : ''
+                }
+                <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="margin:0;">
+                  ${renderedDesc}
+                </div>
+                <button type="button" class="btn-close delete_message" aria-label="Close"></button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      `).join('');
+      `;
+    }).join('');
 
     document.getElementById('article').innerHTML = content;
-    
-    // .imgCheckBoxes 이벤트 처리 코드
-    // $(".imgCheckBoxes").on("click", function() {
-    //   const flag = $(this).is(':checked');
-    //   $(".imgCheckBoxes:checked").prop("checked", false);
-    //   $(this).prop("checked", flag);
-    //   if (flag) {
-    //     console.log($(this).parent().next().attr("data-id"));
-    //   }
-    // });
 
     // MathJax 처리
     if (window.MathJax) {
-      MathJax.typesetPromise(); 
+      MathJax.typesetPromise();
     }
-    const marks = document.querySelectorAll('.markDown');
-    marks.forEach(mark => {
-      mark.innerHTML = marked.parse(mark.innerHTML);
-      const replacements = [
-        { search: />\n/g, replace: '>'},
-        { search: /<\/p>/g, replace: '</p>\n' },
-        { search: /<\/h([1-6])>/g, replace: '</h$1>\n' }
-      ];
-      replacements.forEach(({ search, replace }) => {
-        mark.innerHTML = mark.innerHTML.replace(search, replace);
-      });
-      mark.innerHTML = mark.innerHTML.trim();
+
+    // highlight.js 실행 + 줄 번호 적용
+    document.querySelectorAll('pre code').forEach((block) => {
+      hljs.highlightElement(block);
     });
+    hljs.initLineNumbersOnLoad();
 
     updateFontSize();
     const $currentModel = document.getElementById('currentModel');
