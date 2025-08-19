@@ -1,9 +1,8 @@
 from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file, session
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload, aliased
-from sqlalchemy.orm import selectinload, with_loader_criteria
-from sqlalchemy import func, tuple_
+from sqlalchemy.orm import joinedload, aliased, selectinload, with_loader_criteria, load_only
+from sqlalchemy import and_, func, tuple_
 from operator import itemgetter 
 from collections import defaultdict
 import os
@@ -1469,15 +1468,27 @@ def get_students_achievement_results_by_assessment_area():
   try:
     # 학급과 학생 + 평가결과 로딩
     gc = GradeClass.query.options(
-      selectinload(GradeClass.students)
-      .selectinload(Student.evaluation_results),
-      selectinload(GradeClass.students)
-      .selectinload(Student.evaluation_results)
-      .selectinload(EvaluationResult.achievement_criterion),
-      selectinload(GradeClass.students)
-      .selectinload(Student.evaluation_results)
-      .selectinload(EvaluationResult.evidences),
+      selectinload(GradeClass.students).options(
+        load_only(Student.id, Student.name, Student.is_enrolled),
+        selectinload(Student.evaluation_results).options(
+          load_only(
+            EvaluationResult.id,
+            EvaluationResult.achievement_criterion_id,
+            EvaluationResult.level,
+            EvaluationResult.description
+          ),
+          joinedload(EvaluationResult.achievement_criterion).load_only(
+            AchievementCriterion.id,
+            AchievementCriterion.criterion,
+            AchievementCriterion.evaluation_item
+          ),
+          selectinload(EvaluationResult.evidences).load_only(
+            EvaluationEvidence.id
+          )
+        )
+      )
     ).filter_by(id=class_id).first()
+    
 
     if not gc:
       return error_response("해당 학급을 찾을 수 없습니다.", 404)
@@ -1533,7 +1544,6 @@ def get_students_achievement_results_by_subjectId():
   class_id = request.args.get('class_id')
   subject_id = request.args.get('subject_id')
 
-  # 필수 파라미터 검증
   if not (class_id and subject_id):
     return error_response("Missing required parameters.", 400, {
       "class_id": class_id,
@@ -1547,67 +1557,82 @@ def get_students_achievement_results_by_subjectId():
     return error_response("class_id 및 subject_id는 정수여야 합니다.", 400)
 
   try:
-    # 교과별 평가 영역 및 성취기준 조회
+    # 1) 교과별 평가 영역/성취기준 로딩: 필요한 컬럼만
     aas = (
-      AssessmentArea.query
-      .options(selectinload(AssessmentArea.criteria))
-      .filter_by(subject_id=subject_id)
-      .all()
+      AssessmentArea.query.options(
+        load_only(AssessmentArea.id, AssessmentArea.area),
+        selectinload(AssessmentArea.criteria).load_only(
+          AchievementCriterion.id,
+          AchievementCriterion.criterion,
+          AchievementCriterion.evaluation_item,
+          AchievementCriterion.area_id
+        )
+      ).filter_by(subject_id=subject_id).all()
     )
 
     if not aas:
-        return error_response("해당 교과의 평가영역을 찾을 수 없습니다.", 404)
-
-    # [(영역명, 성취기준객체), ...] 형태로 구성
+      return error_response("해당 교과의 평가영역을 찾을 수 없습니다.", 404)
+    
     criteria_list = [
       (aa.area, criterion)
       for aa in aas
       for criterion in aa.criteria
     ]
     criterion_id_set = {criterion.id for _, criterion in criteria_list}
-
-    # 학급 + 학생 + 평가결과(성취기준 + 증거자료) 로딩
+    
+    # 2) 학급 + 학생 + 평가결과(+ 성취기준, 증거자료) 로딩
     gc = (
-      GradeClass.query
-      .options(
-        selectinload(GradeClass.students)
-        .selectinload(Student.evaluation_results)
-        .selectinload(EvaluationResult.achievement_criterion),
-        selectinload(GradeClass.students)
-        .selectinload(Student.evaluation_results)
-        .selectinload(EvaluationResult.evidences)
+      GradeClass.query.options(
+        selectinload(GradeClass.students).options(
+          load_only(Student.id, Student.name, Student.is_enrolled),
+          selectinload(Student.evaluation_results).options(
+            load_only(
+              EvaluationResult.id,
+              EvaluationResult.achievement_criterion_id,
+              EvaluationResult.level,
+              EvaluationResult.description
+            ),
+            joinedload(EvaluationResult.achievement_criterion).load_only(
+              AchievementCriterion.id,
+              AchievementCriterion.criterion,
+              AchievementCriterion.evaluation_item
+            ),
+            selectinload(EvaluationResult.evidences).load_only(
+              EvaluationEvidence.id
+            )
+          )
+        ),
+        # 추가 팁: 필요 시, 다른 경로에서의 Lazy load를 방지하고 싶다면 lazy="raise"를 관계에 설정
       )
       .filter_by(id=class_id)
       .first()
     )
-
+    
     if not gc:
       return error_response("해당 학급을 찾을 수 없습니다.", 404)
-
+    
     result = []
-
+    
     for student in gc.students:
       if not student.is_enrolled:
         continue
-
-      # 이 학생의 평가 결과 중 해당 교과 성취기준만 필터링
+    
+      # 해당 교과 성취기준만 필터링 (DB에서 필요한 것만 가져오는 추가 팁은 아래 참고)
       relevant_results = [
         r for r in student.evaluation_results
         if r.achievement_criterion_id in criterion_id_set
       ]
-
-      # 성취기준 ID → 평가결과 매핑
+    
       result_by_criterion_id = {
         r.achievement_criterion_id: r for r in relevant_results
       }
-
-      # 학생 결과 구조
+    
       student_result = {
         "student_id": student.id,
         "name": student.name,
-        "results": defaultdict(list)  # area별로 자동 리스트 생성
+        "results": defaultdict(list)
       }
-
+    
       for area, criterion in criteria_list:
         r = result_by_criterion_id.get(criterion.id)
         student_result["results"][area].append({
@@ -1618,11 +1643,10 @@ def get_students_achievement_results_by_subjectId():
           "description": r.description if r else None,
           "evidence_count": len(r.evidences) if r else 0
         })
-
-      # defaultdict → 일반 dict 변환
+    
       student_result["results"] = dict(student_result["results"])
       result.append(student_result)
-
+    
     return jsonify({
       "message": "학급 학생 및 교과별 성적 조회 완료",
       "info": result
@@ -1630,7 +1654,7 @@ def get_students_achievement_results_by_subjectId():
 
   except Exception as e:
     print(traceback.format_exc())
-    return error_response("서버 오류 발생", 500, str(e))
+  return error_response("서버 오류 발생", 500, str(e))
 
 
 @bp.route("/get_evaluation_criteria_by_achievement_id/<string:aid>", methods=['GET'])

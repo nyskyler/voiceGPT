@@ -1185,21 +1185,25 @@ def upload_image():
 
       # 파일 확장자 처리
       ext = Path(file.filename).suffix.lower()
-      if ext == '.heic':
+      # PNG가 아닌 모든 확장자는 PNG로 저장
+      if ext not in ['.png']:
         ext = '.png'
+
       formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
       file_name = f'{g.user.username}_{formatted_now}_{uuid.uuid4().hex}{ext}'
 
       upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
       image_path = upload_folder / file_name
 
-      # 이미지 저장
-      img_out.save(image_path)
+      print("image_path: ", image_path)
 
-      # 썸네일 생성
+      # 이미지 저장 (항상 PNG로)
+      img_out.save(image_path, format="PNG")
+
+      # 썸네일 생성 (항상 PNG로)
       img_copied.thumbnail((100, 100))
       thumbnail_path = upload_folder / f't_{file_name}'
-      img_copied.save(thumbnail_path)
+      img_copied.save(thumbnail_path, format="PNG")
 
       message_image = MsgImage(
         imagePath=file_name,

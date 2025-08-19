@@ -386,6 +386,9 @@
     outline: none;
     box-shadow: none;
   }
+   #placeholder {
+    flex: auto;
+  }
 </style>
 <div class="container-fluid" style="padding: 0px;">
   <div id="mainRow">
@@ -702,6 +705,32 @@
         </td>
       </tr>
     `;
+  }
+
+  function renderPlaceholderWithMessage(colspan) {
+    return `
+      <tr>
+        <td colspan="${colspan}" class="text-center text-muted" style="vertical-align: middle;">
+          <div id="placeholder" class="text-center flex-column align-items-center justify-content-start" style="margin-top: 5rem;">
+            <div class="spinner-border text-primary mb-5" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="d-flex gap-3 justify-content-center">
+              <div class="placeholder-glow">
+                <div class="placeholder rounded bg-warning" style="width: 5rem; height: 5rem;"></div>
+              </div>
+              <div class="placeholder-glow">
+                <div class="placeholder rounded bg-primary" style="width: 5rem; height: 5rem;"></div>
+              </div>
+              <div class="placeholder-glow">
+                <div class="placeholder rounded bg-secondary" style="width: 5rem; height: 5rem;"></div>
+              </div>
+            </div>
+            <p class="fs-6 mt-4 text-muted">데이터를 불러오는 중입니다... 잠시만 기다려 주세요.</p>
+          </div>
+        </td>
+      </tr>
+    `;    
   }
 
   const VISIBLE_STATUS_MAP = { // 데이터베이스 상의 데이터(true, false)를 화면에 보여지는 데이터('O', 'X')로 전환하기 위해, 화면 상의 데이터를 키로 전달하면 화면에 보여지는 데이터(값)으로 전환해주는 자바스크립트 객체 상수
@@ -3724,6 +3753,7 @@
         }
       }
 
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
       $("#menu_h_tbody").html(tableRows.join(''));
 
       const batchHTML = [`<option value="0">-성취기준 선택-</option>`, ...achievementArr.map(el => `<option value="${el.id}">${el.criterion}</option>`)].join('');
@@ -3809,6 +3839,7 @@
       params = new URLSearchParams();
       params.append('class_id', class_id);
       params.append('assessment_area_id', assessment_area_id);
+      $("#menu_h_tbody").html(renderPlaceholderWithMessage(8));
 
       // console.log("class_id: ", class_id);
       // console.log("assessment_area_id: ", assessment_area_id);
@@ -3914,7 +3945,6 @@
     $submitBtn.addEventListener('click', async (event) => { // 조회 버튼 클릭 시
       event.preventDefault();
       get_students_achievement_results();
-      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
 
       try {
         const response = await fetch(`${_URL}/neis/get_active_school_info/`, {
@@ -4450,6 +4480,9 @@
       let tableRows = '';
       let lastIdx = 0;
 
+      // 캐시 객체 선언 (루프 밖에서)
+      const evaluationCache = {};
+
       for (const { student_id, name, results } of info) {
         lastIdx++; // 학생별 index 증가
         let rowspan = 0;
@@ -4467,17 +4500,24 @@
             i++;
             fieldIdx++;
 
-            // 비동기 fetch 대기
+            // evaluationArr 캐시 확인
             let evaluationArr = [];
-            try {
-              const response = await fetch(`${_URL}/neis/get_evaluation_criteria_by_achievement_id/${criterion_id}`, {
-                method: 'GET',
-              });
-              if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
-              const res = await response.json();
-              evaluationArr = res.criteria || [];
-            } catch (error) {
-              console.error('Error:', error);
+            if (evaluationCache[criterion_id]) {
+              // 캐시에 이미 존재
+              evaluationArr = evaluationCache[criterion_id];
+            } else {
+              // 서버 요청 후 캐시에 저장
+              try {
+                const response = await fetch(`${_URL}/neis/get_evaluation_criteria_by_achievement_id/${criterion_id}`, {
+                  method: 'GET',
+                });
+                if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+                const res = await response.json();
+                evaluationArr = res.criteria || [];
+                evaluationCache[criterion_id] = evaluationArr; // 캐시에 저장
+              } catch (error) {
+                console.error('Error:', error);
+              }
             }
 
             tableRows += `
@@ -4518,7 +4558,9 @@
         }
       }
 
+      // console.log("evaluation_cache: ", evaluationCache);
       $("#menu_i_tbody").html(tableRows);
+      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
 
       const batchHTML = [`<option value="0">-영역명 선택-</option>`, ...fieldArr.map(el => `<option value="${el[1]}">${el[0]}</option>`)].join('');
       $("#batchApply").html(batchHTML);
@@ -4615,10 +4657,10 @@
       $("#menu_i_tbody").on("change", "select.eval_level", function() {
         const achievement_id = $(this).closest("tr").attr("data-aid");
         const option_val = $(this).find("option:selected").text().trim();
-        const eval_criteria = achievementArr.find(el => el.id == achievement_id)?.evaluation_criteria;
+        const eval_criteria = evaluationCache[achievement_id];
         const desc = eval_criteria.find(el => el.level_name == option_val)?.description;
     
-        if ($(this).val() > achievementArr.length) {
+        if ($(this).val() > eval_criteria.length) {
           $(this).parent().next().find("textarea").removeAttr("disabled").val("").focus();
         } else {
           $(this).parent().next().find("textarea").attr("disabled", true).val(desc || "");
@@ -4639,6 +4681,7 @@
       params = new URLSearchParams();
       params.append('class_id', class_id);
       params.append('subject_id', subjectId);
+      $("#menu_i_tbody").html(renderPlaceholderWithMessage(9));
       
       try {
         const response = await fetch(`${_URL}/neis/get_students_achievement_results_by_subjectId/?${params.toString()}`, {
@@ -4720,7 +4763,6 @@
     $submitBtn.addEventListener('click', async (event) => { // 조회 버튼 클릭 시
       event.preventDefault();
       get_students_achievement_results();
-      updateButtonStatesWithStyles([$btn1, true], [$btn2, false], [$btn3, true], [$btn4, true]);
 
       try {
         const response = await fetch(`${_URL}/neis/get_active_school_info/`, {
