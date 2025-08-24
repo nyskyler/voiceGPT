@@ -6136,22 +6136,26 @@
     html = `
       <div id="menu_k_content">
         <div id="menu_k_content_left" class="col-12 col-xl-3">
-          <div class="table-banner">
-            <button type="button" class="btn btn-sm btn-secondary">일괄저장</button>
-            <button type="button" class="btn btn-sm btn-secondary">일괄삭제</button>
+          <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
+            <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
+            <div>
+              <button type="button" class="btn btn-sm btn-secondary">일괄저장</button>
+              <button type="button" class="btn btn-sm btn-secondary">일괄삭제</button>
+            </div>
           </div>
-          <table id="menu_k_table_1" class="table table-hover caption-top table-bordered">
-            <caption class="table_caption">Total <span>0</span></caption>
-            <thead>
-              <tr>
-                <th scope="col" style="width: 40%;">번호</th>
-                <th scope="col" style="width: 60%;">성명</th>
-              </tr>
-            </thead>
-            <tbody id="menu_k_tbody_1">
-              ${renderEmptyTbodyWithMessage(2)}
-            </tbody>
-          </table>
+          <div style="display: flex; flex-direction: column; height: 77vh; overflow-y: auto;">
+            <table id="menu_k_table_1" class="table table-hover table-bordered">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 40%;">번호</th>
+                  <th scope="col" style="width: 60%;">성명</th>
+                </tr>
+              </thead>
+              <tbody id="menu_k_tbody_1">
+                ${renderEmptyTbodyWithMessage(2)}
+              </tbody>
+            </table>
+          </div>
         </div>
         <div id="menu_k_content_right" class="col-12 col-xl-9">
           <div class="table-banner">
@@ -6168,6 +6172,140 @@
       </div>
       `;
     return html;
+  }
+
+  async function script_renderAnnualSubjectProgressTable() {
+    let params = null;
+    let achievementArr = [];
+    let evaluationArr = [];
+    let fieldArr = [];
+    let classArr = [];
+    let studentId = null;
+    let subjectId = null;
+    let summaryId = null;
+    let subjectName = null;
+    let currentSemester = null;
+    let main_select_val = null;
+    let sub_select_val = null;
+    let isEmpty = true;
+    let ChatGPT = false;
+    let combinedStr = null;
+    let observation_id = null;
+    let gptInfo = null;
+    const gpt_title = 'NEIS 교과학습발달상황 작성 도우미';
+    const $submitBtn = document.getElementById('submitBtn');
+    const $year = document.getElementById('year');
+    // const $semester = document.getElementById('semester');
+    const $grade = document.getElementById('grade');
+    const $class = document.getElementById('class');
+    // const $subject = document.getElementById('subject');
+    // const $btn1 = document.getElementById('btnK1'); // 문자열바꾸기 버튼
+    // const $btn2 = document.getElementById('btnK2'); // 교과평가일괄복사 버튼
+    // const $btn3 = document.getElementById('btnK3'); // 저장 버튼
+    // const $btn4 = document.getElementById('btnK4'); // 삭제 버튼
+    // const $btn5 = document.getElementById('btnK5'); // ChatGPT 버튼
+    // const $btn6 = document.getElementById('btnK6'); // 초기화 버튼
+    // const $btn7 = document.getElementById('btnK7'); // 복사 버튼
+    // const $btn8 = document.getElementById('btnK8'); // 복사(줄바꿈 없음) 버튼
+    // const $btn9 = document.getElementById('gpt_modal_confirm'); // 반영 버튼
+
+    $grade.addEventListener('change', async (event) => {
+      try {
+        const response = await fetch(`${_URL}/neis/get_subjects_by_grade/${$grade.value}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { grade, subjects, classes } = res;
+        classArr = classes;
+        // console.log(classArr);
+        populateSelectOptionsAndSetDisabled(classArr.map(el => el[0]), $class);
+        // populateSelectOptionsAndSetDisabled(subjects, $subject);
+        // $("#menu_k_tbody").html(renderEmptyTbodyWithMessage(5));
+        $("#student_count").text("0");
+        // updateButtonStatesWithStyles(
+        //   [$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]
+        // );
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    $class.addEventListener('change', () => {
+      // $("#menu_k_tbody").html(renderEmptyTbodyWithMessage(5));
+      $("#student_count").text("0");
+      // $("#menu_n_table_2").css({ "flex-grow" : 1 });
+      // updateButtonStatesWithStyles(
+      //   [$btn1, true], [$btn2, true], [$btn3, true], [$btn4, true]
+      // );
+    });
+
+    $submitBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      params = new URLSearchParams();
+      params.append('grade', $("#grade").val());
+      params.append('class', $("#class").val());
+      params.append('subject', $("#subject").val());
+      
+      try {
+        const response = await fetch(`${_URL}/neis/get_grade_class_students_assessment_areas_and_subject_id/?${params.toString()}`, {
+          method: 'GET',
+        });
+        if (!response.ok) {
+          throw new Error(`서버 오류: ${response.status}`);
+        }
+        const res = await response.json();
+        const { message, student_info, fields_info, subject_id } = res;
+        // console.log(message);
+        // console.log(student_info);
+        // console.log(fields_info);
+        // console.log(subject_id);
+        subjectId = subject_id;
+        subjectName = $("#subject").val();
+        fieldArr = fields_info;
+        
+        const tableHtml = student_info.map(([ student_id, student_name ], idx) => {
+          return `
+            <tr data-sid="${student_id}">
+              // <td data-sid="${student_id}" class="text-center"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
+              <td class="text-center">${idx + 1}</td>
+              <td class="text-decoration-underline">${student_name}</td>
+            </tr>
+          `
+        }).join('');
+        $("#menu_n_tbody_1").html(tableHtml);
+        $("#student_count").text($("#menu_n_tbody_1 tr").length);
+
+        // $("#menu_n_tbody_1").on("change", "td:nth-child(1)", function() {
+        //   updateBtnsBasedOnSelection2();
+        // })
+
+        // updateButtonStatesWithStyles(
+        //   [$btn1, true], [$btn2, true], [$btn3, true],
+        //   [$btn4, true], [$btn5, true], [$btn6, true]
+        // );
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    try {
+      const response = await fetch(`${_URL}/neis/get_active_grades/`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+      const res = await response.json();
+      const { year, semester, active_grades } = res;
+      currentSemester = semester;
+      populateSelectOptionsAndSetDisabled(year, $year, true);
+      populateSelectOptionsAndSetDisabled(active_grades, $grade);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   }
 
   function renderClassSubjectGradesTable() {
@@ -7412,6 +7550,7 @@
         script_renderSemesterSubjectFeedbackTable();
         return;
       case MENU.K:
+        script_renderAnnualSubjectProgressTable();
         return;
       case MENU.L:
         return;

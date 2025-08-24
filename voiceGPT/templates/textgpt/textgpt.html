@@ -250,6 +250,11 @@
     padding-left: 10px;
   }
 
+  .markDown > p:not(:last-child) {
+    white-space: pre-line;  /* \n → 줄바꿈으로 보존 */
+    margin-bottom: 1rem;    /* 마지막 p를 제외하고만 여백 적용 */
+  }
+
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
     #sidebar {
@@ -745,6 +750,20 @@
     }
   });
 
+  // del(<del>) 무력화
+  marked.use({
+    renderer: {
+      del(text) {
+        return text; // <del> 태그로 변환하지 않고 그냥 텍스트만 반환
+      }
+    },
+    tokenizer: {
+      del(src) {
+        return; // 아예 토큰을 만들지 않음
+      }
+    }
+  });
+
   async function article(){
     const state = store.getState();
     async function fetchThumbnail(url) {
@@ -974,6 +993,8 @@
                 url_for_request = _URL + '/textgpt/question/';
             }
 
+            // console.log(action.desc);
+            // return
             const response = await fetch(url_for_request, options);
             if(!response.ok){
               throw new Error(response.status);
