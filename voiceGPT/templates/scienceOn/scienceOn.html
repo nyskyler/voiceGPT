@@ -1,0 +1,2043 @@
+{% extends "base2.html" %}
+{% block content %}
+<style>
+  :root {
+    --border-thickness: 0.4rem;
+  }
+
+  body {
+    font-family: sans-serif;
+    margin: 0;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  td {
+    border: 1px solid #ddd;
+    padding: 4px 8px;
+  }
+
+  #thead {
+    position: sticky;
+    top: 0;
+    /* 헤더 배경색 설정 */
+    z-index: 1;
+    /* 다른 콘텐츠보다 위에 표시되도록 설정 */
+  }
+  #thead th {
+    background: #FEFF04;
+  }
+
+  #thead::after {
+    content: "";
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: #343434;
+  }
+
+  #mainRow {
+    display: flex;
+    flex-direction: row;
+    height: 94vh;
+  }
+
+  /* === 사이드바: 초기 고정 너비를 준다 (flex-basis는 애니메이션 대상) === */
+  .sideBar {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 240px;
+    /* 초기 너비 (픽셀로 고정) */
+    width: 240px;
+    /* 일부 브라우저 호환용 */
+    min-width: 0;
+    /* 축소 허용 (중요!) */
+    overflow: hidden;
+    /* 내부 내용이 삐져나오지 않게 */
+    box-sizing: border-box;
+    transition: flex-basis 400ms ease, width 400ms ease, padding 300ms ease;
+    padding: 8px;
+    background: #F2F0EF;
+  }
+
+  /* 숨길 때: flex-basis를 0으로 줄이면 다른 아이템이 공간을 채움 */
+  .sideBar-hidden {
+    flex-basis: 0 !important;
+    width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  /* 메인 컨텐츠: 남은 공간을 자동으로 채우도록 하고 최소 너비 0 설정(중요) */
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    /* 중요: 내부 스크롤/오버플로우를 제대로 동작시키려면 필요 */
+    transition: margin 300ms ease;
+    position: relative;
+  }
+
+  #nav {
+    padding: 0px;
+  }
+
+  #toggleBtn {
+    position: absolute;
+    top: 50%;
+    /* 세로 중앙 */
+    left: 0;
+    /* #wrap의 왼쪽 모서리 */
+    transform: translateY(-50%);
+    /* 세로 중앙 정렬 보정 */
+    z-index: 1000;
+    /* 다른 요소 위로 */
+    color: #ffffff;
+    background-color: #263574;
+    border-radius: 0% 13% 13% 0%;
+    height: 3.5rem;
+    padding: 1.5px 4px;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* chart / info 영역 (기존 스타일 유지) */
+  #chart_section {
+    flex: 3;
+    background: snow;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    padding-left: 1rem;
+    border-left: var(--border-thickness, 0.2rem) solid #343434;
+  }
+
+  #info_section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-right: var(--border-thickness, 0.2rem) solid #343434;
+    background: #FAF6EB;
+  }
+
+  #table_section {
+    flex: 2;
+    overflow-y: auto;
+    padding: 0rem;
+  }
+
+  #currentValue_section {
+    flex: 1;
+    overflow-y: auto;
+    /* 세로 스크롤 자동 생성 */
+    padding: 0.3rem;
+    /* 카드가 벽에 붙지 않도록 여백 */
+  }
+
+  #currentValue_section .card {
+    margin-bottom: 0.5rem;
+    /* 카드 사이 간격 */
+  }
+
+  #currentValue_section .card-title {
+    font-size: 1rem;
+    /* 제목은 보통 크기 */
+  }
+
+  #currentValue_section .card-text {
+    font-size: 1.5rem;
+    /* 값은 크게 강조 */
+    font-weight: bold;
+  }
+
+  /* 헤더/푸터 */
+  #wrap>div:first-child {
+    flex: 0 0 5%;
+    /* background: #eb4a24;  */
+    background: #CB302A;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    color: white;
+    font-weight: bold;
+    border: var(--border-thickness, 0.2rem) solid #343434;
+    border-top: 0rem;
+  }
+
+  #wrap>div:nth-child(2) {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    min-height: 0;
+  }
+
+  #wrap>div:nth-child(3) {
+    flex: 0 0 5%;
+    background: #0C5A9D;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: bold;
+    color: snow;
+    border: var(--border-thickness, 0.2rem) solid #343434;
+    border-bottom: 0rem;
+  }
+
+  /* 아이콘 회전(선택사항) */
+  #btnIcon {
+    transition: transform 300ms ease;
+  }
+
+  .rotated {
+    transform: rotate(180deg);
+  }
+
+  .accordion-body {
+    padding: 0.3rem 0rem 0.3rem 0.6rem;
+    border-top: 0.5px solid #cecfd1;
+  }
+
+  .list-group-item:hover,
+  .accordion-button:hover {
+    color: #3d64dc;
+  }
+
+  .list-group-item {
+    font-size: 0.8rem;
+    color: #68758E;
+    padding: 0.3rem 0rem 0.3rem 0.5rem;
+    border: none;
+    cursor: pointer;
+  }
+
+  .accordion-button {
+    color: #393372;
+    padding: 0.5rem 1rem 0.5rem 0.6rem;
+  }
+
+  .list-group-item.active {
+    color: #3d64dc;
+    background-color: transparent;
+  }
+
+  .breadcrumb {
+    margin-bottom: 0;
+    padding: 0;
+    /* 상하 여백 제거 */
+  }
+
+  #macAddr {
+    cursor: pointer;
+  }
+
+  /* (선택) 강조 해제가 부드럽게 보이도록 기본 상태에도 transition 추가 */
+  #tbl tbody td,
+  #tbl tbody th {
+    transition: background-color 0.5s ease;
+  }
+  #tbl {
+    margin-bottom: 0;
+  }
+
+  /* --- 구분선 스타일 --- */
+  .divider-vertical {
+    width: var(--border-thickness, 0.2rem);
+    background: #343434;
+    cursor: col-resize;
+  }
+
+  .divider-horizontal {
+    height: var(--border-thickness, 0.2rem);
+    background: #343434;
+    cursor: row-resize;
+  }
+  #footer-left {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  #footer-right {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0.5rem;
+  }
+  label {
+    font-size: 0.9rem;
+  }
+  select, input[type="range"] {
+    margin-left: 0.3rem;
+  }
+
+  .xmode-btn {
+    border: 1px solid #fff;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    padding: 4px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .xmode-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .xmode-btn.active {
+    background: #fff;
+    color: #000;
+    font-weight: 600;
+  }
+
+  .card-title input[type="checkbox"] {
+    transform: scale(1.3);
+    vertical-align: middle;
+  }
+
+  @media (min-width: 1024px) and (max-width: 1366px) {
+  /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
+    #mainRow {
+      display: flex;
+      flex-direction: row;
+      height: 86.5vh;
+    }
+  }
+
+    /* ✅ 모바일 대응 */
+  @media (max-width: 768px) and (orientation: portrait) {
+    #mainRow {
+      flex-direction: column;
+      height: 81.7vh; /* 모바일에서는 전체 화면 높이로 설정 */
+      overflow-y: hidden;
+    }
+
+    .sideBar {
+      display: none !important;
+    }
+
+    #toggleBtn {
+      display: none !important;
+    }
+
+    .divider-vertical {
+      display: none !important;
+    }
+
+    .divider-horizontal {
+      display: none !important;
+    }
+
+    /* 헤더에 메뉴 버튼 추가 공간 확보 */
+    #wrap>div:first-child {
+      justify-content: space-between;
+      /* padding-right: 1rem; */
+    }
+
+    #wrap>div:nth-child(2) {
+      flex-direction: column;
+    }
+
+    /* chart 위, info 아래로 배치 */
+    #chart_section {
+      flex: 1;
+      border-left: none;
+      border-bottom: var(--border-thickness) solid #343434;
+      padding: 0.5rem;
+    }
+
+    #info_section {
+      flex: 0;
+      flex-direction: row;
+      /* height: 50vh; */
+      border-right: none;
+    }
+
+    /* 테이블 섹션 숨기기 */
+    #table_section {
+      display: none !important;
+    }
+    /* currentValue_section을 가로 스크롤 가능하게 변경 */
+    #currentValue_section {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap; /* 줄바꿈 금지 */
+      overflow-x: auto;  /* 좌우 스크롤 허용 */
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch; 
+      scroll-behavior: smooth;
+      gap: 0.5rem;
+      text-align: center;
+      align-items: center;
+      margin-top: 0.45rem;
+    }
+
+    /* 카드들을 컨텐츠 크기에 맞게 줄이기 */
+    .card {
+      flex: 1 1 auto; /* 고정 크기 (줄바꿈 X) */
+      min-width: unset; /* 최소 너비 제한 해제 */
+      width: auto; /* 내용 길이에 맞게 */
+      /* padding: 10px 16px; */
+      white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+      height: 100%; 
+    }
+
+    /* footer 구성 */
+    #wrap>div:nth-child(3) {
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 0.5rem;
+    }
+    #footer-left {
+      width: 100%;
+      justify-content: center;
+      /* flex-wrap: wrap; */
+    }
+    #footer-right {
+      display: none !important;
+    }
+
+    /* 모바일 메뉴 버튼 */
+    .mobile-menu-btn {
+      display: inline-block;
+      background: #fff;
+      color: #CB302A;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-weight: 600;
+    }
+  }
+</style>
+
+<!-- 기존 구조 유지 -->
+<div class="container-fluid" style="padding: 0px;">
+  <div id="mainRow">
+    <div id="nav" class="sideBar col-12 col-sm-3 col-xl-2">
+      <div class="accordion accordion-flush" id="accordionFlushExample">
+      </div>
+    </div>
+    <div id="wrap" class="col-12 col-sm-9 col-xl-10">
+      <div>
+        <nav
+          style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);"
+          aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li id="macAddr" class="breadcrumb-item" onclick="$('#systemBtn').click()"></li>
+            <li class="breadcrumb-item active" aria-current="page"></li>
+          </ol>
+        </nav>
+
+        <!-- ✅ 모바일 메뉴 버튼 -->
+        <button class="mobile-menu-btn d-md-none fs-5" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" style="margin: 0.4rem;">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>
+        </button>
+      </div>
+      <div style="display:flex; flex:1; min-height:0;">
+        <div id="chart_section">
+          <canvas id="myChart"></canvas>
+        </div>
+
+        <!-- 좌우 구분선 -->
+        <div id="vDivider" class="divider-vertical"></div>
+
+        <div id="info_section">
+          <div id="table_section">
+            <table id="tbl" class="table table-light table-striped" style="width:100%; border-collapse:collapse;">
+              <thead id="thead"></thead>
+              <tbody id="tbody" class="text-end"></tbody>
+            </table>
+          </div>
+
+          <!-- 상하 구분선 -->
+          <div id="hDivider" class="divider-horizontal"></div>
+
+          <div id="currentValue_section"></div>
+        </div>
+      </div>
+      <!-- x축 단위 선택 푸터 -->
+
+      <div id="footer">
+        <!-- 좌측: xmode 버튼 -->
+        <div id="footer-left">
+          <button class="xmode-btn" data-mode="ms">밀리초</button>
+          <button class="xmode-btn active" data-mode="s">초</button>
+          <button class="xmode-btn" data-mode="m">분</button>
+          <button class="xmode-btn" data-mode="h">시</button>
+          <button class="xmode-btn" data-mode="Hm">시간</button>
+          <button class="xmode-btn" data-mode="ymdHm">날짜+시간</button>
+        </div>
+
+        <!-- 우측: 차트 옵션 -->
+        <div id="footer-right">
+          <!-- 1️⃣ tension -->
+          <label>곡선(tension): 
+            <input id="opt-tension" type="range" min="0" max="1" step="0.1" value="0.2">
+            <span id="tension-value">0.2</span>
+          </label>
+
+          <!-- 2️⃣ pointStyle -->
+          <label>포인트: 
+            <select id="opt-pointstyle">
+              <option value="circle">circle</option>
+              <option value="crossRot">crossRot</option>
+              <option value="dash">dash</option>
+              <option value="line">line</option>
+              <option value="rect">rect</option>
+              <option value="rectRot">rectRot</option>
+              <option value="star">star</option>
+              <option value="triangle">triangle</option>
+            </select>
+          </label>
+
+          <!-- 3️⃣  Grid 표시 옵션 -->
+          <label>그리드:
+            <select id="opt-grid">
+              <option value="both">둘 다 표시</option>
+              <option value="none">표시 안 함</option>
+              <option value="v">수직선만</option>
+              <option value="h">수평선만</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <button id="toggleBtn"><i id="btnIcon" class="fa-solid fa-caret-left fs-6"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ 모바일용 Offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileNav">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">메뉴</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    <!-- 기존 아코디언 복제 -->
+    <div id="mobileAccordionContainer"></div>
+  </div>
+</div>
+
+<!-- 기기 및 서버의 설정값을 지정하는 모달창 -->
+<button type="button" id="systemBtn" style="display: none;" class="btn btn-primary" data-bs-toggle="modal"
+  data-bs-target="#dataConfigModal" data-bs-whatever="{{ g.user.username }}"></button>
+<div class="modal fade" id="dataConfigModal" tabindex="-1" aria-labelledby="dataConfigModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="dataConfigModalLabel">아두이노 데이터 수집 설정</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="dataConfigForm" novalidate>
+          <!-- A. 데이터 전송 간격 (ms) -->
+          <div class="mb-3">
+            <label for="sendInterval" class="form-label">
+              <i class="fa-regular fa-clock"></i>&nbsp;&nbsp;데이터 전송 간격(ms)
+            </label>
+            <input type="number" class="form-control" id="sendInterval" name="sendInterval" min="2000" step="100"
+              value="2000" required>
+            <div class="form-text">2000ms 이상만 허용됩니다.</div>
+            <div class="invalid-feedback">2000ms 이상으로 입력하세요.</div>
+          </div>
+
+          <!-- B. 이어쓰기 여부 (append/overwrite) -->
+          <p class="fs-6 mb-1">
+            <i class="fa-regular fa-file-lines"></i>&nbsp;&nbsp;이어쓰기(append) 여부
+          </p>
+          <div class="mb-3 d-flex flex-wrap align-items-center justify-content-center gap-3">
+            <input class="btn-check" type="radio" name="appendMode" id="appendYes" value="true" autocomplete="off"
+              checked>
+            <label class="btn btn-outline-primary" for="appendYes">예 (append)</label>
+
+            <input class="btn-check" type="radio" name="appendMode" id="appendNo" value="false" autocomplete="off">
+            <label class="btn btn-outline-primary" for="appendNo">아니오 (overwrite)</label>
+          </div>
+
+          <!-- C. 전송 횟수 제한 -->
+          <p class="fs-6 mb-1">
+            <i class="fa-regular fa-hashtag"></i>&nbsp;&nbsp;전송 횟수 제한
+          </p>
+          <div class="mb-3 d-flex align-items-center flex-wrap justify-content-between gap-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="sendLimitMode" name="sendLimitOn">
+              <label class="form-check-label" for="sendLimitMode">횟수 제한 사용</label>
+            </div>
+
+            <div id="limitCountGroup" class="input-group" style="max-width: 240px;">
+              <span class="input-group-text">횟수</span>
+              <input type="number" class="form-control" id="sendLimitCount" name="sendLimitCount" min="1" step="1"
+                placeholder="예: 100" disabled>
+              <div class="invalid-feedback">1 이상의 횟수를 입력하세요.</div>
+            </div>
+          </div>
+
+          <!-- D. 데이터 전송 종료 시점 -->
+          <p class="fs-6 mb-1">
+            <i class="fa-regular fa-calendar"></i>&nbsp;&nbsp;데이터 전송 종료 시점
+          </p>
+          <div class="mb-3 d-flex align-items-center justify-content-between gap-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="useEndAt" name="useEndAt">
+              <label class="form-check-label" for="useEndAt">종료 시점 사용</label>
+            </div>
+            <div style="min-width: 260px;">
+              <input type="datetime-local" class="form-control" id="endAt" name="endAt" disabled>
+              <div class="invalid-feedback">현재 시각 이후로 선택하세요.</div>
+            </div>
+          </div>
+
+          <!-- E. 표시할 데이터 개수 -->
+          <div class="mb-3">
+            <label for="chartWindow" class="form-label">
+              <i class="fa-solid fa-chart-line"></i>&nbsp;&nbsp;표시할 데이터 개수
+            </label>
+            <input type="number" class="form-control" id="chartWindow" name="chartWindow" min="5" max="200" value="50"
+              required>
+            <div class="form-text">최소 5, 최대 200</div>
+            <div class="invalid-feedback">5~200 사이의 값을 입력하세요.</div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+        <button type="submit" class="btn btn-primary" form="dataConfigForm">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+  import { createStore } from 'https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.legacy-esm.js';
+
+  // --- 전역 변수 ---
+  let colorMap = {};
+  let chartInstance = null;
+  let currentSeries = null;
+  let currentBaseTsMs = null;
+  let keys = null;
+  let filteredSeries = null;
+  let sensorSelection = {};
+  let jsonFlag = false;
+  let currentEventSource = null;
+
+  // 색상 팔레트
+  const colors = [
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 99, 132, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 159, 64, 1)',
+  ];
+
+  function formatMac(mac) {
+    if (typeof mac !== 'string') {
+      throw new TypeError('mac must be a string');
+    }
+
+    // 숫자/영문 a-f 이외 제거, 대문자로 정규화
+    const hex = mac.replace(/[^0-9a-f]/gi, '').toUpperCase();
+    if (hex.length !== 12) {
+      throw new Error('Invalid MAC address: expected 12 hex characters');
+    }
+
+    return hex.match(/.{2}/g).join(':');
+  }
+
+  function removeColonsFromMac(mac) {
+    return String(mac).replace(/:/g, '');
+  }
+
+  function generateAccordionHTMLFromObject(obj) {
+    const accordionHTML = Object.entries(obj).map(([mac, files], idx) => {
+      return `
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed fw-bold" type="button" 
+              data-bs-toggle="collapse"
+              data-bs-target="#panelsStayOpen-collapse${idx}" aria-expanded="false"
+              aria-controls="panelsStayOpen-collapse${idx}">
+              <i class="fa-solid fa-wifi me-3 text-primary"></i>${formatMac(mac)}
+            </button>
+          </h2>
+          <div id="panelsStayOpen-collapse${idx}" class="accordion-collapse collapse">
+            <div class="accordion-body">
+              <ul class="list-group fw-semibold">
+                ${files.map(f => `
+                  <li class="list-group-item">
+                    <i class="fa-solid fa-file-csv me-3 text-success fs-6"></i>${f}
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    return accordionHTML;
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+  }
+
+  // Bootstrap Toast 유틸리티
+  function showToast(title, body, extraClass = '') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container position-fixed top-0 end-0 p-3';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center border-0 ${extraClass}`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+
+    toast.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">
+          <strong class="me-2">${title}</strong><br>${body}
+        </div>
+        <button type="button" class="btn-close ${extraClass.includes('text-white') ? 'btn-close-white' : ''} me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    `;
+
+    container.appendChild(toast);
+
+    if (window.bootstrap && bootstrap.Toast) {
+      const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+      bsToast.show();
+      toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    } else {
+      toast.style.display = 'block';
+      setTimeout(() => toast.remove(), 5000);
+    }
+  }
+
+  // ts 문자열을 Date.parse 가능한 형태로 정규화 후 epoch(ms)로 변환
+  function toEpochMsFromFlaskIso(iso) {
+    if (!iso) return NaN;
+    let s = String(iso).trim();
+    if (s.indexOf('T') === -1 && /\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+      s = s.replace(' ', 'T');
+    }
+    s = s.replace(/(\.\d{3})\d+/, '$1'); // JS는 ms(3자리)까지만 안정적
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : NaN;
+  }
+
+  // ISO 문자열에서 말미의 타임존 오프셋(+09:00, -04:30 등)을 분 단위로 추출
+  function getOffsetMinutesFromIso(iso) {
+    if (!iso) return null;
+    const m = String(iso).trim().match(/([+-])(\d{2}):(\d{2})$/);
+    if (!m) {
+      if (/[zZ]$/.test(iso)) return 0; // Z(UTC)
+      return null;
+    }
+    const sign = m[1] === '-' ? -1 : 1;
+    const hh = parseInt(m[2], 10);
+    const mm = parseInt(m[3], 10);
+    return sign * (hh * 60 + mm);
+  }
+
+  // 상대 단위 분모
+  const UNIT_DENOM = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+
+  // 숫자 포맷 보조
+  function formatByUnit(value, unit) {
+    if (unit === 'ms') return Math.round(value);
+    const v = Number(value);
+    return Number.isInteger(v) ? v : Number(v.toFixed(3));
+  }
+
+  // 자릿수 패딩
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  // 지정한 오프셋(분) 기준으로 epoch(ms)를 'YYYY-MM-DD HH:mm' 또는 'HH:mm'로 포맷
+  function formatEpochByOffset(ms, offsetMin, withDate) {
+    const tAdj = ms + (offsetMin ?? 0) * 60_000; // UTC 기준에 오프셋 적용
+    const d = new Date(tAdj);
+    const Y = d.getUTCFullYear();
+    const M = pad2(d.getUTCMonth() + 1);
+    const D = pad2(d.getUTCDate());
+    const h = pad2(d.getUTCHours());
+    const m = pad2(d.getUTCMinutes());
+    return withDate ? `${Y}-${M}-${D} ${h}:${m}` : `${h}:${m}`;
+  }
+
+  // x축 라벨용 포맷터 생성
+  function makeTickFormatter(xMode, displayTzOffsetMin) {
+    if (xMode === 'ymdHm') {
+      return (value) => formatEpochByOffset(Number(value), displayTzOffsetMin, true);
+    }
+    if (xMode === 'Hm') {
+      return (value) => formatEpochByOffset(Number(value), displayTzOffsetMin, false);
+    }
+    // 상대 단위
+    return (value) => `${value}${xMode}`;
+  }
+
+  // 툴팁 제목 포맷터
+  function makeTooltipTitle(xMode, displayTzOffsetMin) {
+    if (xMode === 'ymdHm') {
+      return (items) => {
+        const v = items?.[0]?.parsed?.x;
+        return v != null ? formatEpochByOffset(Number(v), displayTzOffsetMin, true) : '';
+      };
+    }
+    if (xMode === 'Hm') {
+      return (items) => {
+        const v = items?.[0]?.parsed?.x;
+        return v != null ? formatEpochByOffset(Number(v), displayTzOffsetMin, false) : '';
+      };
+    }
+    return (items) => {
+      const v = items?.[0]?.parsed?.x;
+      return v != null ? `t = ${v}${xMode}` : '';
+    };
+  }
+
+  // x축 타이틀 텍스트
+  function xTitleText(xMode) {
+    if (xMode === 'ymdHm') return 'Time (YYYY-MM-DD HH:mm)';
+    if (xMode === 'Hm') return 'Time (HH:mm)';
+    const map = { ms: 'ms', s: 's', m: 'm', h: 'h' };
+    return `Time (${map[xMode] || xMode})`;
+  }
+
+
+  function buildSeriesFromJSON(myJSON, xMode = 's') {
+    if (!Array.isArray(myJSON)) return { baseTsMs: NaN, series: {} };
+
+    // 🔹 key 정규화: BOM 제거 + trim
+    function normalizeKey(k) {
+      return (k || "").replace(/^\uFEFF/, "").trim();
+    }
+
+    // ts 제외한 값 key들을 추출 (정규화해서 중복 방지)
+    const valueKeys = Array.from(
+      myJSON.reduce((keys, row) => {
+        Object.keys(row || {}).forEach((k) => {
+          if (k !== 'ts') keys.add(normalizeKey(k));
+        });
+        return keys;
+      }, new Set())
+    );
+
+    // baseTsMs 계산
+    let baseTsMs = NaN;
+    const modeIsRelative = ['ms', 's', 'm', 'h'].includes(xMode);
+    if (modeIsRelative && myJSON.length > 0) {
+      baseTsMs = toEpochMsFromFlaskIso(myJSON[0].ts);
+    }
+
+    const denom = UNIT_DENOM[xMode] ?? UNIT_DENOM.s;
+    const series = {};
+    valueKeys.forEach((k) => (series[k] = []));
+
+    for (const row of myJSON) {
+      const t = toEpochMsFromFlaskIso(row?.ts);
+      if (!Number.isFinite(t)) continue;
+
+      const x = modeIsRelative
+        ? formatByUnit(Math.max(0, t - baseTsMs) / denom, xMode)
+        : t;
+
+      for (const origKey of Object.keys(row || {})) {
+        if (origKey === "ts") continue;
+        const key = normalizeKey(origKey); // 🔹 여기서도 정규화
+        const v = Number(row[origKey]);
+        if (!Number.isNaN(v)) {
+          series[key]?.push({ x, y: v });
+        }
+      }
+    }
+
+    return { baseTsMs, series };
+  }
+
+  // --- ✅ 옵션 UI와 차트 동기화 ---
+  function setupChartOptionControls() {
+    const tensionInput = document.getElementById("opt-tension");
+    const tensionValue = document.getElementById("tension-value");
+    const pointSel = document.getElementById("opt-pointstyle");
+    const gridSel = document.getElementById("opt-grid");
+
+    tensionInput.addEventListener("input", () => {
+      tensionValue.textContent = tensionInput.value;
+      store.dispatch({ type: 'UPDATE', target: 'chartOption_tension', payload: tensionInput.value });
+    });
+
+    pointSel.addEventListener("change", () => {
+      store.dispatch({ type: 'UPDATE', target: 'chartOption_pointSel', payload: pointSel.value });
+    });
+
+    gridSel.addEventListener("change", () => {
+      store.dispatch({ type: 'UPDATE', target: 'chartOption_gridSel', payload: gridSel.value });
+    });
+  }
+
+  // --- ✅ 차트 옵션 실시간 반영 ---
+  function applyChartOptions() {
+    if (!chartInstance) return;
+    const { chartOptionsState } = store.getState();
+    const { tension, pointStyle, gridMode } = chartOptionsState;
+
+    // 각 dataset에 tension/pointStyle 적용
+    chartInstance.data.datasets.forEach(ds => {
+      ds.tension = tension;
+      ds.pointStyle = pointStyle;
+    });
+
+    // --- grid 표시 제어 ---
+    // x.grid.display → 수직선 (x축 방향으로 나열된 세로선)
+    // y.grid.display → 수평선 (y축 방향으로 나열된 가로선)
+    if (gridMode === 'none') {
+      chartInstance.options.scales.x.grid.display = false;
+      keys.forEach(key => {
+        if (chartInstance.options.scales[key]?.grid) {
+          chartInstance.options.scales[key].grid.display = false;
+        }
+      });
+    } else if (gridMode === 'v') {
+      // 수직선만 표시 (x축의 grid만 표시)
+      chartInstance.options.scales.x.grid.display = true;
+      keys.forEach(key => {
+        if (chartInstance.options.scales[key]?.grid) {
+          chartInstance.options.scales[key].grid.display = false;
+        }
+      });
+    } else if (gridMode === 'h') {
+      // 수평선만 표시 (y축의 grid만 표시)
+      chartInstance.options.scales.x.grid.display = false;
+      keys.forEach(key => {
+        if (chartInstance.options.scales[key]?.grid) {
+          chartInstance.options.scales[key].grid.display = true;
+        }
+      });
+    } else {
+      // 둘 다 표시
+      chartInstance.options.scales.x.grid.display = true;
+      // console.log(keys)
+      keys.forEach(key => {
+        if (chartInstance.options.scales[key]?.grid) {
+          chartInstance.options.scales[key].grid.display = true;
+        }
+      });
+    }
+    chartInstance.update();
+  }
+
+  function createLineChart(ctx, series, baseTsMs, myJSON = [], xMode = 's') {
+    const { deviceConfig } = store.getState();
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    // 표시용 타임존 오프셋 계산
+    let displayTzOffsetMin = null;
+    for (const row of myJSON || []) {
+      displayTzOffsetMin = getOffsetMinutesFromIso(row?.ts);
+      if (displayTzOffsetMin != null) break;
+    }
+    if (displayTzOffsetMin == null) {
+      displayTzOffsetMin = -new Date().getTimezoneOffset();
+    }
+
+    // dataset 생성
+    const datasets = Object.entries(series).map(([key, data], idx) => {
+      const color = colors[keys.indexOf(key) - 1 % colors.length];
+      // const color = colors[idx % colors.length];
+      colorMap[key] = color;
+      $('.card').eq(idx).css("background", color);
+
+      return {
+        label: key,
+        data,
+        yAxisID: key,
+        borderColor: color,
+        backgroundColor: color.replace(/[\d.]+\)$/,'0.1)'),
+        tension: 0.2,
+        pointRadius: 2,
+      };
+    });
+
+    // y축 생성
+    const yScales = {};
+    Object.keys(series).forEach((key, idx) => {
+      yScales[key] = {
+        type: 'linear',
+        position: idx % 2 === 0 ? 'left' : 'right',
+        title: { display: true, text: key },
+        grid: { drawOnChartArea: idx === 0 },
+      };
+    });
+
+    // ✅ Chart.js 차트 생성
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        parsing: false,
+        responsive: true,
+        maintainAspectRatio: false, // ✅ 비율 유지 끄기
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: makeTooltipTitle(xMode, displayTzOffsetMin),
+            },
+          },
+          legend: { position: 'top' },
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            title: { display: true, text: xTitleText(xMode) },
+            ticks: {
+              callback: makeTickFormatter(xMode, displayTzOffsetMin),
+            },
+            grid: { drawOnChartArea: true },
+          },
+          ...yScales,
+        },
+      },
+    });
+
+    // 내부 상태 저장
+    chartInstance._state = {
+      xMode,
+      dataArray: Array.isArray(myJSON) ? [...myJSON] : [],
+      baseTsMs,
+      displayTzOffsetMin,
+    };
+
+    // ✅ ResizeObserver로 차트 크기 자동 조정
+    const canvas = ctx instanceof HTMLCanvasElement ? ctx : document.getElementById(ctx);
+    const container = canvas.parentElement;
+
+    // canvas를 100% 채우도록 스타일 지정
+    Object.assign(canvas.style, {
+      width: "100%",
+      height: "100%",
+      display: "block",
+    });
+
+    // 부모 div 크기가 변할 때 canvas도 갱신
+    if (container) {
+      const resizeObserver = new ResizeObserver(() => {
+        const { width, height } = container.getBoundingClientRect();
+        canvas.width = width;
+        canvas.height = height;
+        chartInstance.resize(); // Chart.js 내부 리사이즈 처리
+      });
+      resizeObserver.observe(container);
+
+      // 메모리 누수 방지: chartInstance 파괴 시 observer 해제
+      chartInstance._resizeObserver = resizeObserver;
+      const originalDestroy = chartInstance.destroy.bind(chartInstance);
+      chartInstance.destroy = function () {
+        resizeObserver.disconnect();
+        originalDestroy();
+      };
+    }
+
+    return chartInstance;
+  }
+
+  // --- 3. x축 단위 버튼 설정 ---
+  function setupXModeButtons() {
+    const buttons = document.querySelectorAll(".xmode-btn");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const { currentChartData, chartOptionsState } = store.getState();
+        const { currentXmode } = chartOptionsState;
+        const newMode = btn.dataset.mode;
+        // console.log("newMode: ", newMode);
+        if (newMode === currentXmode) return;
+
+        if (!currentChartData || currentChartData.length === 0) {
+          console.warn("아직 차트 데이터가 로드되지 않았습니다.");
+          showToast("알림", "데이터를 먼저 불러온 후 단위를 변경하세요.");
+          return;
+        }
+
+        // active 상태 전환
+        buttons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        store.dispatch({ type: 'UPDATE', target: 'chartOption_xmode', payload: newMode });
+      });
+    });
+  }
+
+  function reducer(state, action) {
+    if (state === undefined) {
+      return {
+        directoryTree: {},
+        macAddress: '',
+        fileName: '',
+        deviceConfig: {},
+        currentChartData: [],
+        chartOptionsState: { 
+          tension: 0.2, 
+          pointStyle: 'circle', 
+          gridMode: 'both', 
+          currentXmode: 's',
+        },
+        sseFlag: null,
+      }
+    }
+    let newState;
+    if (action.type === 'CREATE') {
+      if (action.target === 'nav_dir') {
+        newState = Object.assign({}, state, {
+          directoryTree: { ...action.content },
+        });
+      } else if (action.target === 'main_section') {
+        newState = Object.assign({}, state, {
+          macAddress: action.deviceId,
+          fileName: action.fileName,
+          deviceConfig: { ...action.payload },
+          sseFlag: action.sseFlag,
+        });
+      } else if (action.target === 'chart_section') {
+        newState = Object.assign({}, state, {
+          currentChartData: [ ...action.payload ]
+        });
+      }  
+    } else if (action.type === 'UPDATE') {
+      if (action.target === 'device_config') {
+        newState = Object.assign({}, state, {
+          deviceConfig: { ...action.payload },
+        });
+      } else if (action.target === 'chartOption_tension') {
+        newState = Object.assign({}, state, {
+          chartOptionsState: {
+            ...state.chartOptionsState,
+            tension: action.payload,
+          }
+        });
+      } else if (action.target === 'chartOption_pointSel') {
+        newState = Object.assign({}, state, {
+          chartOptionsState: {
+            ...state.chartOptionsState,
+            pointStyle: action.payload,
+          }
+        });
+      } else if (action.target === 'chartOption_gridSel') {
+        newState = Object.assign({}, state, {
+          chartOptionsState: {
+            ...state.chartOptionsState,
+            gridMode: action.payload,
+          }
+        });
+      } else if (action.target === 'chartOption_xmode') {
+        newState = Object.assign({}, state, {
+          chartOptionsState: {
+            ...state.chartOptionsState,
+            currentXmode: action.payload,
+          }
+        });
+      } 
+    } else if (action.type === 'APPEND') {
+      if (action.target === 'chart_section') {
+        newState = Object.assign({}, state, {
+          currentChartData: [ ...state.currentChartData, action.payload ]
+        });
+      }
+    }
+    return newState;
+  }
+
+  const productionURL = 'http://121.189.157.152:8080';
+  const testURL = 'http://127.0.0.1:8080';
+  let _URL = null;
+  if (window.location.href.split('/')[2] === '127.0.0.1:8080') {
+    _URL = testURL;
+  } else {
+    _URL = productionURL;
+  }
+
+  function updateAccordionCssOnClick(target) {
+    // 클릭한 부트스트랩 아코디언 컴포넌트의 css를 변경
+    const $btns = document.querySelectorAll('.accordion-button');
+    $btns.forEach(btn => {
+      const flag = (btn === target) && (btn.getAttribute('aria-expanded') === 'true')
+      const background_color = flag ? '#EFF3FB' : 'transparent';
+      const font_color = flag ? '#3B4ED9' : '#433D79';
+      btn.style.backgroundColor = background_color;
+      btn.style.color = font_color;
+    });
+  }
+
+  function toggleAccordionButtonCss(target) {
+    // 클릭한 list-group-item에서 가장 가까운(closest) accordion-button 요소를 찾아 css를 추가하며, 그 대신 다른 accord-button 요소의 css는 초기화
+    const $btns = document.querySelectorAll('.accordion-button');
+    const $elem = target.closest('.accordion-item')?.querySelector('button');
+    $btns.forEach(btn => {
+      const flag = (btn === $elem)
+      const background_color = flag ? '#EFF3FB' : 'transparent';
+      const font_color = flag ? '#3B4ED9' : '#433D79';
+      btn.style.backgroundColor = background_color;
+      btn.style.color = font_color;
+    });
+  }
+
+  const fetchDirectoryContents = async () => {
+    const state = store.getState();
+    const url = `${_URL}/scienceon/directoryAllContents/`;
+
+    try {
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      if (response.status === 204) {
+        console.log('No Content');
+        return;
+      }
+
+      const res = await response.json();
+      const directoryTree = res.paths.reduce((acc, path) => {
+        const [dir, file] = path.split('/').filter(Boolean); // ['a', '1.csv'] 형태
+        if (!file) return acc; // 디렉터리만 있는 항목('/a' 등)은 건너뜀
+        if (!acc[dir]) acc[dir] = [];
+        acc[dir].push(file);
+        return acc;
+      }, {});
+
+      store.dispatch({ type: 'CREATE', target: 'nav_dir', content: directoryTree });
+      $('#accordionFlushExample').html(generateAccordionHTMLFromObject(directoryTree));
+      const orig = document.getElementById("accordionFlushExample");
+      const mobileContainer = document.getElementById("mobileAccordionContainer");
+      if (orig && mobileContainer) {
+        mobileContainer.innerHTML = orig.innerHTML;
+      }
+
+      $("#mobileAccordionContainer").on("click", "li.list-group-item", async function () {
+        jsonFlag = false;
+
+        // --- 🔴 기존 SSE 연결 종료 ---
+        if (currentEventSource) {
+          console.log("기존 SSE 연결 종료");
+          currentEventSource.close();
+          currentEventSource = null;
+        }
+
+        const macAddr_withColons = $(this).closest("div.accordion-item").find("button").text().trim();
+        const fileName = $(this).text().trim().split('.').shift();
+        $("ol.breadcrumb li").eq(0).text(macAddr_withColons);
+        // $("ol.breadcrumb li").eq(1).text(fileName);
+        const macAddr = removeColonsFromMac(macAddr_withColons);
+        const sseFlag = macAddr === fileName;
+
+        // 서버에서 구성 로드
+        try {
+          const url = `${_URL}/scienceon/get_iot_transmission_config/${encodeURIComponent(macAddr)}`;
+          const response = await fetch(url, { method: 'GET' });
+          const contentType = response.headers.get('content-type') || '';
+          const isJson = contentType.includes('application/json');
+          const payload = isJson ? await response.json() : await response.text();
+
+          if (!response.ok) {
+            const msg = isJson ? (payload?.error || payload?.message) : payload;
+            throw new Error(msg || `서버 오류: ${response.status}`);
+          }
+
+          showToast('설정 불러오기 완료', '서버에서 최신 구성을 불러왔습니다.', 'bg-success text-white');
+          // 데이터 파싱(오타 호환 포함)
+          const data = payload || {};
+          store.dispatch({ type: 'CREATE', target: 'main_section', deviceId: macAddr, fileName: fileName, payload: data, sseFlag: sseFlag });
+          fetchIoTDataAndRenderTableAndLineChart();
+        } catch (err) {
+          console.error(err);
+          showToast('설정 불러오기 실패', err?.message || '구성 로드 중 오류가 발생했습니다.', 'bg-danger text-white');
+        }
+      });
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  function cleanKey(k) {
+    return (k || "").replace(/^\uFEFF/, "").trim();
+  }
+
+  // --- 데이터 로드 + 테이블/차트 렌더링 ---
+  async function fetchIoTDataAndRenderTableAndLineChart() {
+    const { macAddress: macAddr, fileName, sseFlag, deviceConfig, chartOptionsState } = store.getState();
+    if (!macAddr) return;
+    
+    try {
+      // 1) 초기 데이터 로드
+      const resp = await fetch(`${_URL}/scienceon/get_json_from_csv/${macAddr}?limit=${deviceConfig.chartWindow}&fileName=${fileName}`);
+      const rows = await resp.json();
+      if (!rows || rows.length === 0) return;
+
+      // --- 테이블 헤더 렌더링 ---
+      const rawKeys = Object.keys(rows[0]);
+      keys = rawKeys.map(cleanKey);
+      // console.log("keys: ", keys);
+
+      document.querySelector("#thead").innerHTML =
+        "<tr>" + keys.map(k => `<th>${k}</th>`).join('') + "</tr>";
+
+      const tbody = document.querySelector("#tbody");
+      tbody.innerHTML = "";
+
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+        rawKeys.forEach((rawKey, idx) => {
+          const td = document.createElement("td");
+          const clean = keys[idx];          // cleanKey 적용
+          // td.textContent = r[rawKey] ?? ""; // r[rawKey]에서 값 가져오기
+
+          let value = r[rawKey] ?? "";
+
+          // ts 컬럼일 경우 포맷 변환
+          if (clean.toLowerCase() === "ts") {
+            value = formatTimestamp(value);
+          }
+
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      // --- 스크롤 컨테이너 참조 ---
+      const scrollContainer = document.querySelector("#tbl").parentElement;
+
+      // --- currentValue_section 카드 렌더링 ---
+      const currentValueSection = document.querySelector("#currentValue_section");
+      currentValueSection.innerHTML = ""; // 초기화
+
+      const lastRow = rows[rows.length - 1];
+
+      // --- 센서별 카드 생성 ---
+      rawKeys.forEach((rawKey, idx) => {
+        const clean = keys[idx];
+        if (clean.toLowerCase() === "ts") return; // ts 제외
+
+        const value = lastRow[rawKey] ?? "";
+
+        // 단위 추출
+        let unit = "";
+        const unitMatch = clean.match(/\((.*?)\)/);
+        if (unitMatch) unit = unitMatch[1];
+
+        // --- 카드 생성 ---
+        const card = document.createElement("div");
+        card.className = "card mb-2";
+        card.style.backgroundColor = colorMap[clean];
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        // ✅ 체크박스 생성
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true; // 기본 체크 상태
+        checkbox.style.marginRight = "8px";
+        checkbox.dataset.sensor = clean;
+        sensorSelection[clean] = true;
+
+        // ✅ 제목 (센서 이름)
+        const title = document.createElement("h5");
+        title.className = "card-title";
+        title.textContent = clean;
+        title.prepend(checkbox); // 제목 앞에 체크박스 삽입
+
+        // ✅ 값 표시
+        const text = document.createElement("p");
+        text.className = "card-text fs-1 fw-bold text-light";
+        text.textContent = `${value} ${unit}`;
+
+        // 조립
+        body.appendChild(title);
+        body.appendChild(text);
+        card.appendChild(body);
+        currentValueSection.appendChild(card);
+      });
+
+      // ✅ 체크박스 이벤트 핸들러 등록
+      currentValueSection.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+        chk.addEventListener('change', () => {
+          const sensorName = chk.dataset.sensor;
+          sensorSelection[sensorName] = chk.checked;
+
+          // 최소 1개 이상 체크 유지
+          const checkedCount = Object.values(sensorSelection).filter(Boolean).length;
+          createLineChartWithOptions();
+        });
+      });
+
+      // // --- 차트 초기 렌더링 ---
+      jsonFlag = true;
+      // createLineChartWithOptions();
+      store.dispatch({ type: 'CREATE', target: 'chart_section', payload: rows });
+
+      if (!sseFlag) return;
+
+      // --- ✅ 새로운 SSE 연결 생성 전에 혹시 남은 연결 닫기 ---
+      if (currentEventSource) {
+        console.log("기존 SSE 연결 재확인 후 종료");
+        currentEventSource.close();
+        currentEventSource = null;
+      }
+
+      // --- ✅ 새 SSE 연결 시작 ---
+      currentEventSource = new EventSource(`${_URL}/scienceon/sse_stream/${macAddr}`);
+      currentEventSource.addEventListener("ready", e => {
+        console.log("SSE ready:", e.data);
+      });
+
+      currentEventSource.onmessage = e => {
+        const rec = JSON.parse(e.data);
+        // console.log("rec: ", rec);
+
+        // --- 1. rec의 key BOM 제거 ---
+        const normalizedRec = {};
+        Object.entries(rec).forEach(([k, v]) => {
+          normalizedRec[cleanKey(k)] = v;
+        });
+
+        // --- 2. 테이블 행 추가 ---
+        const tr = document.createElement("tr");
+        keys.forEach(k => {
+          const td = document.createElement("td");
+          let value = normalizedRec[k] ?? "";
+
+          // ts 컬럼 포맷 변환
+          if (k.toLowerCase() === "ts") {
+            value = formatTimestamp(value);
+          }
+
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+
+        // --- 부드럽게 스크롤 ---
+        scrollContainer.scrollTo({
+          top: scrollContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+
+        // --- 3. currentValue_section 카드 업데이트 ---
+        const currentValueSection = document.querySelector("#currentValue_section");
+        const cards = currentValueSection.querySelectorAll(".card");
+
+        keys.forEach((k, idx) => {
+          if (k.toLowerCase() === "ts") return; // ts 제외
+
+          const value = normalizedRec[k] ?? "";
+
+          // 단위 추출
+          let unit = "";
+          const unitMatch = k.match(/\((.*?)\)/);
+          if (unitMatch) unit = unitMatch[1];
+
+          // 카드의 card-text 갱신
+          const card = cards[idx > 0 ? idx - 1 : idx]; // ts 제외했으므로 인덱스 조정
+          if (card) {
+            const textEl = card.querySelector(".card-text");
+            if (textEl) {
+              textEl.textContent = `${value} ${unit}`;
+            }
+          }
+        });
+
+        // --- 차트 업데이트 (단순화) ---
+        // chartInstance.appendRows([rec]);
+        store.dispatch({ type: 'APPEND', target: 'chart_section', payload: normalizedRec });
+
+      };
+      currentEventSource.onerror = e => {
+        console.warn("SSE error:", e);
+      };
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function createLineChartWithOptions() {
+    const { macAddress: macAddr, fileName, sseFlag, deviceConfig, chartOptionsState, currentChartData } = store.getState();
+    if (!macAddr || !jsonFlag) return;
+
+    const { currentXmode: currentXMode } = chartOptionsState;
+    // ✅ 새 단위에 맞게 전체 데이터 재계산
+    const { baseTsMs, series } = buildSeriesFromJSON(currentChartData, currentXMode);
+    currentSeries = series;
+    currentBaseTsMs = baseTsMs;
+
+    // ✅ 현재 체크박스 상태에 맞게 필터링
+    if (typeof sensorSelection === "object") {
+      filteredSeries = Object.fromEntries(
+        Object.entries(currentSeries).filter(([k]) => sensorSelection[k])
+      );
+    } else {
+      filteredSeries = currentSeries;
+    }
+
+    // ✅ 차트 재생성
+    chartInstance = createLineChart(
+      document.getElementById("myChart"),
+      filteredSeries,
+      baseTsMs,
+      currentChartData,
+      currentXMode
+    );
+
+    // ✅ 기존 설정 유지 적용
+    applyChartOptions();
+  }
+
+  const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
+  window.store = store;
+  store.subscribe(createLineChartWithOptions);
+
+  window.onload = async function () {
+    // 필드 참조
+    const sendInterval = document.getElementById('sendInterval');
+    const appendYes = document.getElementById('appendYes');
+    const appendNo = document.getElementById('appendNo');
+    const sendLimitMode = document.getElementById('sendLimitMode');
+    const sendLimitCount = document.getElementById('sendLimitCount');
+    const useEndAt = document.getElementById('useEndAt');
+    const endAt = document.getElementById('endAt');
+    const chartWindow = document.getElementById('chartWindow');
+    const $list_group_items = document.querySelectorAll('li.list-group-item');
+
+    $list_group_items.forEach(elem => {
+      elem.addEventListener('click', (e) => {
+        removeActiveClassFromListItems(e.target);
+        toggleAccordionButtonCss(e.target);
+        // store.dispatch({ type: 'MENU', menu: e.target.textContent });
+      });
+    });
+
+    const $accordion_btns = document.querySelectorAll('.accordion-button');
+    $accordion_btns.forEach(elem => {
+      elem.style.boxShadow = 'none';
+      elem.addEventListener('click', (e) => {
+        updateAccordionCssOnClick(e.target);
+      });
+    });
+
+    const $accordion_bodies = document.querySelectorAll('.accordion-body');
+    const $lastElem = $accordion_bodies[$accordion_bodies.length - 1];
+    if ($lastElem) {
+      $lastElem.style.borderBottom = '0.5px solid #cecfd1';
+    }
+
+    $("#accordionFlushExample").on("click", "li.list-group-item", async function () {
+      jsonFlag = false;
+
+      // --- 🔴 기존 SSE 연결 종료 ---
+      if (currentEventSource) {
+        console.log("기존 SSE 연결 종료");
+        currentEventSource.close();
+        currentEventSource = null;
+      }
+
+      const macAddr_withColons = $(this).closest("div.accordion-item").find("button").text().trim();
+      const fileName = $(this).text().trim().split('.').shift();
+      $("ol.breadcrumb li").eq(0).text(macAddr_withColons);
+      $("ol.breadcrumb li").eq(1).text(fileName);
+      const macAddr = removeColonsFromMac(macAddr_withColons);
+      const sseFlag = macAddr === fileName;
+
+      // 서버에서 구성 로드
+      try {
+        const url = `${_URL}/scienceon/get_iot_transmission_config/${encodeURIComponent(macAddr)}`;
+        const response = await fetch(url, { method: 'GET' });
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const payload = isJson ? await response.json() : await response.text();
+
+        if (!response.ok) {
+          const msg = isJson ? (payload?.error || payload?.message) : payload;
+          throw new Error(msg || `서버 오류: ${response.status}`);
+        }
+
+        showToast('설정 불러오기 완료', '서버에서 최신 구성을 불러왔습니다.', 'bg-success text-white');
+        const data = payload || {};
+        store.dispatch({ type: 'CREATE', target: 'main_section', deviceId: macAddr, fileName: fileName, payload: data, sseFlag: sseFlag });
+        fetchIoTDataAndRenderTableAndLineChart();
+      } catch (err) {
+        console.error(err);
+        showToast('설정 불러오기 실패', err?.message || '구성 로드 중 오류가 발생했습니다.', 'bg-danger text-white');
+      }
+    });
+
+    const $toggleBtnWrap = document.getElementById('toggle-button');
+    const $toggleBtn = document.getElementById('toggleBtn');
+    const $nav = document.getElementById('nav');
+    const $wrap = document.getElementById('wrap');
+    const $btnIcon = document.getElementById('btnIcon');
+
+    // 버튼 클릭 판정은 버튼에 직접 걸어도 되고, wrapper에 걸어도 됨
+    $toggleBtn.addEventListener('click', () => {
+      // 사이드바를 접고 푸는 핵심 동작
+      $nav.classList.toggle('sideBar-hidden');
+
+      // 버튼 아이콘 토글 (기존 fa 클래스 사용) — 원하면 rotate 클래스 대신 사용 가능
+      if ($btnIcon.classList.contains('fa-caret-left')) {
+        $btnIcon.classList.replace('fa-caret-left', 'fa-caret-right');
+      } else {
+        $btnIcon.classList.replace('fa-caret-right', 'fa-caret-left');
+      }
+    });
+
+    fetchDirectoryContents();
+
+    // system 모달창의 세부 항목의 내용 지정하기
+    const systemModal = document.getElementById('dataConfigModal')
+    if (systemModal) {
+      systemModal.addEventListener('show.bs.modal', async event => {
+        // 포커스를 첫 번째 입력 요소로 이동
+        const firstFocusable = systemModal.querySelector('input, textarea, button');
+        if (firstFocusable) firstFocusable.focus();
+        systemModal.setAttribute('aria-hidden', 'false');
+
+        const button = event.relatedTarget;
+        const modalTitle = systemModal.querySelector('.modal-title');
+        if (modalTitle) {
+          modalTitle.textContent = $("#macAddr").text().trim() + ' — Device Settings';
+        }
+
+        // 기존 상태 초기화
+        [sendInterval, sendLimitCount, endAt, chartWindow].forEach(el => {
+          if (!el) return;
+          el.setCustomValidity('');
+          el.classList.remove('is-invalid', 'is-valid');
+        });
+
+        // 유틸: datetime-local 입력값으로 변환(YYYY-MM-DDTHH:MM)
+        function isoToLocalInputValue(iso) {
+          try {
+            if (!iso) return '';
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return '';
+            const pad = n => String(n).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            const mm = pad(d.getMonth() + 1);
+            const dd = pad(d.getDate());
+            const hh = pad(d.getHours());
+            const mi = pad(d.getMinutes());
+            return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+          } catch {
+            return '';
+          }
+        }
+
+        // 유틸: 라디오 세팅
+        function setAppendRadios(yesEl, noEl, val) {
+          if (!yesEl || !noEl) return;
+          const b = !!val;
+          yesEl.checked = b;
+          noEl.checked = !b;
+        }
+
+        // state에서 구성 로드
+        const { macAddress: macAddr, deviceConfig: data } = store.getState();
+        const si = data.sendInterval;
+        const am = data.appendMode;
+        const slo = data.sendLimitOn;
+        const slc = data.sendLimitCount ?? null;
+        const uea = data.useEndAt;
+        const ea = data.endAt ?? null; // ISO8601 string expected
+        const cw = data.chartWindow;
+
+        if (sendInterval && si != null) sendInterval.value = si;
+        setAppendRadios(appendYes, appendNo, am);
+
+        if (sendLimitMode) {
+          sendLimitMode.checked = !!slo;
+        }
+        if (sendLimitCount) {
+          sendLimitCount.disabled = !sendLimitMode?.checked;
+          if (sendLimitMode?.checked && slc != null) {
+            sendLimitCount.value = slc;
+          }
+        }
+
+        if (useEndAt) useEndAt.checked = !!uea;
+        if (endAt) {
+          endAt.disabled = !useEndAt?.checked;
+          if (useEndAt?.checked && ea) {
+            // datetime-local을 사용 중이면 로컬 값으로 변환
+            const isDateTimeLocal = endAt.type === 'datetime-local';
+            endAt.value = isDateTimeLocal ? isoToLocalInputValue(ea) : ea;
+          }
+        }
+
+        if (chartWindow && cw != null) chartWindow.value = cw;
+      });
+    }
+
+    $(function () {
+      const $sendLimitMode = $('#sendLimitMode');
+      const $sendLimitCount = $('#sendLimitCount');
+
+      const $useEndAt = $('#useEndAt');
+      const $endAt = $('#endAt');
+
+      function syncSendLimit() {
+        const enabled = $sendLimitMode.is(':checked');
+        $sendLimitCount.prop('disabled', !enabled);
+      }
+
+      function syncEndAt() {
+        const enabled = $useEndAt.is(':checked');
+        $endAt.prop('disabled', !enabled);
+      }
+
+      // 이벤트 바인딩
+      $sendLimitMode.on('change', syncSendLimit);
+      $useEndAt.on('change', syncEndAt);
+
+      // 초기 상태 동기화 (편집 화면/재방문 등)
+      syncSendLimit();
+      syncEndAt();
+    });
+
+    // system 모달창에서 '저장'를 클릭했을 시, 기기 및 서버의 설정내용을 반영하기 위한 fetch 및 dispatch 호출.
+    document.getElementById('dataConfigForm').addEventListener('submit', async event => {
+      const { macAddress: macAddr } = store.getState();
+      event.preventDefault();
+      const form = event.currentTarget;
+
+      // 기존 상태 초기화
+      [sendInterval, sendLimitCount, endAt, chartWindow].forEach(el => {
+        if (!el) return;
+        el.setCustomValidity('');
+        el.classList.remove('is-invalid', 'is-valid');
+      });
+
+      const errors = [];
+
+      // A. 데이터 전송 간격(ms): 2000 이상
+      const si = Number(sendInterval.value);
+      if (!Number.isFinite(si) || si < 2000) {
+        sendInterval.setCustomValidity('2000ms 이상으로 입력하세요.');
+        sendInterval.classList.add('is-invalid');
+        errors.push('데이터 전송 간격은 2000ms 이상이어야 합니다.');
+      } else {
+        sendInterval.classList.add('is-valid');
+      }
+
+      // B. 이어쓰기 여부(라디오)
+      const appendSelected = appendYes.checked || appendNo.checked;
+      if (!appendSelected) {
+        errors.push('이어쓰기(append) 여부를 선택하세요.');
+      }
+
+      // C. 전송 횟수 제한
+      if (sendLimitMode.checked) {
+        sendLimitCount.disabled = false;
+        const lc = Number(sendLimitCount.value);
+        if (!Number.isInteger(lc) || lc < 1) {
+          sendLimitCount.setCustomValidity('1 이상의 정수를 입력하세요.');
+          sendLimitCount.classList.add('is-invalid');
+          errors.push('전송 횟수 제한이 활성화된 경우, 횟수는 1 이상의 정수여야 합니다.');
+        } else {
+          sendLimitCount.classList.add('is-valid');
+        }
+      }
+
+      // D. 데이터 전송 종료 시점: 현재 시각 이후
+      if (useEndAt.checked) {
+        endAt.disabled = false;
+        const val = endAt.value;
+        const endDate = val ? new Date(val) : null;
+        if (!endDate || isNaN(endDate.getTime()) || endDate <= new Date()) {
+          endAt.setCustomValidity('현재 시각 이후로 선택하세요.');
+          endAt.classList.add('is-invalid');
+          errors.push('데이터 전송 종료 시점은 현재 시각 이후여야 합니다.');
+        } else {
+          endAt.classList.add('is-valid');
+        }
+      }
+
+      // E. 표시할 데이터 개수: 5~200 정수
+      const cw = Number(chartWindow.value);
+      if (!Number.isInteger(cw) || cw < 5 || cw > 200) {
+        chartWindow.setCustomValidity('5~200 사이의 값을 입력하세요.');
+        chartWindow.classList.add('is-invalid');
+        errors.push('표시할 데이터 개수는 5~200 사이의 정수여야 합니다.');
+      } else {
+        chartWindow.classList.add('is-valid');
+      }
+
+      // 결과 처리
+      if (errors.length > 0) {
+        form.classList.add('was-validated');
+        showToast(
+          '유효성 검사 실패',
+          errors.map(e => `• ${e}`).join('<br>'),
+          'bg-danger text-white'
+        );
+        return;
+      }
+
+      // 검증 성공
+      form.classList.remove('was-validated');
+      console.log('검증 완료');
+
+      // 서버 전송(fetch) 로직
+      const submitBtn = document.querySelector('button[form="dataConfigForm"][type="submit"]');
+      const prevBtnHtml = submitBtn ? submitBtn.innerHTML : null;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>저장 중...';
+      }
+
+      const params = new URLSearchParams();
+      params.append('macAddr', macAddr);
+
+      // 앞서 검증된 값으로 전송 payload 구성
+      const data = {
+        sendInterval: si,
+        appendMode: appendYes.checked ? true : false,
+        sendLimitOn: sendLimitMode.checked,
+        ...(sendLimitMode.checked ? { sendLimitCount: Number(sendLimitCount.value) } : {}),
+        useEndAt: useEndAt.checked,
+        ...(useEndAt.checked && endAt.value ? { endAt: new Date(endAt.value).toISOString() } : {}),
+        chartWindow: cw
+      };
+
+      try {
+        const url = `${_URL}/scienceon/update_iot_transmission_config/?${params.toString()}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        // 응답 처리
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const payload = isJson ? await response.json() : await response.text();
+
+        if (!response.ok) {
+          const msg = isJson ? (payload?.error || payload?.message) : payload;
+          throw new Error(msg || `서버 오류: ${response.status}`);
+        }
+
+        // 성공 토스트
+        const successMsg = (isJson && payload?.message) ? payload.message : '저장이 완료되었습니다.';
+        showToast('저장 완료', successMsg, 'bg-success text-white');
+
+        // 모달 닫기 (Bootstrap 5)
+        const modalEl = document.getElementById('dataConfigModal');
+        if (window.bootstrap?.Modal) {
+          const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+          modal.hide();
+        } else if (window.$) {
+          $('#dataConfigModal').modal('hide');
+        }
+
+        store.dispatch({ type: 'UPDATE', target: 'device_config', payload: data });
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('오류 발생', (error && error.message) ? error.message : '요청 처리 중 오류가 발생했습니다.', 'bg-danger text-white');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          if (prevBtnHtml) submitBtn.innerHTML = prevBtnHtml;
+        }
+      }
+    });
+
+    const chartSection = document.getElementById("chart_section");
+    const infoSection = document.getElementById("info_section");
+
+    const tableSection = document.getElementById("table_section");
+    const currentValueSection = document.getElementById("currentValue_section");
+
+    /* ================================
+       🔸 수평 구분선 (chart / info 사이)
+    ================================== */
+    const verticalDivider = document.createElement("div");
+    verticalDivider.id = "verticalDivider";
+    Object.assign(verticalDivider.style, {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      width: "6px",
+      background: "rgba(0,0,0,0.0)",
+      cursor: "col-resize",
+      zIndex: 5,
+      transition: "background 0.2s ease",
+    });
+    chartSection.parentElement.appendChild(verticalDivider);
+
+    /* ================================
+       🔸 수직 구분선 (table / current 사이)
+    ================================== */
+    const horizontalDivider = document.createElement("div");
+    horizontalDivider.id = "horizontalDivider";
+    Object.assign(horizontalDivider.style, {
+      height: "6px",
+      background: "rgba(0,0,0,0.0)",
+      cursor: "row-resize",
+      transition: "background 0.2s ease",
+    });
+    tableSection.parentElement.insertBefore(horizontalDivider, currentValueSection);
+
+    /* ================================
+       🔹 상태 변수
+    ================================== */
+    let isDragging = false;
+    let dragType = null;
+    let startX = 0, startY = 0;
+    let startChartFlex = 0, startInfoFlex = 0;
+    let startTableFlex = 0, startCurrentFlex = 0;
+
+    // 감도와 부드러움 설정
+    const sensitivity = 0.25; // 마우스 이동 반응 감도 (작을수록 둔감)
+    const smoothness = 0.12;  // 부드러운 전환 정도 (0~1 사이 값)
+
+    // 현재 목표 flex 값을 저장 (보간용)
+    let targetChartFlex, targetInfoFlex, targetTableFlex, targetCurrentFlex;
+
+    /* ================================
+       🔸 Divider 위치 갱신
+    ================================== */
+    function updateDividerPositions() {
+      const parentRect = chartSection.parentElement.getBoundingClientRect();
+      const chartRect = chartSection.getBoundingClientRect();
+      verticalDivider.style.left = `${chartRect.right - parentRect.left - 3}px`;
+    }
+
+    updateDividerPositions();
+    window.addEventListener("resize", updateDividerPositions);
+
+    /* ================================
+       🔸 부드러운 보간 처리
+    ================================== */
+    function lerp(current, target, factor) {
+      return current + (target - current) * factor;
+    }
+
+    function animateFlex() {
+      if (targetChartFlex !== undefined && targetInfoFlex !== undefined) {
+        const cFlex = parseFloat(chartSection.style.flexGrow || getComputedStyle(chartSection).flexGrow);
+        const iFlex = parseFloat(infoSection.style.flexGrow || getComputedStyle(infoSection).flexGrow);
+        const newCFlex = lerp(cFlex, targetChartFlex, smoothness);
+        const newIFlex = lerp(iFlex, targetInfoFlex, smoothness);
+        chartSection.style.flex = newCFlex.toFixed(3);
+        infoSection.style.flex = newIFlex.toFixed(3);
+        updateDividerPositions();
+      }
+
+      if (targetTableFlex !== undefined && targetCurrentFlex !== undefined) {
+        const tFlex = parseFloat(tableSection.style.flexGrow || getComputedStyle(tableSection).flexGrow);
+        const cFlex = parseFloat(currentValueSection.style.flexGrow || getComputedStyle(currentValueSection).flexGrow);
+        const newTFlex = lerp(tFlex, targetTableFlex, smoothness);
+        const newCFlex = lerp(cFlex, targetCurrentFlex, smoothness);
+        tableSection.style.flex = newTFlex.toFixed(3);
+        currentValueSection.style.flex = newCFlex.toFixed(3);
+      }
+
+      requestAnimationFrame(animateFlex);
+    }
+    requestAnimationFrame(animateFlex);
+
+    /* ================================
+       🔸 마우스 이동 처리
+    ================================== */
+    function onMouseMove(e) {
+      if (!isDragging) return;
+
+      if (dragType === "vertical") {
+        const deltaX = (e.clientX - startX) * sensitivity;
+        const newChartFlex = Math.max(1, startChartFlex + deltaX / 100);
+        const newInfoFlex = Math.max(1, startInfoFlex - deltaX / 100);
+        targetChartFlex = newChartFlex;
+        targetInfoFlex = newInfoFlex;
+      }
+
+      if (dragType === "horizontal") {
+        const deltaY = (e.clientY - startY) * sensitivity;
+        const newTableFlex = Math.max(0.5, startTableFlex + deltaY / 100);
+        const newCurrentFlex = Math.max(0.5, startCurrentFlex - deltaY / 100);
+        targetTableFlex = newTableFlex;
+        targetCurrentFlex = newCurrentFlex;
+      }
+    }
+
+    function onMouseUp() {
+      isDragging = false;
+      dragType = null;
+      document.body.style.userSelect = "";
+      verticalDivider.style.background = "rgba(0,0,0,0.0)";
+      horizontalDivider.style.background = "rgba(0,0,0,0.0)";
+    }
+
+    /* ================================
+       🔸 드래그 시작 이벤트
+    ================================== */
+    verticalDivider.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      dragType = "vertical";
+      startX = e.clientX;
+      startChartFlex = parseFloat(getComputedStyle(chartSection).flexGrow);
+      startInfoFlex = parseFloat(getComputedStyle(infoSection).flexGrow);
+      document.body.style.userSelect = "none";
+      verticalDivider.style.background = "rgba(0,0,0,0.3)";
+    });
+
+    horizontalDivider.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      dragType = "horizontal";
+      startY = e.clientY;
+      startTableFlex = parseFloat(getComputedStyle(tableSection).flexGrow);
+      startCurrentFlex = parseFloat(getComputedStyle(currentValueSection).flexGrow);
+      document.body.style.userSelect = "none";
+      horizontalDivider.style.background = "rgba(0,0,0,0.3)";
+    });
+
+    /* ================================
+       🔸 전역 마우스 이벤트 등록
+    ================================== */
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+
+    setupXModeButtons();
+    setupChartOptionControls();
+  }
+</script>
+{% endblock %}

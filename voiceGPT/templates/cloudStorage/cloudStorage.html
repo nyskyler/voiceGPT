@@ -1871,11 +1871,45 @@
     }
   };
 
+  const ClickBlocker = (() => {
+    let lockCount = 0;
+    const handler = (e) => {
+      // 모든 클릭을 중지
+      // e.stopPropagation();
+      e.preventDefault();
+    };
+    // 일반 클릭 + 마우스 중간버튼(새 탭 열기)도 차단
+    const events = ['click', 'auxclick'];
+  
+    return {
+      lock() {
+        lockCount += 1;
+        if (lockCount === 1) {
+          events.forEach((type) => document.addEventListener(type, handler, true));
+        }
+      },
+      unlock() {
+        if (lockCount > 0) {
+          lockCount -= 1;
+          if (lockCount === 0) {
+            events.forEach((type) => document.removeEventListener(type, handler, true));
+          }
+        }
+      },
+      isLocked() {
+        return lockCount > 0;
+      },
+    };
+  })();
+
   const fetchDirectoryDetails = async (dir_path) => {
     const $target = document.getElementById('my_table').classList.contains('invisible') ? document.getElementById('my_grid') : document.getElementById('my_table');
     $target.classList.toggle('invisible', true);
     document.getElementById('placeholder').classList.toggle('d-flex', true);
     document.getElementById('placeholder').classList.toggle('invisible', false);
+
+    // 전역 클릭 차단 시작
+    ClickBlocker.lock();
     
     const state = store.getState();
     const dir_to_pass = dir_path.startsWith('/') ? dir_path.slice(1) : dir_path;
@@ -1903,6 +1937,9 @@
       await fetchItemThumbnailAndDetails(dir_path);
     } catch (error) {
       console.error('Error:', error);
+    } finally {
+      // 로딩 중 클릭 차단 해제
+      ClickBlocker.unlock();
     }
   };
 

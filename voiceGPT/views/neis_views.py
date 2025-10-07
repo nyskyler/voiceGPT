@@ -314,7 +314,7 @@ def analyzeStudentListByClassInfo():
   for grade in grades:
     normalized_grade = normalize_path(grade, "NFD")
     # 학년 포함된 모든 csv 파일 검색
-    pattern = os.path.join(target_path, f"*{normalized_grade}*.csv")
+    pattern = os.path.join(target_path, f"*{normalized_grade}*.[cC][sS][vV]")
     for filename in glob.glob(pattern):
       try:
         print(filename)
@@ -457,10 +457,17 @@ def processGradeClassAndStudentRecords():
 
       normalized_grade = normalize_path(grade, "NFD")
       normalized_class = normalize_path(class_name, "NFD")
-      file_path = os.path.join(target_path, f"{normalized_grade}_{normalized_class}.csv")
 
-      if not os.path.exists(file_path):
-        missing_files.append(file_path)
+      base = os.path.join(target_path, f"{normalized_grade}_{normalized_class}")
+      file_path = None
+      for ext in ("csv", "CSV"):
+        candidate = f"{base}.{ext}"
+        if os.path.exists(candidate):
+          file_path = candidate
+          break
+      
+      if not file_path:
+        missing_files.append(f"{base}.csv")
         continue
 
       # Step 4: GradeClass 찾기 
@@ -1968,6 +1975,75 @@ def update_evaluation_evidence_resource():
       "details": str(e)
     }), 500
   
+
+@bp.route("/get_grade_class_students_list/", methods=['GET'])
+@login_required
+def get_grade_class_students_list():
+  grade_str = request.args.get('grade')
+  class_name = request.args.get('class')
+
+  # 필수 파라미터 검증
+  if not (grade_str and class_name):
+    return error_response("필수 파라미터가 누락되었습니다.", 400, {
+      "grade": grade_str,
+      "class": class_name,
+    })
+
+  # 활성화된 학교 정보 가져오기
+  school_info = session.get('active_school_info')
+  if not school_info:
+    return error_response("활성화된 학교 정보가 없습니다.", 401)
+
+  school, year, semester = itemgetter('school', 'year', 'semester')(school_info)
+
+  try:
+    # SchoolYearInfo 조회
+    school_year = SchoolYearInfo.query.filter_by(
+      school_name=school, year=year, semester=semester
+    ).first()
+    if not school_year:
+      return error_response("SchoolYearInfo not found.", 404)
+
+    # SchoolGrade 조회 (grade는 문자열)
+    school_grade = SchoolGrade.query.filter_by(
+      school_year_id=school_year.id, grade=grade_str
+    ).first()
+    if not school_grade:
+      return error_response("SchoolGrade not found.", 404)
+
+    # GradeClass + 학생 조회
+    gc = (
+      GradeClass.query.options(
+        selectinload(GradeClass.students.and_(Student.is_enrolled.is_(True)))
+      )
+      .filter_by(
+        school_grade_id=school_grade.id,
+        class_name=class_name
+      )
+      .first()
+    )
+
+    if not gc or not gc.students:
+      return jsonify({
+        "message": "등록된 학급 또는 소속된 학생이 없습니다.",
+        "student_info": []
+      }), 200
+
+    # 학생 정렬 (DB에서 order_by로 처리 가능)
+    student_info = [
+      [student.id, student.name]
+      for student in sorted(gc.students, key=lambda s: s.name)
+    ]
+
+    return jsonify({
+      "message": "학급 학생명단 조회 완료",
+      "student_info": student_info,
+    }), 200
+
+  except Exception as e:
+    print(traceback.format_exc())
+    return error_response("서버 오류 발생", 500, str(e))
+
 
 @bp.route("/get_grade_class_students_assessment_areas_and_subject_id/", methods=['GET'])
 @login_required

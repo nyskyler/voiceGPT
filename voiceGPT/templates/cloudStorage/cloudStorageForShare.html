@@ -1630,7 +1630,7 @@
     $target.classList.toggle('invisible', true);
     document.getElementById('placeholder').classList.toggle('d-flex', true);
     document.getElementById('placeholder').classList.toggle('invisible', false);
-    
+
     const state = store.getState();
     const dir_to_pass = dir_path.startsWith('/') ? dir_path.slice(1) : dir_path;
     const url = `${_URL}/cloudstorage/listDirectoryDetails/${dir_to_pass}`;
@@ -1657,7 +1657,7 @@
       await fetchItemThumbnailAndDetails(dir_path);
     } catch (error) {
       console.error('Error:', error);
-    }
+    } 
   };
 
   const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());

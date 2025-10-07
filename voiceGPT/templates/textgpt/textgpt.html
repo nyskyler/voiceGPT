@@ -610,7 +610,7 @@
           <div class="input-group" style="border: none; outline: none;">
             <label id="img-label" for="img"><i class="fa-solid fa-paperclip attach-icon"></i></label>
             <input id="img" type="file" accept="image/*" style="display:none" multiple>
-            <textarea required minlength="3" maxlength="5000" id="myInput" name="message" class="form-control" placeholder="프롬프트를 입력해 주세요" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
+            <textarea required minlength="3" maxlength="15000" id="myInput" name="message" class="form-control" placeholder="프롬프트를 입력해 주세요" aria-label="Message" aria-describedby="send-button" autocomplete="off" rows="1" style="resize: none; overflow-y: auto;"></textarea> 
             <button id="myBtn" class="btn btn-primary" type="submit" id="send-button"><i class="fa-solid fa-circle-arrow-up"></i></button>
           </div>          
         </form>
@@ -2319,7 +2319,7 @@
           if (mutation.type === 'childList' || mutation.type === 'characterData') {
             if ($currentModel.textContent.startsWith('GPT')) {
               // console.log('GPT');
-              textarea.setAttribute('maxlength', 5000);
+              textarea.setAttribute('maxlength', 15000);
               textarea.setAttribute('minlength', 2);
               if (!textarea.hasAttribute('required')) {
                 textarea.setAttribute('required', '');

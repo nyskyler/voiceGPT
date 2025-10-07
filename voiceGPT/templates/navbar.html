@@ -10,9 +10,9 @@
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('auth.logout') }}">{{ g.user.username }} (로그아웃)</a>
           </li>
-          <li class="nav-item me-5">
+          <!-- <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('auth.modify', user_id=g.user.id) }}">회원정보 수정</a>
-          </li>
+          </li> -->
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('main.index') }}">VoiceGPT</a>
           </li>
@@ -31,6 +31,9 @@
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('neis.main') }}">NEIS</a>
           </li>
+          <li class="nav-item me-5">
+            <a class="nav-link" href="{{ url_for('scienceon.main') }}">Science ON</a>
+          </li>
           <!-- <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('chatgpt.modify', device_id=1) }}">Settings</a>
           </li> -->
@@ -45,6 +48,9 @@
           </li>
           <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('main.index') }}">VoiceGPT</a>
+          </li>
+          <li class="nav-item me-5">
+            <a class="nav-link" href="{{ url_for('scienceon.main') }}">Science ON</a>
           </li>
           <!-- <li class="nav-item me-5">
             <a class="nav-link" href="{{ url_for('topic._list') }}">주제별 대화</a>

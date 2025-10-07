@@ -1738,7 +1738,7 @@
             </tr>
           </thead>
           <tbody id="menu_e1_tbody" class="text-center">
-            ${renderEmptyTbodyWithMessage(8)}
+            ${renderEmptyTbodyWithMessage(7)}
           </tbody>
         </table>
       </div>
@@ -2124,8 +2124,6 @@
           <td><textarea rows="1" maxlength="500" style="width: 100%; height: 1.4rem; overflow: auto; resize: none;" spellcheck="false"></textarea></td>
           <td></td>
           <td></td>
-          <td><input type="text" class="form-control inputField select-width-full" maxlength="3" placeholder="" autocomplete="off" readonly></input></td>
-          
         </tr>
       `;
 
@@ -2214,7 +2212,7 @@
         let tempObj = {};
         let idx = 1;
 
-        $("#menu_e1_tbody td:nth-last-child(6)").each(function() {
+        $("#menu_e1_tbody td:nth-last-child(5)").each(function() {
           const selectedVal = $(this).find(":selected").val();
           if (selectedVal === fieldName) {
             const $tr = $(this).closest("tr");
@@ -2232,6 +2230,8 @@
 
       const data = { ...info, ...dataObj };
       // console.log(data);
+
+      // return;
 
       try {
         const url = `${_URL}/neis/update_achievement_criteria_records/`;
@@ -2261,7 +2261,7 @@
 
     $('#btnE4').on('click', async () => { // 성취기준 관리 테이블의 '삭제' 버튼 클릭 시
       $('#menu_e1_tbody input:checked').each(function() {
-        const label = $(this).closest('tr').find('td:nth-last-child(6)').find(':selected').val();
+        const label = $(this).closest('tr').find('td:nth-last-child(5)').find(':selected').val();
         const firstRow = $(this).closest('tr').find('td').length === 8 ? true : false; 
         const hasRowspan = $(this).closest('tr').find('td:nth-child(2)').attr("rowspan");
         const safeLabel = label.replace(/[^\uAC00-\uD7A3\w]+/g, '_');
@@ -6135,7 +6135,7 @@
     let html = null;
     html = `
       <div id="menu_k_content">
-        <div id="menu_k_content_left" class="col-12 col-xl-3">
+        <div id="menu_k_content_left" class="col-12 col-xl-2">
           <div class="table-header sticky-top bg-white p-0 mb-2 d-flex justify-content-between align-items-center">
             <div class="fw-semibold" style="font-size: 0.75rem; color: #536D89;">Total <span id="student_count">0</span></div>
             <div>
@@ -6157,7 +6157,7 @@
             </table>
           </div>
         </div>
-        <div id="menu_k_content_right" class="col-12 col-xl-9">
+        <div id="menu_k_content_right" class="col-12 col-xl-10">
           <div class="table-banner">
           </div>
           <table id="menu_k_table_2" class="table table-hover caption-top table-bordered">
@@ -6247,36 +6247,29 @@
       params = new URLSearchParams();
       params.append('grade', $("#grade").val());
       params.append('class', $("#class").val());
-      params.append('subject', $("#subject").val());
       
       try {
-        const response = await fetch(`${_URL}/neis/get_grade_class_students_assessment_areas_and_subject_id/?${params.toString()}`, {
+        const response = await fetch(`${_URL}/neis/get_grade_class_students_list/?${params.toString()}`, {
           method: 'GET',
         });
         if (!response.ok) {
           throw new Error(`서버 오류: ${response.status}`);
         }
         const res = await response.json();
-        const { message, student_info, fields_info, subject_id } = res;
+        const { message, student_info } = res;
         // console.log(message);
         // console.log(student_info);
-        // console.log(fields_info);
-        // console.log(subject_id);
-        subjectId = subject_id;
-        subjectName = $("#subject").val();
-        fieldArr = fields_info;
         
         const tableHtml = student_info.map(([ student_id, student_name ], idx) => {
           return `
             <tr data-sid="${student_id}">
-              // <td data-sid="${student_id}" class="text-center"><input class="form-check-input fs-6" type="checkbox" style="color: #979aa4;"></td>
               <td class="text-center">${idx + 1}</td>
               <td class="text-decoration-underline">${student_name}</td>
             </tr>
           `
         }).join('');
-        $("#menu_n_tbody_1").html(tableHtml);
-        $("#student_count").text($("#menu_n_tbody_1 tr").length);
+        $("#menu_k_tbody_1").html(tableHtml);
+        $("#student_count").text($("#menu_k_tbody_1 tr").length);
 
         // $("#menu_n_tbody_1").on("change", "td:nth-child(1)", function() {
         //   updateBtnsBasedOnSelection2();
