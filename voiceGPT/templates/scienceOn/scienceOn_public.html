@@ -544,6 +544,7 @@
   let sensorSelection = {};
   let jsonFlag = false;
   let currentEventSource = null;
+  let valueKeys = null;
 
   // 색상 팔레트
   const colors = [
@@ -743,24 +744,14 @@
     return `Time (${map[xMode] || xMode})`;
   }
 
+  // 🔹 key 정규화: BOM 제거 + trim
+  function normalizeKey(k) {
+    return (k || "").replace(/^\uFEFF/, "").trim();
+  }
+
 
   function buildSeriesFromJSON(myJSON, xMode = 's') {
     if (!Array.isArray(myJSON)) return { baseTsMs: NaN, series: {} };
-
-    // 🔹 key 정규화: BOM 제거 + trim
-    function normalizeKey(k) {
-      return (k || "").replace(/^\uFEFF/, "").trim();
-    }
-
-    // ts 제외한 값 key들을 추출 (정규화해서 중복 방지)
-    const valueKeys = Array.from(
-      myJSON.reduce((keys, row) => {
-        Object.keys(row || {}).forEach((k) => {
-          if (k !== 'ts') keys.add(normalizeKey(k));
-        });
-        return keys;
-      }, new Set())
-    );
 
     // baseTsMs 계산
     let baseTsMs = NaN;
@@ -884,10 +875,9 @@
 
     // dataset 생성
     const datasets = Object.entries(series).map(([key, data], idx) => {
-      const color = colors[keys.indexOf(key) - 1 % colors.length];
-      // const color = colors[idx % colors.length];
+      const color = colors[valueKeys.indexOf(key) % colors.length];
       colorMap[key] = color;
-      $('.card').eq(idx).css("background", color);
+      // $('.card').eq(idx).css("background", color);
 
       return {
         label: key,
@@ -1213,10 +1203,18 @@
       const rows = await resp.json();
       if (!rows || rows.length === 0) return;
 
+      valueKeys = Array.from(
+        rows.reduce((keys, row) => {
+          Object.keys(row || {}).forEach((k) => {
+            if (k !== 'ts') keys.add(normalizeKey(k));
+          });
+          return keys;
+        }, new Set())
+      );
+
       // --- 테이블 헤더 렌더링 ---
       const rawKeys = Object.keys(rows[0]);
       keys = rawKeys.map(cleanKey);
-      // console.log("keys: ", keys);
 
       document.querySelector("#thead").innerHTML =
         "<tr>" + keys.map(k => `<th>${k}</th>`).join('') + "</tr>";
@@ -1268,7 +1266,9 @@
         // --- 카드 생성 ---
         const card = document.createElement("div");
         card.className = "card mb-2";
-        card.style.backgroundColor = colorMap[clean];
+        
+        const color = colors[valueKeys.indexOf(rawKey) % colors.length];
+        card.style.backgroundColor = color;
 
         const body = document.createElement("div");
         body.className = "card-body";

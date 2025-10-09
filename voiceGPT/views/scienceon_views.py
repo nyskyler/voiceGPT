@@ -115,7 +115,7 @@ def read_csv_as_json(stream, fileName, limit=None):
   lock = _get_lock(stream)
   with lock:
     items = deque(maxlen=limit or 0)
-    with open(path, "r", newline="", encoding="utf-8") as f:
+    with open(path, "r", newline="", encoding='utf-8-sig') as f:
       reader = csv.DictReader(f)
       if limit is None:
         return list(reader)
@@ -268,7 +268,7 @@ def ingest(stream):
       try:
         # CSV 마지막 행의 ts값 읽기
         last_ts_str = None
-        with open(csv_path, "r", newline="", encoding="utf-8") as f:
+        with open(csv_path, "r", newline="", encoding='utf-8-sig') as f:
           reader = csv.DictReader(f)
           for row in reader:
             last_ts_str = row.get("ts", None)
