@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file
+from flask import Blueprint, jsonify, url_for, render_template, flash, request, g, current_app, send_from_directory, abort, send_file, Response
 from werkzeug.utils import redirect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
@@ -13,15 +13,17 @@ import uuid
 import base64
 import io
 import re
+import time
 import traceback
+import mimetypes
 from .. import db
 from dotenv import load_dotenv
 from .auth_views import login_required
-from ..models import User, Subject, Message, RoleEnum, MsgImage
+from ..models import User, Subject, Message, RoleEnum, MsgImage, MsgFile
 from pathlib import Path
 from PIL import Image, ExifTags
 from datetime import datetime, timedelta
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, quote
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("chatgpt_api_key")
@@ -67,7 +69,8 @@ def message_to_dict(message):
     'create_date': message.create_date.isoformat(),
     'role': message.role.value,
     'content': message.content,
-    'msg_images': [img.thumbnailPath for img in message.msg_images] # thumbnailPath만 추출
+    'msg_images': [img.thumbnailPath for img in message.msg_images], # thumbnailPath만 추출
+    'msg_files': [(file.id, file.filename) for file in message.msg_files] #id와 filename 추출
   }
 
 @bp.route("/main/")
@@ -289,7 +292,246 @@ def pdf_file_input():
   except Exception as e:
     print(traceback.format_exc())
     return jsonify({'error': 'Server error', 'message': str(e)}), 500
+
+
+### Dictionary와 Pydantic 객체를 모두 안전하게 접근하는 함수
+def _get(obj, key, default=None):
+  """dict와 객체를 모두 안전하게 접근"""
+  if isinstance(obj, dict):
+    return obj.get(key, default)
+  return getattr(obj, key, default)
+
+
+### response에서 container_file_citation 주석 추출하기
+def extract_container_file_citations(response):
+  citations = []
+  seen = set()  # (file_id, filename, container_id)
+
+  for item in _get(response, "output", []) or []:
+    if _get(item, "type") != "message":
+      continue
+
+    for content in _get(item, "content", []) or []:
+      for ann in _get(content, "annotations", []) or []:
+        ann_type = _get(ann, "type")
+        if ann_type in ("container_file_citation", "AnnotationContainerFileCitation"):
+          container_id = _get(ann, "container_id")
+          file_id      = _get(ann, "file_id")
+          filename     = _get(ann, "filename")
+
+          key = (file_id, filename, container_id)
+          if key in seen:
+            continue
+          seen.add(key)
+
+          citations.append({
+            "container_id": container_id,
+            "file_id": file_id,
+            "filename": filename,
+          })
+  return citations    
+
+
+@bp.route("/code_interpreter/", methods=["POST"])
+@login_required
+def code_interpreter():
+  req_json = request.get_json(silent=True)
+
+  # ---------- 입력 검증 ----------
+  if not req_json or not all(k in req_json for k in ("model", "content", "system")):
+    return jsonify(
+      {"error": "Invalid input", "message": "Required keys: 'model', 'content', 'system'"}
+    ), 400
+
+  _model = req_json.get("model")
+  _content = req_json.get("content")
+  _system = req_json.get("system")
+
+  if not isinstance(_model, str) or not _model.strip():
+    return jsonify({"error": "Invalid input", "message": "'model' must be a non-empty string"}), 400
+  if not isinstance(_content, str) or not _content.strip():
+    return jsonify({"error": "Invalid input", "message": "'content' must be a non-empty string"}), 400
+
+  # ---------- %% /path/file.txt %% 태그 파싱 ----------
+  url_tag_pattern = re.compile(r"%%\s*(/.*?)\s*%%", re.UNICODE)
+  urls = url_tag_pattern.findall(_content)
+  text = url_tag_pattern.sub("", _content).strip()
+
+  seen = set()
+  rel_paths = []
+  errors = []
+
+  for url in urls:
+    rel = url.strip("/")
+    if rel in seen:
+      continue
+    seen.add(rel)
+
+    try:
+      candidate = _secure_join_under_root(root_dir, rel)
+    except ValueError:
+      errors.append({"url": url, "error": "Path traversal attempt or invalid path"})
+      continue
+
+    if not candidate.exists():
+      errors.append({"url": url, "error": "File not found"})
+      continue
+    if not candidate.is_file():
+      errors.append({"url": url, "error": "Path is not a file"})
+      continue
+
+    rel_paths.append(candidate)
+
+  if errors:
+    return jsonify({"error": "File resolution error", "details": errors}), 404
+
+  uploaded_file_ids = []
+  response = None
+  container_ids = set()
+  msg_files = []
+
+  try:
+    # ---------- 파일 업로드 ----------
+    for p in rel_paths:
+      file_obj = client.files.create(
+        file=open(p, "rb"),
+        purpose="user_data",
+        expires_after={"anchor": "created_at", "seconds": 3600}
+      )
+      uploaded_file_ids.append(file_obj.id)
+
+    # ---------- Responses API 실행 ----------
+    response = client.responses.create(
+      model=_model,
+      tools=[{
+        "type": "code_interpreter",
+        "container": {"type": "auto", "file_ids": uploaded_file_ids}
+      }],
+      instructions=_system,
+      input=text,
+    )
+
+    upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+    upload_folder.mkdir(parents=True, exist_ok=True)
+
+    citations = extract_container_file_citations(response)
+
+    for c in citations:
+      # print(f'container_id: {c["container_id"]}')
+      # print(f'file_id: {c["file_id"]}')
+      # print(f'filename: {c["filename"]}')
+      container_ids.add(c["container_id"])
+
+      # 컨테이너에서 파일 다운로드
+      result = client.containers.files.content.retrieve(
+        file_id=c["file_id"],
+        container_id=c["container_id"],
+      )
+      blob = result.read()  # bytes
+      size = len(blob)
+
+      # 파일명 중복 방지: "2025-12-03_12-33-44_XXXX-UUID_filename"
+      formatted_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+      unique = uuid.uuid4().hex[:8]
+      save_name = f"{formatted_now}_{unique}_{c['filename']}"
+      file_path = upload_folder / save_name
+
+      with open(file_path, "wb") as fp:
+        fp.write(blob)
+
+      # DB 기록
+      msg_file = MsgFile(
+        filePath=str(file_path),
+        filename=save_name,
+        size=size,
+        mimeType=mimetypes.guess_type(c["filename"])[0] or "application/octet-stream",
+      )
+      db.session.add(msg_file)
+      db.session.flush()
+
+      msg_files.append({
+        "id": msg_file.id,
+        "filename": save_name,
+      })
+
+    db.session.commit()
+
+  except Exception:
+    db.session.rollback()
+    current_app.logger.error("code_interpreter error: %s", traceback.format_exc())
+    return jsonify({
+      "error": "Code Interpreter execution failed",
+      "details": traceback.format_exc()
+    }), 500
+
+  finally:
+    # 컨테이너 삭제 시도 (실패하더라도 무시)
+    if container_ids:
+      for cid in container_ids:
+        try:
+          client.containers.delete(cid)
+        except Exception:
+          pass
+
+  # ---------- 응답 반환 ----------
+  output_text = getattr(response, "output_text", "") or ""
+  return jsonify({
+    "response": output_text,
+    "msg_files": msg_files,
+  }), 201
+
+
+# 파일 크기에 따른 청크 크기 설정 (사이즈: 청크 크기)
+CHUNK_SIZES = {
+  1 * 1024 * 1024: 1024 * 64,   # 1MB 이상 100MB 미만 → 64KB
+  100 * 1024 * 1024: 1024 * 128,  # 100MB 이상 500MB 이하 → 128KB
+  500 * 1024 * 1024: 1024 * 512,  # 500MB 이상 1GB 미만 → 512KB
+  1 * 1024 * 1024 * 1024: 1024 * 1024  # 1GB 이상 → 1MB
+}
+
+def generate_large_file(file_path, chunk_unit):
+  """파일을 청크 단위로 읽어서 반환하는 제너레이터"""
+  with open(file_path, "rb") as file:
+    while chunk := file.read(chunk_unit):  # 8KB 단위로 읽기
+      yield chunk
+
+def send_large_file(file_path, chunk_size, filename):
+  """ 큰 파일을 스트리밍으로 전송하는 함수 """
+  file_size = os.path.getsize(file_path)  # 🔥 파일 크기 가져오기
+  # 파일명을 URL-encoded UTF-8로 변환 (RFC 5987 표준 적용)
+  encoded_filename = quote(filename, encoding='utf-8')
+
+  return Response(
+    generate_large_file(file_path, chunk_size),  # ✅ 들여쓰기 정리
+    mimetype="application/octet-stream",
+    headers={
+      "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+      "Content-Length": str(file_size),  # ✅ 올바른 형식
+    }
+)
+
+def determineSendMethod(file_path, file_name):
+  file_size = os.path.getsize(file_path)
+  if file_size < 1 * 1024 * 1024:  # 1MB 미만
+    return send_file(file_path, as_attachment=True)
   
+  # 파일 크기에 맞는 청크 크기 찾기
+  chunk_size = next((size for limit, size in CHUNK_SIZES.items() if file_size < limit), 1024 * 1024)
+  return send_large_file(file_path, chunk_size, file_name)
+
+
+@bp.route("/serve_file_by_id/<string:fileId>", methods=["GET"])
+@login_required
+def serve_file_by_id(fileId):
+  try:
+    fid = int(fileId)
+    targetFile = MsgFile.query.filter_by(id=fid).first_or_404()
+    print(targetFile)
+    return determineSendMethod(targetFile.filePath, targetFile.filename)
+  except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    return jsonify({"message": "An unexpected error occurred"}), 500
+
 
 def to_dict_if_valid(s: str) -> Optional[Dict[str, Any]]:
   """문자열이 dict(JSON 또는 파이썬 리터럴) 형식이면 dict 반환."""
@@ -755,14 +997,7 @@ def upload():
   contents = data['content']
   _system = data['system']
   _images = data['images']
-  # print(f'_images: {_images}')
-
-  # print("subject: ", subject)
-  # print("model: ", model)
-  # print("range: ", _range)
-  # print("contents: ", contents)
-  # print("system: ", _system)
-  # print("images: ", _images)
+  _files = data['files']
 
   if not isinstance(contents, list):
     return jsonify({'erorr': 'Content must be a list'}), 400
@@ -818,6 +1053,10 @@ def upload():
       targetImage = MsgImage.query.filter_by(thumbnailPath=filename).first_or_404()
       # print(f'targetImage: {targetImage}')
       targetImage.message_id = int(msgIds[0])
+
+    for _file in _files:
+      targetFile = MsgFile.query.filter_by(id=_file["id"]).first_or_404()
+      targetFile.message_id = msgIds[-1]   # 항상 최신 메시지(assistant)에 연결
       
     db.session.commit()
     return jsonify({'message': 'created!', 'msgIds': msgIds, 'subjectId':mySubject.id }), 201

@@ -116,6 +116,7 @@ class Message(db.Model):
   role = db.Column(db.Enum(RoleEnum), nullable=False)
   content = db.Column(db.Text(), nullable=False)
   msg_images = db.relationship('MsgImage', backref='message', cascade='all, delete-orphan', lazy=True)
+  msg_files = db.relationship('MsgFile', backref='message', cascade='all, delete-orphan', lazy=True)
 
 class MsgImage(db.Model):
   __tablename__ = 'msg_image'
@@ -123,6 +124,16 @@ class MsgImage(db.Model):
   message_id = db.Column(db.Integer, db.ForeignKey('message.id', ondelete='CASCADE'), nullable=True, index=True)
   imagePath = db.Column(db.String(300), nullable=False)
   thumbnailPath = db.Column(db.String(300), nullable=False)
+  create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz('Asia/Seoul')))
+
+class MsgFile(db.Model):
+  __tablename__ = 'msg_file'
+  id = db.Column(db.Integer, primary_key=True)
+  message_id = db.Column(db.Integer, db.ForeignKey('message.id', ondelete='CASCADE'), nullable=True, index=True)
+  filePath = db.Column(db.String(300), nullable=False)
+  filename = db.Column(db.String(300), nullable=False)
+  size = db.Column(db.Integer, nullable=True)
+  mimeType = db.Column(db.String(100), nullable=True)
   create_date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz('Asia/Seoul')))
 
 # 연도/학기 모델

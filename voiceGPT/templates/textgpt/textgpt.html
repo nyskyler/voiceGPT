@@ -255,6 +255,39 @@
     margin-bottom: 1rem;    /* 마지막 p를 제외하고만 여백 적용 */
   }
 
+  .attached-files {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .file-download {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: 0.15s;
+    max-width: 100%;
+  }
+
+  .file-download i {
+    margin-right: 6px;
+    font-size: 1rem;
+  }
+
+  .file-download span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-download:hover {
+    background: rgba(0,0,0,0.12);
+  }
+
+
   @media (min-width: 1024px) and (max-width: 1366px) {
   /* 아이패드 프로 12.9인치 화면에만 적용할 스타일 */
     #sidebar {
@@ -622,7 +655,7 @@
 {% block script %}
 <script type="module">
   const MODELS = {
-    'model1': 'gpt-5',
+    'model1': 'gpt-5.1',
     'model2': 'gpt-5-mini',
     'model3': 'gpt-5-nano',
   }
@@ -636,6 +669,7 @@
     'image_generation': '!!',
     'web_search': '??',
     'file_input': '>>',
+    'code_interpreter': '%%',
   }
 
   const defaultModel = MODELS['model1'];
@@ -766,6 +800,7 @@
 
   async function article(){
     const state = store.getState();
+
     async function fetchThumbnail(url) {
       try {
         const response = await fetch(url.replace('_image', '_thumbnail'));
@@ -797,6 +832,7 @@
     const border = localStorage.getItem('border');
     const theme = localStorage.getItem('theme');
     const width = localStorage.getItem('width') || 9;
+
     const content = state.contents.map(el => {
       // Markdown 파싱
       let renderedDesc = marked.parse(el.desc);
@@ -806,7 +842,21 @@
           <div class="col-md-${el.author === 'user' ? 6 : width} col-11">
             <div class="card ${border == 'none' ? '' : border} mb-2">
               <div class="card-body ${theme == '' ? 'bg-light text-dark bg-opacity-50' : theme}">
+
                 <div class="thumbnails" data-url="${el.imgUrl}"></div>
+
+                 <!-- 📌 첨부 파일 영역 -->
+                ${el.files && el.files.length > 0 ? `
+                  <div class="attached-files mb-2" data-files="${encodeURIComponent(JSON.stringify(el.files))}">
+                    ${el.files.map(([id, filename]) => `
+                      <div class="file-download" data-id="${id}" title="${filename}">
+                        <i class="bi bi-paperclip"></i>
+                        <span>${filename}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+
                 ${el.imgUrl.length > 0 && el.author === 'assistant'
                   ? `<span style="position: absolute; top: 1.2rem; left: 1.3rem;">
                       <input class="imgCheckBoxes form-check-input" type="checkbox" aria-label="...">
@@ -816,6 +866,7 @@
                 <div data-id="${el.id}" class="markDown card-text text-start fs-6 lh-base" style="margin:0;">
                   ${renderedDesc}
                 </div>
+
                 <button type="button" class="btn-close delete_message" aria-label="Close"></button>
               </div>
             </div>
@@ -836,8 +887,32 @@
       hljs.highlightElement(block);
     });
     hljs.initLineNumbersOnLoad();
-
     updateFontSize();
+
+    // 파일 다운로드 기능
+    document.querySelectorAll(".file-download").forEach(el => {
+      el.addEventListener("click", async function () {
+        const id = this.dataset.id;
+        try {
+          const res = await fetch(_URL + `/textgpt/serve_file_by_id/${id}`);
+          if (!res.ok) throw new Error("Could not download file");
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = this.title;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+
     const $currentModel = document.getElementById('currentModel');
     const $dalleSettingBtn = document.getElementById('dalleSettingBtn');
     
@@ -848,6 +923,7 @@
       $currentModel.textContent = state.dalle_model.toUpperCase();
     }
   
+    // 이미지 로딩
     const thumbnailPromises = state.contents.map(async (el) => {
       const $target = document.querySelector(`div.thumbnails[data-url="${el.imgUrl}"]`);
       if (!($target && Array.isArray(el.imgUrl) && el.imgUrl.length > 0)) {
@@ -894,6 +970,8 @@
     });
     await Promise.all(thumbnailPromises);
     // updateFontSize();
+
+    // 스크롤
     const chatWindow = document.getElementById('article');
     if (chatWindow.lastElementChild) {
       chatWindow.lastElementChild.scrollIntoView({ behavior : 'smooth' });
@@ -989,6 +1067,9 @@
               case 'user3':
                 url_for_request = _URL + '/textgpt/web_search/';
                 break;
+              case 'user4':
+                url_for_request = _URL + '/textgpt/code_interpreter/';
+                break;
               default:
                 url_for_request = _URL + '/textgpt/question/';
             }
@@ -1000,7 +1081,7 @@
               throw new Error(response.status);
             }
             const answer = await response.json();
-            store.dispatch({type:'CREATE', author:'assistant', desc:answer.response});
+            store.dispatch({type:'CREATE', author:'assistant', desc:answer.response, files:answer?.msg_files ?? []});
           } catch(error) {
             console.error('Error: ', error);
           }
@@ -1011,7 +1092,7 @@
           disabled: btnFlag, 
         });
       } else if(action.author === 'assistant'){
-        newContents.push({author:action.author, desc:action.desc, imgUrl:[]});
+        newContents.push({author:action.author, desc:action.desc, imgUrl:[], files:action.files});
         // 가장 최근의 질문과 응답을 데이터베이스에 저장하기 위하여 서버측에 fetch 호출
         // 전달되는 인자로는 state에 설정된 주제 및 최신의 질문과 응답
         (async () => {
@@ -1024,6 +1105,7 @@
               "system": state.system,
               "images": latestImages, 
               "content": latestContents,
+              "files": action.files,
             };
             const options = {
               method: 'POST',
@@ -1295,6 +1377,7 @@
           'author': el.role,
           'desc': el.content,
           'imgUrl': el.msg_images,
+          'files': el.msg_files,
         }));
         // subject에는 id가 아닌 문자열이 들어가야 함. 목록을 클릭했을 때 클릭한 목록의 문자열을 넣으면 되지 않을까? 153줄 참조
         const idx = state.list_items.findIndex(item => item.title === action.subject);
@@ -1484,7 +1567,7 @@
       document.getElementById('mySpinner').classList.remove('text-light');
       document.getElementById('mySpinner').classList.add('text-dark');
     }
-    // '전송' 클릭 시 발생하는 이벤트 내용을 정의 state의 subject가 null로 비어있을 경우에는 메시지 전송이 아닌 모달창이 띄워지며, 이미 subject가 있을 시에는 입력창의 메시지를 chatGPT에 질의함.
+    // '전송' 클릭 시 발생하는 이벤트 내용을 정의 state의 subject가 null로 비어있을 경우에는 메시지 전송이 아닌 모달창이 띄워지며, 이미 subject가 있을 시에는 입력창의 메시지를 ChatGPT에 질의함.
     document.getElementById('messageForm').addEventListener('submit', function(event){
       event.preventDefault();
       if (!!store.getState().subject) {
@@ -1511,6 +1594,10 @@
             case 'web_search':
               console.log('웹 검색 기능 실행');
               store.dispatch({type:'CREATE', author:'user3', desc: _desc});
+              break;
+            case 'code_interpreter':
+              console.log('코드 인터프리터 기능 실행');
+              store.dispatch({type:'CREATE', author:'user4', desc: _desc});
               break;
             default:
               console.log('알 수 없는 기능');

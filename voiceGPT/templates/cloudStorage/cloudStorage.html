@@ -514,6 +514,7 @@
                   <li><button id="moveFilesBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">이동</button></li>
                   <li><button id="compressBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">압축하기</button></li>
                   <li><button id="extractBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">압축 풀기</button></li>
+                  <li><button id="copyFilePathBtn" class="dropdown-item" type="button" style="font-size: 0.9rem; text-align: center;">경로 복사</button></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><button type="button" id="changeNameBtn" class="dropdown-item" style="font-size: 0.9rem; text-align: center;">이름 바꾸기</button></li>
                   <li><hr id="_divider" class="dropdown-divider"></li>
@@ -950,6 +951,7 @@
     const $pasteBtn = document.getElementById('pasteBtn');
     const $shareLinkBtn = document.getElementById('shareLinkBtn');
     const $divider = document.getElementById('_divider');
+    const $copyFilePathBtn = document.getElementById('copyFilePathBtn');
 
     if (selectedItems.length == 0) {
       $toggleAllCheckboxId.innerHTML = '<i class="fa-regular fa-square" style="color: #DEE2E6;"></i>';
@@ -972,6 +974,9 @@
     const isZipFile = selectedItems?.length === 1 && selectedItems[0].endsWith('.zip');
     $compressBtn.classList.toggle('invisible', isZipFile);
     $extractBtn.classList.toggle('invisible', !isZipFile);
+
+    const isFile = selectedItems?.length == 1 && directoryTree.filter(item => item.path == selectedItems[0]).map(item => item.type)[0] !== 'directory';
+    $copyFilePathBtn.classList.toggle('invisible', !isFile);
 
     const showPasteBtn = (checkedFilePathsForMove.length > 0 && selectedItems.length == 0) || (checkedFilePathsForCopy.length > 0 && selectedItems.length == 0)? false : true;
     $pasteBtn.classList.toggle('invisible', showPasteBtn);
@@ -1871,6 +1876,28 @@
     }
   };
 
+  function copyToClipboard(text) {
+    // 1. 임시 textarea 생성
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+
+    // 2. 화면에 추가 (보이지 않게)
+    textArea.style.cssText = 'position: fixed; top: -9999px; left: -9999px;';
+    document.body.appendChild(textArea);
+
+    // 3. 텍스트 선택 및 복사
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      console.log('클립보드에 성공적으로 복사되었습니다.');
+    } catch (err) {
+      console.error('클립보드 복사에 실패했습니다: ', err);
+    } finally {
+      // 4. 임시 요소 제거
+      document.body.removeChild(textArea);
+    }
+  }
+  
   const ClickBlocker = (() => {
     let lockCount = 0;
     const handler = (e) => {
@@ -2291,6 +2318,11 @@
 
     document.getElementById('shareLinkBtn').addEventListener('click', () => {
       $('#createLinkBtnForModal').click();
+    });
+
+    document.getElementById('copyFilePathBtn').addEventListener('click', () => {
+      const { selectedItems } = store.getState();
+      copyToClipboard(selectedItems[0]);
     });
 
     document.getElementById('toc_modal_confirm').addEventListener('click', async(e) => {

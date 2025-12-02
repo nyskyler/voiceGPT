@@ -227,6 +227,7 @@ def listAllContents():
 @bp.route("/append_device_sensor_data_to_csv_and_broadcast/<stream>", methods=['POST'])
 def ingest(stream):
   payload = request.get_json(silent=True)
+  print("payload: ", payload)
   if not isinstance(payload, dict):
     return jsonify(error="JSON object required"), 400
 
